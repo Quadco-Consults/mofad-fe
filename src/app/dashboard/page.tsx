@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import {
   TrendingUp,
@@ -78,12 +78,13 @@ function StatCard({ title, value, change, icon: Icon, color }: StatCardProps) {
 export default function DashboardPage() {
   const { data: dashboardStats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
-    queryFn: () => mockApi.getDashboardStats(),
+    queryFn: () => apiClient.getDashboardStats(),
   })
 
+  // TODO: Implement sales analytics endpoint in Django
   const { data: salesAnalytics, isLoading: analyticsLoading } = useQuery({
     queryKey: ['sales-analytics'],
-    queryFn: () => mockApi.getSalesAnalytics(),
+    queryFn: () => Promise.resolve({}), // Placeholder until backend implements this endpoint
   })
 
   const stats = dashboardStats || {}

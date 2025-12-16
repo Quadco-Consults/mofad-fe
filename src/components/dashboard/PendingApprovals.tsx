@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime, getStatusColor } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import {
@@ -55,13 +55,14 @@ const getEntityLabel = (entityType: string) => {
 export function PendingApprovals() {
   const { data: approvals, isLoading, refetch } = useQuery({
     queryKey: ['pending-approvals'],
-    queryFn: () => mockApi.getPendingApprovals(),
+    queryFn: () => apiClient.getPendingApprovals(),
     refetchInterval: 30000, // Refresh every 30 seconds
   })
 
   const handleApprove = async (approvalId: number, level: number) => {
     try {
-      await api.approveItem(approvalId, level)
+      // TODO: Implement approval API endpoint
+      console.log('Approving item:', approvalId, 'at level:', level)
       refetch()
     } catch (error) {
       console.error('Failed to approve item:', error)
@@ -73,7 +74,8 @@ export function PendingApprovals() {
     if (!reason) return
 
     try {
-      await api.rejectItem(approvalId, reason)
+      // TODO: Implement rejection API endpoint
+      console.log('Rejecting item:', approvalId, 'reason:', reason)
       refetch()
     } catch (error) {
       console.error('Failed to reject item:', error)
@@ -100,7 +102,7 @@ export function PendingApprovals() {
     )
   }
 
-  const pendingApprovals = approvals?.data || []
+  const pendingApprovals = approvals || []
 
   if (pendingApprovals.length === 0) {
     return (

@@ -1,8 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-// Use mock API for standalone frontend testing
+// Import both API clients for flexibility
 import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { User, LoginForm } from '@/types'
+
+// Use real Django API by default, fallback to mock if needed
+const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API !== 'false'
+const api = USE_REAL_API ? apiClient : mockApi
 
 interface AuthState {
   user: User | null
@@ -28,7 +33,7 @@ export const useAuthStore = create<AuthState>()(
       login: async (credentials: LoginForm) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await mockApi.login(credentials)
+          const response = await api.login(credentials)
           const user = response.user || response.data?.user
 
           if (user) {
@@ -55,7 +60,7 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         set({ isLoading: true })
         try {
-          await mockApi.logout()
+          await api.logout()
         } catch (error) {
           console.error('Logout error:', error)
         } finally {
@@ -82,7 +87,7 @@ export const useAuthStore = create<AuthState>()(
 
         set({ isLoading: true })
         try {
-          const response = await mockApi.getUser()
+          const response = await api.getUser()
           const user = response.user || response.data || response
 
           set({
