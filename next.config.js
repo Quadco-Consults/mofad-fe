@@ -1,19 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
+  // No experimental config needed for Next.js 15.5.9 - app directory is now stable
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/:path*`,
-      },
-    ];
-  },
+  // Direct API calls to Django backend, no rewrites needed
 };
 
 module.exports = nextConfig;

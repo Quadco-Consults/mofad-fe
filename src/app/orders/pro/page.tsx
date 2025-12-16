@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -91,6 +92,7 @@ const getDeliveryBadge = (status: string) => {
 }
 
 export default function PROPage() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [deliveryFilter, setDeliveryFilter] = useState('all')
@@ -123,7 +125,10 @@ export default function PROPage() {
             <h1 className="text-2xl font-bold text-foreground">Purchase Orders (PRO)</h1>
             <p className="text-muted-foreground">Manage purchase orders and supplier communications</p>
           </div>
-          <Button className="mofad-btn-primary">
+          <Button
+            className="mofad-btn-primary"
+            onClick={() => router.push('/orders/pro/create')}
+          >
             <Plus className="w-4 h-4 mr-2" />
             New PRO
           </Button>

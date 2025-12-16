@@ -31,28 +31,63 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       login: async (credentials: LoginForm) => {
-        set({ isLoading: true, error: null })
-        try {
-          const response = await api.login(credentials)
-          const user = response.user || response.data?.user
+        console.log('[AUTH_STORE] 🎯 Login initiated for:', { email: credentials.email })
+        console.log('[AUTH_STORE] Using API client:', USE_REAL_API ? 'Real Django API' : 'Mock API')
 
-          if (user) {
+        // Clear any existing errors and set loading state
+        console.log('[AUTH_STORE] Clearing errors and setting loading state...')
+        set({ isLoading: true, error: null })
+
+        try {
+          console.log('[AUTH_STORE] Calling API login...')
+          const response = await api.login(credentials)
+          console.log('[AUTH_STORE] API login response received:', response)
+
+          // Extract user from response
+          const user = response?.user || response?.data?.user || response
+
+          console.log('[AUTH_STORE] Extracted user data:', user)
+
+          if (user && user.email) {
+            console.log('[AUTH_STORE] ✅ Valid user data found, updating store...')
             set({
               user,
               isAuthenticated: true,
               isLoading: false,
-              error: null,
+              error: null, // Explicitly clear any errors on successful login
+            })
+            console.log('[AUTH_STORE] 🎉 Auth store updated successfully!')
+            console.log('[AUTH_STORE] Final auth state:', {
+              isAuthenticated: true,
+              userId: user.id,
+              userEmail: user.email,
+              userName: user.name
             })
           } else {
-            throw new Error('Invalid response from server')
+            console.error('[AUTH_STORE] ❌ Invalid user data in response:', response)
+            throw new Error('Invalid user data received from server')
           }
         } catch (error: any) {
+          console.error('[AUTH_STORE] ❌ Login failed with error:', error)
+          console.error('[AUTH_STORE] Error details:', {
+            message: error?.message,
+            status: error?.status,
+            stack: error?.stack,
+            type: typeof error,
+            fullError: error
+          })
+
+          const errorMessage = error?.message || 'Login failed'
+          console.log('[AUTH_STORE] Setting error state:', errorMessage)
+
           set({
             user: null,
             isAuthenticated: false,
             isLoading: false,
-            error: error.message || 'Login failed',
+            error: errorMessage,
           })
+
+          // Re-throw error to be handled by the UI
           throw error
         }
       },
@@ -117,6 +152,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        // Don't persist error, isLoading states - these should be reset on page load
       }),
     }
   )

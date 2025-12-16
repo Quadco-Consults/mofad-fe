@@ -28,10 +28,27 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary-500 mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <div className="relative">
+            {/* Animated background circles */}
+            <div className="absolute inset-0 -top-10 -left-10 w-32 h-32 bg-blue-500/10 rounded-full blur-xl animate-pulse"></div>
+            <div className="absolute inset-0 -bottom-10 -right-10 w-32 h-32 bg-purple-500/10 rounded-full blur-xl animate-pulse delay-1000"></div>
+
+            {/* Modern loading spinner */}
+            <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 shadow-2xl">
+              <Loader2 className="h-12 w-12 animate-spin mx-auto text-white mb-6" />
+              <div className="space-y-2">
+                <h3 className="text-xl font-semibold text-white">MOFAD ERP</h3>
+                <p className="text-slate-300">Initializing your workspace...</p>
+
+                {/* Modern progress bar */}
+                <div className="mt-4 w-full bg-white/10 rounded-full h-1.5">
+                  <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-1.5 rounded-full animate-pulse w-3/4"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -42,28 +59,47 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="h-screen flex bg-gray-50">
-      {/* Sidebar */}
+    <div className="h-screen flex bg-gradient-to-br from-slate-50 via-white to-slate-100 overflow-hidden">
+      {/* Modern Sidebar */}
       <Sidebar collapsed={sidebarCollapsed} />
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        {/* Modern Header */}
         <Header onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
+        {/* Main Content with Glassmorphism */}
+        <main className="flex-1 overflow-hidden relative">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-slate-50/90 to-blue-50/80"></div>
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 25px 25px, rgba(59, 130, 246, 0.1) 2px, transparent 0)`,
+            backgroundSize: '50px 50px'
+          }}></div>
+
+          {/* Content Container */}
+          <div className="relative h-full overflow-y-auto">
+            <div className="p-6 lg:p-8 max-w-full">
+              {/* Modern Content Wrapper */}
+              <div className="animate-in fade-in duration-500">
+                {children}
+              </div>
+            </div>
+          </div>
         </main>
       </div>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile sidebar overlay with blur effect */}
       {!sidebarCollapsed && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black bg-opacity-50"
+          className="lg:hidden fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
           onClick={() => setSidebarCollapsed(true)}
         />
       )}
+
+      {/* Floating Elements for Visual Enhancement */}
+      <div className="fixed top-20 right-10 w-32 h-32 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="fixed bottom-20 left-10 w-40 h-40 bg-gradient-to-r from-green-400/10 to-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
     </div>
   )
 }

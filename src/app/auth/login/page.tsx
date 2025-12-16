@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { useAuthStore } from '@/store/authStore'
@@ -12,6 +12,36 @@ export default function LoginPage() {
   const { login, isLoading, error, clearError } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
 
+  // Clear any lingering errors and persisted state when the login page loads
+  useEffect(() => {
+    console.log('[LOGIN_PAGE] Component mounted, clearing errors and checking localStorage...')
+
+    // Clear current error state
+    clearError()
+
+    // Also clear any persisted auth state if there are issues
+    const authStorage = localStorage.getItem('auth-storage')
+    if (authStorage) {
+      try {
+        const parsedAuth = JSON.parse(authStorage)
+        if (parsedAuth.state?.error) {
+          console.log('[LOGIN_PAGE] Found persisted error in localStorage, clearing...')
+          // Clear the entire auth storage to reset state
+          localStorage.removeItem('auth-storage')
+          localStorage.removeItem('auth_token')
+          // Force a page refresh to clear state
+          window.location.reload()
+        }
+      } catch (e) {
+        console.log('[LOGIN_PAGE] Error parsing auth storage, clearing it...')
+        localStorage.removeItem('auth-storage')
+        localStorage.removeItem('auth_token')
+      }
+    }
+
+    console.log('[LOGIN_PAGE] Initialization complete')
+  }, [clearError])
+
   const {
     register,
     handleSubmit,
@@ -19,11 +49,17 @@ export default function LoginPage() {
   } = useForm<LoginForm>()
 
   const onSubmit = async (data: LoginForm) => {
+    console.log('LoginPage form submitted with data:', { email: data.email })
+    console.log('Current auth state:', { isLoading, error, isAuthenticated: useAuthStore.getState().isAuthenticated })
+
     try {
+      console.log('Clearing error and calling login...')
       clearError()
       await login(data)
+      console.log('Login completed, navigating to dashboard...')
       router.push('/dashboard')
     } catch (error) {
+      console.error('LoginPage caught error:', error)
       // Error is handled by the store
     }
   }

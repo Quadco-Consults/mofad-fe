@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -19,189 +20,115 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  X,
-  Save,
-  Calendar,
   User,
-  Building,
+  Phone,
+  MapPin,
+  ShoppingCart,
+  Package,
+  CreditCard,
+  Truck,
 } from 'lucide-react'
 
-interface PRF {
+interface CustomerOrder {
   id: number
   prf_number: string
-  title: string
-  description: string
+  customer_name: string
+  customer_contact: string
+  customer_email: string
+  delivery_address: string
   total_amount: number
-  status: 'pending' | 'approved' | 'rejected' | 'processing'
-  priority: 'low' | 'medium' | 'high'
-  requested_by: string
-  department: string
+  status: 'pending' | 'confirmed' | 'preparing' | 'shipped' | 'delivered' | 'cancelled'
+  payment_terms: string
+  payment_status: 'pending' | 'paid' | 'overdue'
   created_at: string
-  required_date: string
+  delivery_date: string
   items_count: number
+  order_notes: string
+  sales_rep: string
 }
 
-const getStatusIcon = (status: string) => {
-  switch (status) {
+const getStatusIcon = (status: string | undefined) => {
+  // Default to 'pending' if status is undefined or null
+  const safeStatus = status || 'pending'
+
+  switch (safeStatus) {
     case 'pending':
       return <Clock className="w-4 h-4 text-yellow-500" />
-    case 'approved':
+    case 'confirmed':
+      return <CheckCircle className="w-4 h-4 text-blue-500" />
+    case 'preparing':
+      return <Package className="w-4 h-4 text-orange-500" />
+    case 'shipped':
+      return <Truck className="w-4 h-4 text-purple-500" />
+    case 'delivered':
       return <CheckCircle className="w-4 h-4 text-green-500" />
-    case 'rejected':
+    case 'cancelled':
       return <XCircle className="w-4 h-4 text-red-500" />
-    case 'processing':
-      return <AlertTriangle className="w-4 h-4 text-blue-500" />
     default:
       return <Clock className="w-4 h-4 text-gray-500" />
   }
 }
 
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: string | undefined) => {
+  // Default to 'pending' if status is undefined or null
+  const safeStatus = status || 'pending'
+
   const colors = {
     pending: 'bg-yellow-100 text-yellow-800',
-    approved: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800',
-    processing: 'bg-blue-100 text-blue-800'
+    confirmed: 'bg-blue-100 text-blue-800',
+    preparing: 'bg-orange-100 text-orange-800',
+    shipped: 'bg-purple-100 text-purple-800',
+    delivered: 'bg-green-100 text-green-800',
+    cancelled: 'bg-red-100 text-red-800'
   }
 
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status as keyof typeof colors]}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[safeStatus as keyof typeof colors]}`}>
+      {safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)}
     </span>
   )
 }
 
-const getPriorityBadge = (priority: string) => {
+const getPaymentStatusBadge = (status: string | undefined) => {
+  // Default to 'pending' if status is undefined or null
+  const safeStatus = status || 'pending'
+
   const colors = {
-    low: 'bg-gray-100 text-gray-800',
-    medium: 'bg-yellow-100 text-yellow-800',
-    high: 'bg-red-100 text-red-800'
+    pending: 'bg-yellow-100 text-yellow-800',
+    paid: 'bg-green-100 text-green-800',
+    overdue: 'bg-red-100 text-red-800'
   }
 
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[priority as keyof typeof colors]}`}>
-      {priority.charAt(0).toUpperCase() + priority.slice(1)}
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[safeStatus as keyof typeof colors]}`}>
+      {safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)}
     </span>
   )
 }
 
-export default function PRFPage() {
+export default function CustomerOrdersPage() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [priorityFilter, setPriorityFilter] = useState('all')
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [showViewModal, setShowViewModal] = useState(false)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [selectedPRF, setSelectedPRF] = useState<PRF | null>(null)
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    department: '',
-    priority: 'medium' as const,
-    required_date: '',
-    items: [{ name: '', quantity: 1, unit_price: 0, description: '' }]
-  })
+  const [paymentFilter, setPaymentFilter] = useState('all')
 
-  const { data: prfList, isLoading } = useQuery({
-    queryKey: ['prf-list'],
+  const { data: ordersList, isLoading } = useQuery({
+    queryKey: ['customer-orders-list'],
     queryFn: () => mockApi.get('/orders/prf'),
   })
 
-  const prfs = prfList || []
+  const orders = ordersList || []
 
-  // Helper functions
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      department: '',
-      priority: 'medium',
-      required_date: '',
-      items: [{ name: '', quantity: 1, unit_price: 0, description: '' }]
-    })
-  }
+  // Filter orders based on search and filters
+  const filteredOrders = orders.filter((order: CustomerOrder) => {
+    const matchesSearch = (order.prf_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (order.customer_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (order.customer_contact || '').toLowerCase().includes(searchTerm.toLowerCase())
 
-  const calculateTotal = () => {
-    return formData.items.reduce((total, item) => total + (item.quantity * item.unit_price), 0)
-  }
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter
+    const matchesPayment = paymentFilter === 'all' || order.payment_status === paymentFilter
 
-  const addItem = () => {
-    setFormData({
-      ...formData,
-      items: [...formData.items, { name: '', quantity: 1, unit_price: 0, description: '' }]
-    })
-  }
-
-  const removeItem = (index: number) => {
-    if (formData.items.length > 1) {
-      setFormData({
-        ...formData,
-        items: formData.items.filter((_, i) => i !== index)
-      })
-    }
-  }
-
-  const updateItem = (index: number, field: string, value: any) => {
-    setFormData({
-      ...formData,
-      items: formData.items.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
-    })
-  }
-
-  const handleAdd = () => {
-    resetForm()
-    setShowAddModal(true)
-  }
-
-  const handleView = (prf: PRF) => {
-    setSelectedPRF(prf)
-    setShowViewModal(true)
-  }
-
-  const handleEdit = (prf: PRF) => {
-    setSelectedPRF(prf)
-    setFormData({
-      title: prf.title,
-      description: prf.description,
-      department: prf.department,
-      priority: prf.priority,
-      required_date: prf.required_date,
-      items: [{ name: '', quantity: 1, unit_price: 0, description: '' }]
-    })
-    setShowEditModal(true)
-  }
-
-  const handleDelete = (prf: PRF) => {
-    setSelectedPRF(prf)
-    setShowDeleteModal(true)
-  }
-
-  const handleSave = () => {
-    console.log('Saving PRF:', formData)
-    setShowAddModal(false)
-    setShowEditModal(false)
-    resetForm()
-  }
-
-  const confirmDelete = () => {
-    console.log('Deleting PRF:', selectedPRF?.id)
-    setShowDeleteModal(false)
-    setSelectedPRF(null)
-  }
-
-  // Filter PRFs based on search and filters
-  const filteredPRFs = prfs.filter((prf: PRF) => {
-    const matchesSearch = prf.prf_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         prf.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         prf.requested_by.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesStatus = statusFilter === 'all' || prf.status === statusFilter
-    const matchesPriority = priorityFilter === 'all' || prf.priority === priorityFilter
-
-    return matchesSearch && matchesStatus && matchesPriority
+    return matchesSearch && matchesStatus && matchesPayment
   })
 
   return (
@@ -210,25 +137,28 @@ export default function PRFPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Purchase Requisitions (PRF)</h1>
-            <p className="text-muted-foreground">Manage purchase requisition forms and approvals</p>
+            <h1 className="text-2xl font-bold text-foreground">Customer Orders (PRF)</h1>
+            <p className="text-muted-foreground">Manage customer orders for lubricants and petroleum products</p>
           </div>
-          <Button className="mofad-btn-primary" onClick={handleAdd}>
+          <Button
+            className="mofad-btn-primary"
+            onClick={() => router.push('/orders/prf/create')}
+          >
             <Plus className="w-4 h-4 mr-2" />
-            New PRF
+            New Customer Order
           </Button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total PRFs</p>
-                  <p className="text-2xl font-bold text-primary">24</p>
+                  <p className="text-sm text-muted-foreground">Total Orders</p>
+                  <p className="text-2xl font-bold text-primary">156</p>
                 </div>
-                <Clock className="w-8 h-8 text-primary/60" />
+                <ShoppingCart className="w-8 h-8 text-primary/60" />
               </div>
             </CardContent>
           </Card>
@@ -238,9 +168,9 @@ export default function PRFPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">8</p>
+                  <p className="text-2xl font-bold text-yellow-600">24</p>
                 </div>
-                <AlertTriangle className="w-8 h-8 text-yellow-600/60" />
+                <Clock className="w-8 h-8 text-yellow-600/60" />
               </div>
             </CardContent>
           </Card>
@@ -249,10 +179,22 @@ export default function PRFPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Approved</p>
-                  <p className="text-2xl font-bold text-green-600">12</p>
+                  <p className="text-sm text-muted-foreground">Confirmed</p>
+                  <p className="text-2xl font-bold text-blue-600">45</p>
                 </div>
-                <CheckCircle className="w-8 h-8 text-green-600/60" />
+                <CheckCircle className="w-8 h-8 text-blue-600/60" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Delivered</p>
+                  <p className="text-2xl font-bold text-green-600">78</p>
+                </div>
+                <Truck className="w-8 h-8 text-green-600/60" />
               </div>
             </CardContent>
           </Card>
@@ -262,9 +204,9 @@ export default function PRFPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Value</p>
-                  <p className="text-2xl font-bold text-secondary">₦45.2M</p>
+                  <p className="text-2xl font-bold text-secondary">₦234.7M</p>
                 </div>
-                <Download className="w-8 h-8 text-secondary/60" />
+                <CreditCard className="w-8 h-8 text-secondary/60" />
               </div>
             </CardContent>
           </Card>
@@ -279,7 +221,7 @@ export default function PRFPage() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Search PRFs..."
+                    placeholder="Search orders, customers..."
                     className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -295,20 +237,22 @@ export default function PRFPage() {
                 >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="processing">Processing</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="preparing">Preparing</option>
+                  <option value="shipped">Shipped</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
                 </select>
 
                 <select
                   className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  value={paymentFilter}
+                  onChange={(e) => setPaymentFilter(e.target.value)}
                 >
-                  <option value="all">All Priority</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
+                  <option value="all">All Payment</option>
+                  <option value="pending">Payment Pending</option>
+                  <option value="paid">Paid</option>
+                  <option value="overdue">Overdue</option>
                 </select>
 
                 <Button variant="outline">
@@ -325,10 +269,10 @@ export default function PRFPage() {
           </CardContent>
         </Card>
 
-        {/* PRF List */}
+        {/* Orders List */}
         <Card>
           <CardHeader>
-            <CardTitle>Purchase Requisitions</CardTitle>
+            <CardTitle>Customer Orders</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -344,49 +288,54 @@ export default function PRFPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">PRF Number</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Title</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Requested By</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Department</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Order #</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Customer</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Contact</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Amount</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Priority</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Payment</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Delivery Date</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Sales Rep</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPRFs.map((prf: PRF) => (
-                      <tr key={prf.id} className="border-b border-border hover:bg-muted/50">
+                    {filteredOrders.map((order: CustomerOrder) => (
+                      <tr key={order.id} className="border-b border-border hover:bg-muted/50">
                         <td className="py-3 px-4">
                           <div className="flex items-center">
-                            {getStatusIcon(prf.status)}
-                            <span className="ml-2 font-medium">{prf.prf_number}</span>
+                            {getStatusIcon(order.status)}
+                            <span className="ml-2 font-medium">{order.prf_number}</span>
                           </div>
                         </td>
                         <td className="py-3 px-4">
                           <div>
-                            <p className="font-medium">{prf.title}</p>
-                            <p className="text-sm text-muted-foreground">{prf.items_count} items</p>
+                            <p className="font-medium">{order.customer_name || 'Unknown Customer'}</p>
+                            <p className="text-sm text-muted-foreground">{order.items_count || 0} items</p>
                           </div>
                         </td>
-                        <td className="py-3 px-4">{prf.requested_by}</td>
-                        <td className="py-3 px-4">{prf.department}</td>
-                        <td className="py-3 px-4 font-medium">{formatCurrency(prf.total_amount)}</td>
-                        <td className="py-3 px-4">{getPriorityBadge(prf.priority)}</td>
-                        <td className="py-3 px-4">{getStatusBadge(prf.status)}</td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {formatDateTime(prf.created_at)}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center text-sm">
+                            <Phone className="w-4 h-4 mr-1 text-muted-foreground" />
+                            {order.customer_contact || 'No contact'}
+                          </div>
                         </td>
+                        <td className="py-3 px-4 font-medium">{formatCurrency(order.total_amount || 0)}</td>
+                        <td className="py-3 px-4">{getStatusBadge(order.status)}</td>
+                        <td className="py-3 px-4">{getPaymentStatusBadge(order.payment_status)}</td>
+                        <td className="py-3 px-4 text-sm text-muted-foreground">
+                          {order.delivery_date ? formatDateTime(order.delivery_date) : 'No date set'}
+                        </td>
+                        <td className="py-3 px-4 text-sm">{order.sales_rep || 'Unassigned'}</td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleView(prf)}>
+                            <Button variant="ghost" size="sm">
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(prf)}>
+                            <Button variant="ghost" size="sm">
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(prf)}>
+                            <Button variant="ghost" size="sm">
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
@@ -399,330 +348,6 @@ export default function PRFPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Add PRF Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold">Create New Purchase Requisition</h2>
-                <Button variant="ghost" onClick={() => setShowAddModal(false)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="p-6 space-y-6">
-                {/* Basic Information */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-900">Basic Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Title *
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                        value={formData.title}
-                        onChange={(e) => setFormData({...formData, title: e.target.value})}
-                        placeholder="Enter PRF title"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Department *
-                      </label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                        value={formData.department}
-                        onChange={(e) => setFormData({...formData, department: e.target.value})}
-                      >
-                        <option value="">Select Department</option>
-                        <option value="Operations">Operations</option>
-                        <option value="Sales">Sales</option>
-                        <option value="Finance">Finance</option>
-                        <option value="Procurement">Procurement</option>
-                        <option value="IT">IT</option>
-                        <option value="HR">HR</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Priority *
-                      </label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                        value={formData.priority}
-                        onChange={(e) => setFormData({...formData, priority: e.target.value as 'low' | 'medium' | 'high'})}
-                      >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Required Date *
-                      </label>
-                      <input
-                        type="date"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                        value={formData.required_date}
-                        onChange={(e) => setFormData({...formData, required_date: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      rows={3}
-                      value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
-                      placeholder="Enter PRF description and justification"
-                    />
-                  </div>
-                </div>
-
-                {/* Items Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">Items Required</h3>
-                    <Button type="button" onClick={addItem} className="mofad-btn-primary">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Item
-                    </Button>
-                  </div>
-                  <div className="space-y-4">
-                    {formData.items.map((item, index) => (
-                      <div key={index} className="p-4 border border-gray-200 rounded-lg">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Item Name *
-                            </label>
-                            <input
-                              type="text"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                              value={item.name}
-                              onChange={(e) => updateItem(index, 'name', e.target.value)}
-                              placeholder="Enter item name"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Quantity *
-                            </label>
-                            <input
-                              type="number"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                              value={item.quantity}
-                              onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                              placeholder="0"
-                              min="1"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Unit Price (₦)
-                            </label>
-                            <input
-                              type="number"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                              value={item.unit_price}
-                              onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                              placeholder="0.00"
-                              min="0"
-                              step="0.01"
-                            />
-                          </div>
-                          <div className="flex items-end">
-                            <div className="flex-1">
-                              <span className="text-sm font-medium text-gray-700">
-                                Total: {formatCurrency(item.quantity * item.unit_price)}
-                              </span>
-                            </div>
-                            {formData.items.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeItem(index)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Description
-                          </label>
-                          <textarea
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                            rows={2}
-                            value={item.description}
-                            onChange={(e) => updateItem(index, 'description', e.target.value)}
-                            placeholder="Item description or specifications"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex justify-between text-lg font-semibold">
-                      <span>Total Amount:</span>
-                      <span className="text-primary-600">{formatCurrency(calculateTotal())}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 p-6 border-t">
-                <Button variant="outline" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </Button>
-                <Button className="mofad-btn-primary" onClick={handleSave}>
-                  <Save className="w-4 h-4 mr-2" />
-                  Create PRF
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* View PRF Modal */}
-        {showViewModal && selectedPRF && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold">PRF Details - {selectedPRF.prf_number}</h2>
-                <Button variant="ghost" onClick={() => setShowViewModal(false)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">PRF Number</label>
-                      <p className="text-gray-900 font-semibold">{selectedPRF.prf_number}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                      <p className="text-gray-900 font-semibold">{selectedPRF.title}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                      <div className="flex items-center gap-2">
-                        <Building className="w-4 h-4 text-gray-500" />
-                        <p className="text-gray-900">{selectedPRF.department}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Requested By</label>
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-500" />
-                        <p className="text-gray-900">{selectedPRF.requested_by}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                      {getStatusBadge(selectedPRF.status)}
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                      {getPriorityBadge(selectedPRF.priority)}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
-                      <p className="text-primary-600 font-bold text-lg">{formatCurrency(selectedPRF.total_amount)}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Items Count</label>
-                      <p className="text-gray-900 font-semibold">{selectedPRF.items_count} items</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-500" />
-                        <p className="text-gray-900">{formatDateTime(selectedPRF.created_at)}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Required Date</label>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-500" />
-                        <p className="text-gray-900">{formatDateTime(selectedPRF.required_date)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <p className="text-gray-900">{selectedPRF.description}</p>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 p-6 border-t">
-                <Button variant="outline" onClick={() => setShowViewModal(false)}>
-                  Close
-                </Button>
-                {selectedPRF.status === 'pending' && (
-                  <Button className="mofad-btn-primary" onClick={() => {
-                    setShowViewModal(false)
-                    handleEdit(selectedPRF)
-                  }}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit PRF
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Delete Confirmation Modal */}
-        {showDeleteModal && selectedPRF && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg max-w-md w-full m-4">
-              <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold text-red-600">Confirm Deletion</h2>
-                <Button variant="ghost" onClick={() => setShowDeleteModal(false)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                    <AlertTriangle className="w-6 h-6 text-red-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Delete Purchase Requisition</h3>
-                    <p className="text-sm text-gray-600">This action cannot be undone</p>
-                  </div>
-                </div>
-                <p className="text-gray-700">
-                  Are you sure you want to delete PRF <strong>{selectedPRF.prf_number}</strong>?
-                  This will permanently remove all associated data.
-                </p>
-              </div>
-              <div className="flex justify-end gap-2 p-6 border-t">
-                <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
-                  Cancel
-                </Button>
-                <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={confirmDelete}>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete PRF
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </AppLayout>
   )
