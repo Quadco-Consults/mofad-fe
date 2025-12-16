@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import mockApi from '@/lib/mockApi'
 import { formatCurrency, formatDateTime, getStatusColor } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import {
@@ -55,7 +55,7 @@ const getEntityLabel = (entityType: string) => {
 export function PendingApprovals() {
   const { data: approvals, isLoading, refetch } = useQuery({
     queryKey: ['pending-approvals'],
-    queryFn: () => api.getPendingApprovals({ limit: 10 }),
+    queryFn: () => mockApi.getPendingApprovals(),
     refetchInterval: 30000, // Refresh every 30 seconds
   })
 

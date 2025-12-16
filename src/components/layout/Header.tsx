@@ -28,15 +28,16 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 py-3">
-      <div className="flex items-center justify-between">
+    <header className="mofad-header-gradient px-4 py-3 shadow-lg">
+      {/* MOFAD Brand Header */}
+      <div className="flex items-center justify-between text-white">
         {/* Left Section */}
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className="lg:hidden"
+            className="lg:hidden text-white hover:bg-white/20"
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -45,7 +46,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className="hidden lg:flex"
+            className="hidden lg:flex text-white hover:bg-white/20"
           >
             <Menu className="h-5 w-5" />
           </Button>

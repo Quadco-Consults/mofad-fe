@@ -1,14 +1,14 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import mockApi from '@/lib/mockApi'
 import { formatCurrency, formatDateTime, getStatusColor } from '@/lib/utils'
 import { ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react'
 
 export function RecentTransactions() {
   const { data: transactions, isLoading } = useQuery({
     queryKey: ['recent-transactions'],
-    queryFn: () => api.get('/transactions/recent', { limit: 10 }),
+    queryFn: () => mockApi.get('/transactions/recent', { limit: 10 }),
   })
 
   if (isLoading) {

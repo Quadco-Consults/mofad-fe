@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { api } from '@/lib/api'
+import mockApi from '@/lib/mockApi'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import {
   TrendingUp,
@@ -78,18 +78,15 @@ function StatCard({ title, value, change, icon: Icon, color }: StatCardProps) {
 export default function DashboardPage() {
   const { data: dashboardStats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
-    queryFn: () => api.getDashboardStats(),
+    queryFn: () => mockApi.getDashboardStats(),
   })
 
   const { data: salesAnalytics, isLoading: analyticsLoading } = useQuery({
     queryKey: ['sales-analytics'],
-    queryFn: () => api.getSalesAnalytics({
-      start_date: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-      end_date: new Date().toISOString().split('T')[0],
-    }),
+    queryFn: () => mockApi.getSalesAnalytics(),
   })
 
-  const stats = dashboardStats?.data || {}
+  const stats = dashboardStats || {}
 
   return (
     <AppLayout>

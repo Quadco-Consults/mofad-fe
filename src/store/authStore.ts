@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { api } from '@/lib/api'
+// Use mock API for standalone frontend testing
+import mockApi from '@/lib/mockApi'
 import { User, LoginForm } from '@/types'
 
 interface AuthState {
@@ -27,7 +28,7 @@ export const useAuthStore = create<AuthState>()(
       login: async (credentials: LoginForm) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await api.login(credentials)
+          const response = await mockApi.login(credentials)
           const user = response.user || response.data?.user
 
           if (user) {
@@ -54,7 +55,7 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         set({ isLoading: true })
         try {
-          await api.logout()
+          await mockApi.logout()
         } catch (error) {
           console.error('Logout error:', error)
         } finally {
@@ -81,7 +82,7 @@ export const useAuthStore = create<AuthState>()(
 
         set({ isLoading: true })
         try {
-          const response = await api.getUser()
+          const response = await mockApi.getUser()
           const user = response.user || response.data || response
 
           set({
