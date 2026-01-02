@@ -6,62 +6,64 @@
   :root {
     /* MOFAD Brand Light Theme Colors */
     --background: 0 0% 100%;
-    --foreground: 20 14.3% 4.1%;
+    --foreground: 0 0% 0%;
     --card: 0 0% 100%;
-    --card-foreground: 20 14.3% 4.1%;
+    --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
-    --popover-foreground: 20 14.3% 4.1%;
-    /* MOFAD Primary Red */
-    --primary: 0 84% 60%; /* #ef4444 - Brighter red */
-    --primary-foreground: 0 0% 98%;
-    /* MOFAD Secondary Orange */
-    --secondary: 24.6 95% 53.1%; /* #f97316 */
-    --secondary-foreground: 60 9.1% 97.8%;
-    --muted: 60 4.8% 95.9%;
-    --muted-foreground: 25 5.3% 44.7%;
+    --popover-foreground: 0 0% 0%;
+    /* MOFAD Primary Green #1F4224 */
+    --primary: 130 36% 20%;
+    --primary-foreground: 0 0% 100%;
+    /* MOFAD Secondary Gold #D0A33E */
+    --secondary: 42 58% 53%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 130 10% 95%;
+    --muted-foreground: 130 10% 40%;
     /* MOFAD Accent Gold */
-    --accent: 42.1 96.1% 48.2%; /* #f59e0b */
-    --accent-foreground: 60 9.1% 97.8%;
+    --accent: 42 58% 53%;
+    --accent-foreground: 0 0% 0%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 60 9.1% 97.8%;
+    --destructive-foreground: 0 0% 100%;
     /* MOFAD Brand Borders */
-    --border: 0 33% 88%; /* Light red border */
-    --input: 0 33% 88%;
-    --ring: 0 84% 60%; /* MOFAD brighter red ring */
+    --border: 130 20% 85%;
+    --input: 130 20% 85%;
+    --ring: 130 36% 20%;
     --radius: 0.5rem;
   }
 
   .dark {
     /* MOFAD Brand Dark Theme Colors */
-    --background: 0 30% 8%; /* Dark red background */
-    --foreground: 60 9.1% 97.8%;
-    --card: 0 30% 10%;
-    --card-foreground: 60 9.1% 97.8%;
-    --popover: 0 30% 10%;
-    --popover-foreground: 60 9.1% 97.8%;
-    /* MOFAD Primary Red (darker) */
-    --primary: 0 84% 60%;
-    --primary-foreground: 0 30% 8%;
-    /* MOFAD Secondary Orange (darker) */
-    --secondary: 24.6 95% 53.1%;
-    --secondary-foreground: 0 30% 8%;
-    --muted: 0 30% 15%;
-    --muted-foreground: 24 5.4% 63.9%;
+    --background: 130 30% 5%;
+    --foreground: 0 0% 98%;
+    --card: 130 30% 8%;
+    --card-foreground: 0 0% 98%;
+    --popover: 130 30% 8%;
+    --popover-foreground: 0 0% 98%;
+    /* MOFAD Primary Green (darker) */
+    --primary: 130 36% 20%;
+    --primary-foreground: 0 0% 100%;
+    /* MOFAD Secondary Gold (darker) */
+    --secondary: 42 58% 53%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 130 30% 15%;
+    --muted-foreground: 130 10% 60%;
     /* MOFAD Accent Gold (darker) */
-    --accent: 42.1 96.1% 48.2%;
-    --accent-foreground: 0 30% 8%;
+    --accent: 42 58% 53%;
+    --accent-foreground: 0 0% 0%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 60 9.1% 97.8%;
+    --destructive-foreground: 0 0% 98%;
     /* MOFAD Brand Borders (dark) */
-    --border: 0 30% 18%;
-    --input: 0 30% 18%;
-    --ring: 0 84% 60%;
+    --border: 130 30% 18%;
+    --input: 130 30% 18%;
+    --ring: 130 36% 20%;
   }
 }
 
 @layer base {
-  * {
-    @apply border;
+  *,
+  ::before,
+  ::after {
+    border-color: hsl(var(--border));
   }
   body {
     @apply bg-background text-foreground;
@@ -72,19 +74,19 @@
 @layer components {
   /* MOFAD Brand Components */
   .mofad-gradient-bg {
-    background: linear-gradient(45deg, #ef4444, #fd9a32);
+    background: linear-gradient(45deg, #1F4224, #D0A33E);
   }
 
   .mofad-header-bg {
-    background: linear-gradient(135deg, #b91c1c, #ef4444, #22c55e, #f97316);
+    background: linear-gradient(135deg, #1F4224, #2d5a32, #D0A33E);
   }
 
   .mofad-full-bg {
-    background: linear-gradient(45deg, #ef4444, #f87171, #22c55e, #fd9a32);
+    background: linear-gradient(45deg, #1F4224, #2d5a32, #D0A33E, #000000);
   }
 
   .mofad-brand-bg {
-    background: linear-gradient(45deg, #ef4444, #f97316);
+    background: linear-gradient(45deg, #1F4224, #D0A33E);
   }
 
   .mofad-btn-primary {
@@ -96,16 +98,70 @@
   }
 
   .mofad-btn-gradient {
-    background: linear-gradient(45deg, #ef4444, #f97316);
+    background: linear-gradient(45deg, #1F4224, #D0A33E);
     @apply text-white px-6 py-3 rounded-md font-medium transition-all hover:shadow-lg;
   }
 
   .mofad-header-gradient {
-    background: linear-gradient(135deg, #b91c1c, #ef4444, #22c55e, #f97316);
+    background: linear-gradient(135deg, #1F4224, #2d5a32, #D0A33E);
     @apply text-white;
   }
 
   .mofad-card {
-    @apply bg-card border border rounded-lg p-6 shadow-card hover:shadow-card-hover transition-shadow;
+    @apply bg-card border rounded-lg p-6 shadow-card hover:shadow-card-hover transition-shadow;
+  }
+
+  /* Notification animations */
+  @keyframes slideInFromTop {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-in {
+    animation-duration: 200ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-fill-mode: forwards;
+  }
+
+  .slide-in-from-top-2 {
+    animation-name: slideInFromTop;
+  }
+
+  .slide-in-from-bottom-4 {
+    animation-name: slideInFromTop;
+  }
+
+  .zoom-in-95 {
+    animation-name: scaleIn;
+  }
+
+  .fade-in {
+    animation-name: fadeIn;
   }
 }

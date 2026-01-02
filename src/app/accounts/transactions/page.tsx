@@ -1,278 +1,299 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Filter, Download, Plus, Eye, Edit, ArrowUpRight, ArrowDownLeft, Building, CreditCard } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  Search,
+  Filter,
+  Download,
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Building,
+  CreditCard,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  X,
+} from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { useToast } from '@/components/ui/Toast'
+import apiClient from '@/lib/apiClient'
+import { Payment } from '@/types/api'
+import { formatCurrency, formatDate } from '@/lib/utils'
 
-interface AccountTransaction {
-  id: string
-  transactionId: string
-  accountId: string
-  accountName: string
-  date: string
-  type: 'debit' | 'credit'
-  category: string
-  description: string
+type PaymentFormData = {
+  payment_type: 'incoming' | 'outgoing'
   amount: number
-  balance: number
-  reference: string
-  beneficiary?: string
-  channel: string
-  status: 'completed' | 'pending' | 'failed'
-  initiatedBy: string
-  approvedBy?: string
-  bankCharges: number
-  currency: string
+  payment_date: string
+  payment_method: 'cash' | 'bank_transfer' | 'cheque' | 'card' | 'mobile_money' | 'other'
+  reference_type: 'customer_payment' | 'supplier_payment' | 'expense_payment' | 'loan_payment' | 'other'
+  reference_number?: string
+  customer?: number
+  supplier_name?: string
+  bank_account?: string
+  cheque_number?: string
+  transaction_reference?: string
+  description: string
+  notes?: string
 }
 
-const mockAccountTransactions: AccountTransaction[] = [
-  {
-    id: '1',
-    transactionId: 'TXN-ACC-001234',
-    accountId: 'ACC-001',
-    accountName: 'MOFAD Energy Solutions - Operations',
-    date: '2024-12-16T10:30:00Z',
-    type: 'credit',
-    category: 'Customer Payment',
-    description: 'Payment received from Conoil Petroleum Ltd for Invoice INV-001234',
-    amount: 25000000,
-    balance: 125000000,
-    reference: 'REF-CONOIL-001234',
-    beneficiary: 'MOFAD Energy Solutions Ltd',
-    channel: 'Bank Transfer',
-    status: 'completed',
-    initiatedBy: 'System Auto',
-    approvedBy: 'Adebayo Johnson',
-    bankCharges: 5250,
-    currency: 'NGN'
-  },
-  {
-    id: '2',
-    transactionId: 'TXN-ACC-001235',
-    accountId: 'ACC-001',
-    accountName: 'MOFAD Energy Solutions - Operations',
-    date: '2024-12-15T14:20:00Z',
-    type: 'debit',
-    category: 'Supplier Payment',
-    description: 'Payment to Shell Nigeria Ltd for product procurement',
-    amount: 18500000,
-    balance: 100000000,
-    reference: 'REF-SHELL-001235',
-    beneficiary: 'Shell Nigeria Limited',
-    channel: 'RTGS Transfer',
-    status: 'completed',
-    initiatedBy: 'Fatima Usman',
-    approvedBy: 'CEO Office',
-    bankCharges: 12500,
-    currency: 'NGN'
-  },
-  {
-    id: '3',
-    transactionId: 'TXN-ACC-001236',
-    accountId: 'ACC-002',
-    accountName: 'MOFAD Energy Solutions - Payroll',
-    date: '2024-12-15T09:00:00Z',
-    type: 'debit',
-    category: 'Salary Payment',
-    description: 'December 2024 staff salary payments',
-    amount: 8500000,
-    balance: 15000000,
-    reference: 'SAL-DEC-2024',
-    beneficiary: 'Multiple Staff Accounts',
-    channel: 'Bulk Transfer',
-    status: 'completed',
-    initiatedBy: 'HR Department',
-    approvedBy: 'Finance Manager',
-    bankCharges: 25000,
-    currency: 'NGN'
-  },
-  {
-    id: '4',
-    transactionId: 'TXN-ACC-001237',
-    accountId: 'ACC-003',
-    accountName: 'MOFAD Energy Solutions - Savings',
-    date: '2024-12-14T16:15:00Z',
-    type: 'credit',
-    category: 'Interest Earned',
-    description: 'Monthly interest credited on savings account',
-    amount: 425000,
-    balance: 85000000,
-    reference: 'INT-NOV-2024',
-    beneficiary: 'MOFAD Energy Solutions Ltd',
-    channel: 'Auto Credit',
-    status: 'completed',
-    initiatedBy: 'Bank System',
-    bankCharges: 0,
-    currency: 'NGN'
-  },
-  {
-    id: '5',
-    transactionId: 'TXN-ACC-001238',
-    accountId: 'ACC-004',
-    accountName: 'MOFAD Energy Solutions - USD Operations',
-    date: '2024-12-13T11:45:00Z',
-    type: 'credit',
-    category: 'Foreign Exchange',
-    description: 'USD receipt from international supplier prepayment',
-    amount: 75000,
-    balance: 850000,
-    reference: 'FX-PREP-001238',
-    beneficiary: 'MOFAD Energy Solutions Ltd',
-    channel: 'SWIFT Transfer',
-    status: 'completed',
-    initiatedBy: 'Treasury Dept',
-    approvedBy: 'CFO',
-    bankCharges: 250,
-    currency: 'USD'
-  },
-  {
-    id: '6',
-    transactionId: 'TXN-ACC-001239',
-    accountId: 'ACC-001',
-    accountName: 'MOFAD Energy Solutions - Operations',
-    date: '2024-12-12T13:30:00Z',
-    type: 'debit',
-    category: 'Operating Expenses',
-    description: 'Monthly rent payment for Lagos warehouse facility',
-    amount: 2800000,
-    balance: 118500000,
-    reference: 'RENT-DEC-2024-LG',
-    beneficiary: 'Landmark Properties Ltd',
-    channel: 'Online Transfer',
-    status: 'completed',
-    initiatedBy: 'Facilities Manager',
-    approvedBy: 'Operations Manager',
-    bankCharges: 1050,
-    currency: 'NGN'
-  },
-  {
-    id: '7',
-    transactionId: 'TXN-ACC-001240',
-    accountId: 'ACC-006',
-    accountName: 'MOFAD Energy Solutions - Petty Cash',
-    date: '2024-12-11T08:20:00Z',
-    type: 'debit',
-    category: 'Miscellaneous',
-    description: 'Office supplies and maintenance expenses',
-    amount: 185000,
-    balance: 2500000,
-    reference: 'MISC-001240',
-    beneficiary: 'Various Suppliers',
-    channel: 'Multiple Payments',
-    status: 'completed',
-    initiatedBy: 'Admin Officer',
-    approvedBy: 'Office Manager',
-    bankCharges: 750,
-    currency: 'NGN'
-  },
-  {
-    id: '8',
-    transactionId: 'TXN-ACC-001241',
-    accountId: 'ACC-001',
-    accountName: 'MOFAD Energy Solutions - Operations',
-    date: '2024-12-10T15:45:00Z',
-    type: 'credit',
-    category: 'Customer Payment',
-    description: 'Payment from MRS Oil Nigeria for bulk lubricant purchase',
-    amount: 15750000,
-    balance: 121300000,
-    reference: 'REF-MRS-001241',
-    beneficiary: 'MOFAD Energy Solutions Ltd',
-    channel: 'Bank Transfer',
-    status: 'pending',
-    initiatedBy: 'Customer',
-    bankCharges: 0,
-    currency: 'NGN'
-  }
-]
-
 function AccountTransactionsPage() {
-  const [transactions] = useState<AccountTransaction[]>(mockAccountTransactions)
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
+
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
-  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [accountFilter, setAccountFilter] = useState<string>('all')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all')
+
   const [showAddModal, setShowAddModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
-  const [selectedTransaction, setSelectedTransaction] = useState<AccountTransaction | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  const [formData, setFormData] = useState<PaymentFormData>({
+    payment_type: 'incoming',
+    amount: 0,
+    payment_date: new Date().toISOString().split('T')[0],
+    payment_method: 'bank_transfer',
+    reference_type: 'customer_payment',
+    description: '',
+  })
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
-  const categories = Array.from(new Set(transactions.map(t => t.category)))
-  const accounts = Array.from(new Set(transactions.map(t => t.accountName)))
-
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = transaction.transactionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.reference.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesType = typeFilter === 'all' || transaction.type === typeFilter
-    const matchesCategory = categoryFilter === 'all' || transaction.category === categoryFilter
-    const matchesStatus = statusFilter === 'all' || transaction.status === statusFilter
-    const matchesAccount = accountFilter === 'all' || transaction.accountName === accountFilter
-
-    return matchesSearch && matchesType && matchesCategory && matchesStatus && matchesAccount
+  // Fetch payments
+  const { data: paymentsData, isLoading, error } = useQuery({
+    queryKey: ['payments', searchTerm, typeFilter, statusFilter, paymentMethodFilter],
+    queryFn: async () => {
+      const params: Record<string, string> = {}
+      if (typeFilter !== 'all') params.payment_type = typeFilter
+      if (statusFilter !== 'all') params.status = statusFilter
+      if (paymentMethodFilter !== 'all') params.payment_method = paymentMethodFilter
+      if (searchTerm) params.search = searchTerm
+      return apiClient.get<Payment[]>('/payments/', params)
+    },
   })
 
-  const formatCurrency = (amount: number, currency: string = 'NGN') => {
-    if (currency === 'USD') {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0
-      }).format(amount)
-    }
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0
-    }).format(amount)
-  }
+  const payments = Array.isArray(paymentsData) ? paymentsData : []
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-NG', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  // Create payment mutation
+  const createMutation = useMutation({
+    mutationFn: (data: PaymentFormData) => apiClient.post<Payment>('/payments/', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
+      setShowAddModal(false)
+      resetForm()
+      addToast({ type: 'success', title: 'Success', message: 'Payment created successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to create payment' })
+    },
+  })
+
+  // Update payment mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: PaymentFormData }) =>
+      apiClient.put<Payment>(`/payments/${id}/`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
+      setShowEditModal(false)
+      setSelectedPayment(null)
+      resetForm()
+      addToast({ type: 'success', title: 'Success', message: 'Payment updated successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to update payment' })
+    },
+  })
+
+  // Delete payment mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/payments/${id}/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
+      setShowDeleteModal(false)
+      setSelectedPayment(null)
+      addToast({ type: 'success', title: 'Success', message: 'Payment deleted successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to delete payment' })
+    },
+  })
+
+  // Clear payment mutation
+  const clearMutation = useMutation({
+    mutationFn: (id: number) => apiClient.post<Payment>(`/payments/${id}/clear/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
+      addToast({ type: 'success', title: 'Cleared', message: 'Payment has been cleared' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to clear payment' })
+    },
+  })
+
+  // Bounce payment mutation
+  const bounceMutation = useMutation({
+    mutationFn: (id: number) => apiClient.post<Payment>(`/payments/${id}/bounce/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
+      addToast({ type: 'warning', title: 'Bounced', message: 'Payment marked as bounced' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to mark payment as bounced' })
+    },
+  })
+
+  // Cancel payment mutation
+  const cancelMutation = useMutation({
+    mutationFn: (id: number) => apiClient.post<Payment>(`/payments/${id}/cancel/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
+      addToast({ type: 'info', title: 'Cancelled', message: 'Payment has been cancelled' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to cancel payment' })
+    },
+  })
+
+  const resetForm = () => {
+    setFormData({
+      payment_type: 'incoming',
+      amount: 0,
+      payment_date: new Date().toISOString().split('T')[0],
+      payment_method: 'bank_transfer',
+      reference_type: 'customer_payment',
+      description: '',
     })
+    setFormErrors({})
   }
 
-  const getTransactionIcon = (type: string) => {
-    return type === 'credit'
-      ? <ArrowDownLeft className="h-4 w-4 text-green-600" />
-      : <ArrowUpRight className="h-4 w-4 text-red-600" />
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    if (!formData.amount || formData.amount <= 0) {
+      errors.amount = 'Amount must be greater than 0'
+    }
+    if (!formData.payment_date) {
+      errors.payment_date = 'Payment date is required'
+    }
+    if (!formData.description.trim()) {
+      errors.description = 'Description is required'
+    }
+
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateForm()) return
+
+    if (showEditModal && selectedPayment) {
+      updateMutation.mutate({ id: selectedPayment.id, data: formData })
+    } else {
+      createMutation.mutate(formData)
+    }
+  }
+
+  const handleEdit = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setFormData({
+      payment_type: payment.payment_type,
+      amount: payment.amount,
+      payment_date: payment.payment_date,
+      payment_method: payment.payment_method,
+      reference_type: payment.reference_type,
+      reference_number: payment.reference_number,
+      customer: payment.customer,
+      supplier_name: payment.supplier_name,
+      bank_account: payment.bank_account,
+      cheque_number: payment.cheque_number,
+      transaction_reference: payment.transaction_reference,
+      description: payment.description,
+      notes: payment.notes,
+    })
+    setShowEditModal(true)
+  }
+
+  const handleView = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setShowViewModal(true)
+  }
+
+  const handleDelete = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setShowDeleteModal(true)
   }
 
   const getTypeBadge = (type: string) => {
-    return type === 'credit'
+    return type === 'incoming'
       ? 'bg-green-100 text-green-800'
       : 'bg-red-100 text-red-800'
   }
 
   const getStatusBadge = (status: string) => {
-    const styles = {
-      completed: 'bg-green-100 text-green-800',
+    const styles: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
-      failed: 'bg-red-100 text-red-800'
+      cleared: 'bg-green-100 text-green-800',
+      bounced: 'bg-red-100 text-red-800',
+      cancelled: 'bg-gray-100 text-gray-800',
     }
-    return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800'
+    return styles[status] || 'bg-gray-100 text-gray-800'
   }
 
   const getAmountColor = (type: string) => {
-    return type === 'credit' ? 'text-green-600' : 'text-red-600'
+    return type === 'incoming' ? 'text-green-600' : 'text-red-600'
+  }
+
+  const getPaymentMethodLabel = (method: string) => {
+    const labels: Record<string, string> = {
+      cash: 'Cash',
+      bank_transfer: 'Bank Transfer',
+      cheque: 'Cheque',
+      card: 'Card',
+      mobile_money: 'Mobile Money',
+      other: 'Other',
+    }
+    return labels[method] || method
+  }
+
+  const getReferenceTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      customer_payment: 'Customer Payment',
+      supplier_payment: 'Supplier Payment',
+      expense_payment: 'Expense Payment',
+      loan_payment: 'Loan Payment',
+      other: 'Other',
+    }
+    return labels[type] || type
   }
 
   // Calculate summary stats
-  const totalTransactions = transactions.length
-  const completedTransactions = transactions.filter(t => t.status === 'completed').length
-  const totalDebits = transactions.filter(t => t.type === 'debit' && t.status === 'completed').reduce((sum, t) => sum + t.amount, 0)
-  const totalCredits = transactions.filter(t => t.type === 'credit' && t.status === 'completed').reduce((sum, t) => sum + t.amount, 0)
+  const totalPayments = payments.length
+  const clearedPayments = payments.filter(p => p.status === 'cleared').length
+  const totalIncoming = payments
+    .filter(p => p.payment_type === 'incoming' && p.status === 'cleared')
+    .reduce((sum, p) => sum + Number(p.amount), 0)
+  const totalOutgoing = payments
+    .filter(p => p.payment_type === 'outgoing' && p.status === 'cleared')
+    .reduce((sum, p) => sum + Number(p.amount), 0)
 
-  const handleView = (transaction: AccountTransaction) => {
-    setSelectedTransaction(transaction)
-    setShowViewModal(true)
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="p-6">
+          <div className="bg-red-50 text-red-800 p-4 rounded-lg">
+            Error loading payments: {(error as any).message || 'Unknown error'}
+          </div>
+        </div>
+      </AppLayout>
+    )
   }
 
   return (
@@ -282,7 +303,7 @@ function AccountTransactionsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Account Transactions</h1>
-            <p className="text-gray-600">Monitor all bank account transactions and movements</p>
+            <p className="text-gray-600">Monitor all payments and transactions</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline">
@@ -291,7 +312,7 @@ function AccountTransactionsPage() {
             </Button>
             <Button className="mofad-btn-primary" onClick={() => setShowAddModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              New Transaction
+              New Payment
             </Button>
           </div>
         </div>
@@ -301,8 +322,8 @@ function AccountTransactionsPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Transactions</p>
-                <p className="text-2xl font-bold text-gray-900">{totalTransactions}</p>
+                <p className="text-sm text-gray-600">Total Payments</p>
+                <p className="text-2xl font-bold text-gray-900">{totalPayments}</p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                 <Building className="h-5 w-5 text-blue-600" />
@@ -313,8 +334,8 @@ function AccountTransactionsPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Completed</p>
-                <p className="text-2xl font-bold text-green-600">{completedTransactions}</p>
+                <p className="text-sm text-gray-600">Cleared</p>
+                <p className="text-2xl font-bold text-green-600">{clearedPayments}</p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                 <CreditCard className="h-5 w-5 text-green-600" />
@@ -325,8 +346,8 @@ function AccountTransactionsPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Credits</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(totalCredits)}</p>
+                <p className="text-sm text-gray-600">Total Incoming</p>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(totalIncoming)}</p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                 <ArrowDownLeft className="h-5 w-5 text-green-600" />
@@ -337,8 +358,8 @@ function AccountTransactionsPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Debits</p>
-                <p className="text-2xl font-bold text-red-600">{formatCurrency(totalDebits)}</p>
+                <p className="text-sm text-gray-600">Total Outgoing</p>
+                <p className="text-2xl font-bold text-red-600">{formatCurrency(totalOutgoing)}</p>
               </div>
               <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
                 <ArrowUpRight className="h-5 w-5 text-red-600" />
@@ -348,12 +369,12 @@ function AccountTransactionsPage() {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search transactions..."
+              placeholder="Search payments..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -366,19 +387,8 @@ function AccountTransactionsPage() {
             onChange={(e) => setTypeFilter(e.target.value)}
           >
             <option value="all">All Types</option>
-            <option value="credit">Credit</option>
-            <option value="debit">Debit</option>
-          </select>
-
-          <select
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
-            <option value="all">All Categories</option>
-            {categories.map(category => (
-              <option key={category} value={category}>{category}</option>
-            ))}
+            <option value="incoming">Incoming</option>
+            <option value="outgoing">Outgoing</option>
           </select>
 
           <select
@@ -387,20 +397,23 @@ function AccountTransactionsPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="all">All Status</option>
-            <option value="completed">Completed</option>
             <option value="pending">Pending</option>
-            <option value="failed">Failed</option>
+            <option value="cleared">Cleared</option>
+            <option value="bounced">Bounced</option>
+            <option value="cancelled">Cancelled</option>
           </select>
 
           <select
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            value={accountFilter}
-            onChange={(e) => setAccountFilter(e.target.value)}
+            value={paymentMethodFilter}
+            onChange={(e) => setPaymentMethodFilter(e.target.value)}
           >
-            <option value="all">All Accounts</option>
-            {accounts.map(account => (
-              <option key={account} value={account}>{account}</option>
-            ))}
+            <option value="all">All Methods</option>
+            <option value="cash">Cash</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="cheque">Cheque</option>
+            <option value="card">Card</option>
+            <option value="mobile_money">Mobile Money</option>
           </select>
 
           <Button variant="outline">
@@ -409,253 +422,563 @@ function AccountTransactionsPage() {
           </Button>
         </div>
 
-        {/* Transactions Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Transaction
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Account
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-primary-600">{transaction.transactionId}</div>
-                      <div className="text-sm text-gray-900">{transaction.description}</div>
-                      <div className="text-xs text-gray-500">
-                        {transaction.reference} | {transaction.category}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{transaction.accountName}</div>
-                      <div className="text-xs text-gray-500">
-                        Balance: {formatCurrency(transaction.balance, transaction.currency)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(transaction.type)}`}>
-                          {getTransactionIcon(transaction.type)}
-                          <span className="ml-1">{transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}</span>
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">{transaction.channel}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className={`text-sm font-bold ${getAmountColor(transaction.type)}`}>
-                        {transaction.type === 'credit' ? '+' : '-'}
-                        {formatCurrency(transaction.amount, transaction.currency)}
-                      </div>
-                      {transaction.bankCharges > 0 && (
-                        <div className="text-xs text-gray-500">
-                          Charges: {formatCurrency(transaction.bankCharges, transaction.currency)}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatDateTime(transaction.date)}</div>
-                      <div className="text-xs text-gray-500">by {transaction.initiatedBy}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(transaction.status)}`}>
-                        {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleView(transaction)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </td>
+        {/* Payments Table */}
+        {isLoading ? (
+          <div className="bg-white rounded-lg shadow p-8">
+            <div className="animate-pulse space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-16 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Payment
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {filteredTransactions.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No transactions found matching your criteria.</p>
-          </div>
-        )}
-
-        {/* Add Transaction Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-bold mb-4">New Account Transaction</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Account</label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
-                      <option>Select Account</option>
-                      <option>MOFAD Energy - Operations</option>
-                      <option>MOFAD Energy - Payroll</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
-                      <option>Credit</option>
-                      <option>Debit</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
-                      <option>Customer Payment</option>
-                      <option>Supplier Payment</option>
-                      <option>Operating Expenses</option>
-                      <option>Salary Payment</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                    <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" rows={3}></textarea>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Reference</label>
-                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Beneficiary</label>
-                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" />
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2 justify-end mt-6">
-                <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
-                <Button className="mofad-btn-primary">Create Transaction</Button>
-              </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {payments.map((payment) => (
+                    <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-primary-600">{payment.payment_number}</div>
+                        <div className="text-sm text-gray-900">{payment.description}</div>
+                        <div className="text-xs text-gray-500">
+                          {getPaymentMethodLabel(payment.payment_method)} | {getReferenceTypeLabel(payment.reference_type)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(payment.payment_type)}`}>
+                            {payment.payment_type === 'incoming' ? (
+                              <ArrowDownLeft className="h-3 w-3 mr-1" />
+                            ) : (
+                              <ArrowUpRight className="h-3 w-3 mr-1" />
+                            )}
+                            {payment.payment_type === 'incoming' ? 'Incoming' : 'Outgoing'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm font-bold ${getAmountColor(payment.payment_type)}`}>
+                          {payment.payment_type === 'incoming' ? '+' : '-'}
+                          {formatCurrency(payment.amount)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{formatDate(payment.payment_date)}</div>
+                        <div className="text-xs text-gray-500">{formatDate(payment.created_at)}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(payment.status)}`}>
+                          {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleView(payment)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {payment.status === 'pending' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => clearMutation.mutate(payment.id)}
+                                title="Clear Payment"
+                              >
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => bounceMutation.mutate(payment.id)}
+                                title="Mark as Bounced"
+                              >
+                                <AlertCircle className="h-4 w-4 text-orange-600" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(payment)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                          {payment.status !== 'cleared' && payment.status !== 'cancelled' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => cancelMutation.mutate(payment.id)}
+                              title="Cancel Payment"
+                            >
+                              <XCircle className="h-4 w-4 text-gray-600" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(payment)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
-        {/* View Transaction Modal */}
-        {showViewModal && selectedTransaction && (
+        {!isLoading && payments.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No payments found matching your criteria.</p>
+          </div>
+        )}
+
+        {/* Add/Edit Payment Modal */}
+        {(showAddModal || showEditModal) && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">
+                  {showEditModal ? 'Edit Payment' : 'New Payment'}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowAddModal(false)
+                    setShowEditModal(false)
+                    resetForm()
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Payment Type *
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      value={formData.payment_type}
+                      onChange={(e) => setFormData({ ...formData, payment_type: e.target.value as any })}
+                    >
+                      <option value="incoming">Incoming</option>
+                      <option value="outgoing">Outgoing</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Amount *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${
+                        formErrors.amount ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      value={formData.amount}
+                      onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                    />
+                    {formErrors.amount && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.amount}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Payment Date *
+                    </label>
+                    <input
+                      type="date"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${
+                        formErrors.payment_date ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      value={formData.payment_date}
+                      onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                    />
+                    {formErrors.payment_date && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.payment_date}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Payment Method *
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      value={formData.payment_method}
+                      onChange={(e) => setFormData({ ...formData, payment_method: e.target.value as any })}
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="cheque">Cheque</option>
+                      <option value="card">Card</option>
+                      <option value="mobile_money">Mobile Money</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Reference Type *
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      value={formData.reference_type}
+                      onChange={(e) => setFormData({ ...formData, reference_type: e.target.value as any })}
+                    >
+                      <option value="customer_payment">Customer Payment</option>
+                      <option value="supplier_payment">Supplier Payment</option>
+                      <option value="expense_payment">Expense Payment</option>
+                      <option value="loan_payment">Loan Payment</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Reference Number
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      value={formData.reference_number || ''}
+                      onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })}
+                      placeholder="e.g., INV-001234"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {formData.payment_type === 'incoming' ? 'Customer/Payer Name' : 'Supplier Name'}
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      value={formData.supplier_name || ''}
+                      onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Bank Account
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      value={formData.bank_account || ''}
+                      onChange={(e) => setFormData({ ...formData, bank_account: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {formData.payment_method === 'cheque' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Cheque Number
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      value={formData.cheque_number || ''}
+                      onChange={(e) => setFormData({ ...formData, cheque_number: e.target.value })}
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Transaction Reference
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    value={formData.transaction_reference || ''}
+                    onChange={(e) => setFormData({ ...formData, transaction_reference: e.target.value })}
+                    placeholder="e.g., TRF123456789"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description *
+                  </label>
+                  <textarea
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${
+                      formErrors.description ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    rows={3}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                  {formErrors.description && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.description}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    rows={2}
+                    value={formData.notes || ''}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowAddModal(false)
+                      setShowEditModal(false)
+                      resetForm()
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="mofad-btn-primary"
+                    disabled={createMutation.isPending || updateMutation.isPending}
+                  >
+                    {createMutation.isPending || updateMutation.isPending
+                      ? 'Saving...'
+                      : showEditModal
+                      ? 'Update Payment'
+                      : 'Create Payment'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* View Payment Modal */}
+        {showViewModal && selectedPayment && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-bold mb-4">Transaction Details</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">Payment Details</h3>
+                <button
+                  onClick={() => {
+                    setShowViewModal(false)
+                    setSelectedPayment(null)
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
               <div className="space-y-6">
                 {/* Basic Info */}
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Transaction ID</label>
-                    <p className="text-sm font-mono text-gray-900">{selectedTransaction.transactionId}</p>
+                    <label className="block text-sm font-medium text-gray-500">Payment Number</label>
+                    <p className="text-sm font-mono text-gray-900">{selectedPayment.payment_number}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Reference</label>
-                    <p className="text-sm font-mono text-gray-900">{selectedTransaction.reference}</p>
+                    <label className="block text-sm font-medium text-gray-500">Reference</label>
+                    <p className="text-sm font-mono text-gray-900">
+                      {selectedPayment.reference_number || 'N/A'}
+                    </p>
                   </div>
                 </div>
 
-                {/* Account & Amount */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Account</label>
-                    <p className="text-sm text-gray-900">{selectedTransaction.accountName}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Amount</label>
-                    <p className={`text-lg font-bold ${getAmountColor(selectedTransaction.type)}`}>
-                      {selectedTransaction.type === 'credit' ? '+' : '-'}
-                      {formatCurrency(selectedTransaction.amount, selectedTransaction.currency)}
-                    </p>
+                {/* Amount */}
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getTypeBadge(selectedPayment.payment_type)}`}
+                      >
+                        {selectedPayment.payment_type === 'incoming' ? (
+                          <ArrowDownLeft className="h-4 w-4 mr-1" />
+                        ) : (
+                          <ArrowUpRight className="h-4 w-4 mr-1" />
+                        )}
+                        {selectedPayment.payment_type === 'incoming' ? 'Incoming Payment' : 'Outgoing Payment'}
+                      </span>
+                    </div>
+                    <div className={`text-2xl font-bold ${getAmountColor(selectedPayment.payment_type)}`}>
+                      {selectedPayment.payment_type === 'incoming' ? '+' : '-'}
+                      {formatCurrency(selectedPayment.amount)}
+                    </div>
                   </div>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Description</label>
-                  <p className="text-sm text-gray-900">{selectedTransaction.description}</p>
+                  <label className="block text-sm font-medium text-gray-500">Description</label>
+                  <p className="text-sm text-gray-900">{selectedPayment.description}</p>
                 </div>
 
-                {/* Transaction Details */}
+                {/* Payment Details */}
                 <div className="grid grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Category</label>
-                    <p className="text-sm text-gray-900">{selectedTransaction.category}</p>
+                    <label className="block text-sm font-medium text-gray-500">Payment Method</label>
+                    <p className="text-sm text-gray-900">{getPaymentMethodLabel(selectedPayment.payment_method)}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Channel</label>
-                    <p className="text-sm text-gray-900">{selectedTransaction.channel}</p>
+                    <label className="block text-sm font-medium text-gray-500">Reference Type</label>
+                    <p className="text-sm text-gray-900">{getReferenceTypeLabel(selectedPayment.reference_type)}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Status</label>
-                    <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(selectedTransaction.status)}`}>
-                      {selectedTransaction.status}
+                    <label className="block text-sm font-medium text-gray-500">Status</label>
+                    <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(selectedPayment.status)}`}>
+                      {selectedPayment.status.charAt(0).toUpperCase() + selectedPayment.status.slice(1)}
                     </span>
                   </div>
                 </div>
 
                 {/* Parties */}
-                {selectedTransaction.beneficiary && (
-                  <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-6">
+                  {selectedPayment.customer_name && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Initiated By</label>
-                      <p className="text-sm text-gray-900">{selectedTransaction.initiatedBy}</p>
+                      <label className="block text-sm font-medium text-gray-500">Customer</label>
+                      <p className="text-sm text-gray-900">{selectedPayment.customer_name}</p>
                     </div>
+                  )}
+                  {selectedPayment.supplier_name && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Beneficiary</label>
-                      <p className="text-sm text-gray-900">{selectedTransaction.beneficiary}</p>
+                      <label className="block text-sm font-medium text-gray-500">Supplier/Payer</label>
+                      <p className="text-sm text-gray-900">{selectedPayment.supplier_name}</p>
                     </div>
+                  )}
+                </div>
+
+                {/* Bank Details */}
+                {(selectedPayment.bank_account || selectedPayment.cheque_number || selectedPayment.transaction_reference) && (
+                  <div className="grid grid-cols-3 gap-6">
+                    {selectedPayment.bank_account && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500">Bank Account</label>
+                        <p className="text-sm text-gray-900">{selectedPayment.bank_account}</p>
+                      </div>
+                    )}
+                    {selectedPayment.cheque_number && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500">Cheque Number</label>
+                        <p className="text-sm text-gray-900">{selectedPayment.cheque_number}</p>
+                      </div>
+                    )}
+                    {selectedPayment.transaction_reference && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500">Transaction Reference</label>
+                        <p className="text-sm text-gray-900">{selectedPayment.transaction_reference}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Financial Details */}
+                {/* Dates */}
                 <div className="grid grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Bank Charges</label>
-                    <p className="text-sm text-gray-900">{formatCurrency(selectedTransaction.bankCharges, selectedTransaction.currency)}</p>
+                    <label className="block text-sm font-medium text-gray-500">Payment Date</label>
+                    <p className="text-sm text-gray-900">{formatDate(selectedPayment.payment_date)}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Balance After</label>
-                    <p className="text-sm font-bold text-gray-900">{formatCurrency(selectedTransaction.balance, selectedTransaction.currency)}</p>
+                    <label className="block text-sm font-medium text-gray-500">Created At</label>
+                    <p className="text-sm text-gray-900">{formatDate(selectedPayment.created_at)}</p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Date</label>
-                    <p className="text-sm text-gray-900">{formatDateTime(selectedTransaction.date)}</p>
-                  </div>
+                  {selectedPayment.cleared_at && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Cleared At</label>
+                      <p className="text-sm text-gray-900">{formatDate(selectedPayment.cleared_at)}</p>
+                    </div>
+                  )}
                 </div>
+
+                {/* Notes */}
+                {selectedPayment.notes && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">Notes</label>
+                    <p className="text-sm text-gray-900">{selectedPayment.notes}</p>
+                  </div>
+                )}
               </div>
+
               <div className="flex gap-2 justify-end mt-6">
-                <Button variant="outline" onClick={() => setShowViewModal(false)}>Close</Button>
-                <Button className="mofad-btn-primary">Print Receipt</Button>
+                <Button variant="outline" onClick={() => setShowViewModal(false)}>
+                  Close
+                </Button>
+                {selectedPayment.status === 'pending' && (
+                  <Button
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => {
+                      clearMutation.mutate(selectedPayment.id)
+                      setShowViewModal(false)
+                    }}
+                  >
+                    Clear Payment
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && selectedPayment && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-bold mb-4">Delete Payment</h3>
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to delete payment{' '}
+                <span className="font-medium">{selectedPayment.payment_number}</span>? This action
+                cannot be undone.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setSelectedPayment(null)
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => deleteMutation.mutate(selectedPayment.id)}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                </Button>
               </div>
             </div>
           </div>

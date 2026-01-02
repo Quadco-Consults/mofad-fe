@@ -14,11 +14,13 @@ import {
   TrendingUp,
   Settings,
   ClipboardList,
+  ClipboardCheck,
   DollarSign,
   Car,
   Building2,
   ChevronDown,
   ChevronRight,
+  Bell,
 } from 'lucide-react'
 
 interface NavItem {
@@ -33,6 +35,11 @@ const navigation: NavItem[] = [
     label: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    label: 'Notifications',
+    href: '/notifications',
+    icon: Bell,
   },
   {
     label: 'Orders',
@@ -114,6 +121,7 @@ const navigation: NavItem[] = [
     children: [
       { label: 'User Management', href: '/settings/users', icon: Users },
       { label: 'System Settings', href: '/settings/system', icon: Settings },
+      { label: 'Audit Logs', href: '/settings/audit-logs', icon: ClipboardCheck },
       { label: 'Warehouses', href: '/settings/warehouses', icon: Warehouse },
       { label: 'States', href: '/settings/states', icon: Building2 },
     ],

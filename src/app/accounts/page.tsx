@@ -1,577 +1,1116 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Plus, Edit, Trash2, Eye, TrendingUp, DollarSign, CreditCard, Building } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import apiClient from '@/lib/apiClient'
+import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { useToast } from '@/components/ui/Toast'
+import { Expense, ExpenseType, Account } from '@/types/api'
+import {
+  Plus,
+  Search,
+  Download,
+  Eye,
+  Edit,
+  Trash2,
+  DollarSign,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  X,
+  Save,
+  Calendar,
+  Receipt,
+  CreditCard,
+  Wallet,
+  Loader2,
+  RefreshCw,
+  Check,
+  Ban,
+  Banknote,
+} from 'lucide-react'
 
-interface Account {
-  id: string
-  accountNumber: string
-  accountName: string
-  accountType: string
-  bankName: string
-  bankCode: string
-  balance: number
-  currency: string
-  status: 'active' | 'inactive' | 'frozen'
-  openingDate: string
-  description: string
-  lastTransactionDate: string
-  monthlyInflow: number
-  monthlyOutflow: number
-  accountOfficer: string
-  branch: string
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return <Clock className="w-4 h-4 text-yellow-500" />
+    case 'approved':
+      return <CheckCircle className="w-4 h-4 text-blue-500" />
+    case 'paid':
+      return <CheckCircle className="w-4 h-4 text-green-500" />
+    case 'rejected':
+      return <XCircle className="w-4 h-4 text-red-500" />
+    default:
+      return <Clock className="w-4 h-4 text-gray-500" />
+  }
 }
 
-const mockAccounts: Account[] = [
-  {
-    id: '1',
-    accountNumber: '1234567890',
-    accountName: 'MOFAD Energy Solutions - Operations',
-    accountType: 'Current Account',
-    bankName: 'First Bank of Nigeria',
-    bankCode: '011',
-    balance: 125000000,
-    currency: 'NGN',
-    status: 'active',
-    openingDate: '2023-01-15',
-    description: 'Main operations account for daily business transactions',
-    lastTransactionDate: '2024-12-16T15:30:00Z',
-    monthlyInflow: 45000000,
-    monthlyOutflow: 38000000,
-    accountOfficer: 'Mrs. Amina Hassan',
-    branch: 'Victoria Island'
-  },
-  {
-    id: '2',
-    accountNumber: '2345678901',
-    accountName: 'MOFAD Energy Solutions - Payroll',
-    accountType: 'Current Account',
-    bankName: 'Zenith Bank',
-    bankCode: '057',
-    balance: 15000000,
-    currency: 'NGN',
-    status: 'active',
-    openingDate: '2023-02-01',
-    description: 'Dedicated payroll account for staff salaries and benefits',
-    lastTransactionDate: '2024-12-15T09:00:00Z',
-    monthlyInflow: 12000000,
-    monthlyOutflow: 11500000,
-    accountOfficer: 'Mr. Chinedu Okwu',
-    branch: 'Ikeja'
-  },
-  {
-    id: '3',
-    accountNumber: '3456789012',
-    accountName: 'MOFAD Energy Solutions - Savings',
-    accountType: 'Savings Account',
-    bankName: 'United Bank for Africa',
-    bankCode: '033',
-    balance: 85000000,
-    currency: 'NGN',
-    status: 'active',
-    openingDate: '2023-01-15',
-    description: 'Long-term savings and investment account',
-    lastTransactionDate: '2024-12-12T14:20:00Z',
-    monthlyInflow: 5000000,
-    monthlyOutflow: 2000000,
-    accountOfficer: 'Mrs. Fatima Abdullahi',
-    branch: 'Abuja Main'
-  },
-  {
-    id: '4',
-    accountNumber: '4567890123',
-    accountName: 'MOFAD Energy Solutions - USD Operations',
-    accountType: 'Domiciliary Account',
-    bankName: 'Guaranty Trust Bank',
-    bankCode: '058',
-    balance: 850000,
-    currency: 'USD',
-    status: 'active',
-    openingDate: '2023-03-10',
-    description: 'USD denominated account for international transactions',
-    lastTransactionDate: '2024-12-10T11:45:00Z',
-    monthlyInflow: 120000,
-    monthlyOutflow: 95000,
-    accountOfficer: 'Mr. Olumide Adeyemi',
-    branch: 'Victoria Island'
-  },
-  {
-    id: '5',
-    accountNumber: '5678901234',
-    accountName: 'MOFAD Energy Solutions - Fixed Deposit',
-    accountType: 'Fixed Deposit',
-    bankName: 'Access Bank',
-    bankCode: '044',
-    balance: 200000000,
-    currency: 'NGN',
-    status: 'active',
-    openingDate: '2023-06-01',
-    description: '12-month fixed deposit investment - Maturity: June 2024',
-    lastTransactionDate: '2024-06-01T10:00:00Z',
-    monthlyInflow: 0,
-    monthlyOutflow: 0,
-    accountOfficer: 'Mrs. Blessing Okonkwo',
-    branch: 'Lagos Island'
-  },
-  {
-    id: '6',
-    accountNumber: '6789012345',
-    accountName: 'MOFAD Energy Solutions - Petty Cash',
-    accountType: 'Current Account',
-    bankName: 'Sterling Bank',
-    bankCode: '232',
-    balance: 2500000,
-    currency: 'NGN',
-    status: 'active',
-    openingDate: '2023-04-15',
-    description: 'Petty cash and miscellaneous expenses account',
-    lastTransactionDate: '2024-12-16T08:30:00Z',
-    monthlyInflow: 1500000,
-    monthlyOutflow: 1400000,
-    accountOfficer: 'Mr. Emeka Nwosu',
-    branch: 'Surulere'
-  },
-  {
-    id: '7',
-    accountNumber: '7890123456',
-    accountName: 'MOFAD Energy Solutions - Legacy',
-    accountType: 'Current Account',
-    bankName: 'Fidelity Bank',
-    bankCode: '070',
-    balance: 500000,
-    currency: 'NGN',
-    status: 'inactive',
-    openingDate: '2020-01-01',
-    description: 'Legacy account - no longer in active use',
-    lastTransactionDate: '2024-01-15T16:00:00Z',
-    monthlyInflow: 0,
-    monthlyOutflow: 0,
-    accountOfficer: 'Mr. Ibrahim Garba',
-    branch: 'Kaduna'
-  }
-]
-
-function AccountsPage() {
-  const [accounts] = useState<Account[]>(mockAccounts)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [typeFilter, setTypeFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [bankFilter, setBankFilter] = useState<string>('all')
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [showViewModal, setShowViewModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
-
-  const accountTypes = Array.from(new Set(accounts.map(a => a.accountType)))
-  const banks = Array.from(new Set(accounts.map(a => a.bankName)))
-
-  const filteredAccounts = accounts.filter(account => {
-    const matchesSearch = account.accountName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         account.accountNumber.includes(searchTerm) ||
-                         account.bankName.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesType = typeFilter === 'all' || account.accountType === typeFilter
-    const matchesStatus = statusFilter === 'all' || account.status === statusFilter
-    const matchesBank = bankFilter === 'all' || account.bankName === bankFilter
-
-    return matchesSearch && matchesType && matchesStatus && matchesBank
-  })
-
-  const formatCurrency = (amount: number, currency: string = 'NGN') => {
-    if (currency === 'USD') {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0
-      }).format(amount)
-    }
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0
-    }).format(amount)
+const getStatusBadge = (status: string) => {
+  const colors: Record<string, string> = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    approved: 'bg-blue-100 text-blue-800',
+    paid: 'bg-green-100 text-green-800',
+    rejected: 'bg-red-100 text-red-800',
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-NG', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  const getStatusBadge = (status: string) => {
-    const styles = {
-      active: 'bg-green-100 text-green-800',
-      inactive: 'bg-gray-100 text-gray-800',
-      frozen: 'bg-red-100 text-red-800'
-    }
-    return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800'
-  }
-
-  const getAccountTypeIcon = (type: string) => {
-    switch (type) {
-      case 'Current Account': return <CreditCard className="h-4 w-4" />
-      case 'Savings Account': return <DollarSign className="h-4 w-4" />
-      case 'Fixed Deposit': return <TrendingUp className="h-4 w-4" />
-      case 'Domiciliary Account': return <Building className="h-4 w-4" />
-      default: return <CreditCard className="h-4 w-4" />
-    }
-  }
-
-  // Calculate summary stats
-  const totalAccounts = accounts.length
-  const activeAccounts = accounts.filter(a => a.status === 'active').length
-  const totalBalance = accounts.filter(a => a.currency === 'NGN' && a.status === 'active').reduce((sum, a) => sum + a.balance, 0)
-  const usdBalance = accounts.filter(a => a.currency === 'USD' && a.status === 'active').reduce((sum, a) => sum + a.balance, 0)
-
-  const handleView = (account: Account) => {
-    setSelectedAccount(account)
-    setShowViewModal(true)
-  }
-
-  const handleEdit = (account: Account) => {
-    setSelectedAccount(account)
-    setShowEditModal(true)
-  }
-
-  const handleDelete = (accountId: string) => {
-    if (confirm('Are you sure you want to delete this account? This action cannot be undone.')) {
-      console.log('Deleting account:', accountId)
-    }
+  const labels: Record<string, string> = {
+    pending: 'Pending',
+    approved: 'Approved',
+    paid: 'Paid',
+    rejected: 'Rejected',
   }
 
   return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status] || colors.pending}`}>
+      {labels[status] || status}
+    </span>
+  )
+}
+
+const getPaymentMethodIcon = (method: string) => {
+  switch (method) {
+    case 'cash':
+      return <Banknote className="w-4 h-4 text-green-500" />
+    case 'bank_transfer':
+      return <CreditCard className="w-4 h-4 text-blue-500" />
+    case 'cheque':
+      return <Receipt className="w-4 h-4 text-purple-500" />
+    case 'card':
+      return <CreditCard className="w-4 h-4 text-orange-500" />
+    case 'petty_cash':
+      return <Wallet className="w-4 h-4 text-yellow-500" />
+    default:
+      return <DollarSign className="w-4 h-4 text-gray-500" />
+  }
+}
+
+const getPaymentMethodLabel = (method: string) => {
+  const labels: Record<string, string> = {
+    cash: 'Cash',
+    bank_transfer: 'Bank Transfer',
+    cheque: 'Cheque',
+    card: 'Card Payment',
+    petty_cash: 'Petty Cash',
+  }
+  return labels[method] || method
+}
+
+interface ExpenseFormData {
+  expense_type: number
+  description: string
+  amount: number
+  expense_date: string
+  payment_method: 'cash' | 'bank_transfer' | 'cheque' | 'card' | 'petty_cash'
+  vendor_name: string
+  vendor_contact: string
+  invoice_number: string
+  account: number
+  notes: string
+}
+
+const initialFormData: ExpenseFormData = {
+  expense_type: 0,
+  description: '',
+  amount: 0,
+  expense_date: new Date().toISOString().split('T')[0],
+  payment_method: 'cash',
+  vendor_name: '',
+  vendor_contact: '',
+  invoice_number: '',
+  account: 0,
+  notes: '',
+}
+
+export default function ExpensesPage() {
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
+
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all')
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
+  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | 'mark_paid'>('approve')
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
+  const [formData, setFormData] = useState<ExpenseFormData>(initialFormData)
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+
+  // Fetch expenses
+  const { data: expensesData, isLoading, error, refetch } = useQuery({
+    queryKey: ['expenses', searchTerm, statusFilter, paymentMethodFilter],
+    queryFn: async () => {
+      const params: Record<string, string> = {}
+      if (statusFilter !== 'all') params.status = statusFilter
+      if (paymentMethodFilter !== 'all') params.payment_method = paymentMethodFilter
+      if (searchTerm) params.search = searchTerm
+      return apiClient.get<Expense[]>('/expenses/', params)
+    },
+  })
+
+  // Fetch expense types
+  const { data: expenseTypesData } = useQuery({
+    queryKey: ['expense-types'],
+    queryFn: () => apiClient.get<ExpenseType[]>('/expense-types/'),
+  })
+
+  // Fetch accounts for dropdown
+  const { data: accountsData } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: () => apiClient.get<Account[]>('/accounts/', { account_type: 'expense' }),
+  })
+
+  const expenses = Array.isArray(expensesData) ? expensesData : []
+  const expenseTypes = Array.isArray(expenseTypesData) ? expenseTypesData : []
+  const accounts = Array.isArray(accountsData) ? accountsData : []
+
+  // Create expense mutation
+  const createMutation = useMutation({
+    mutationFn: (data: ExpenseFormData) => apiClient.post<Expense>('/expenses/', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      setShowAddModal(false)
+      resetForm()
+      addToast({ type: 'success', title: 'Success', message: 'Expense created successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to create expense' })
+      if (error.errors) setFormErrors(error.errors)
+    },
+  })
+
+  // Update expense mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<ExpenseFormData> }) =>
+      apiClient.patch<Expense>(`/expenses/${id}/`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      setShowEditModal(false)
+      resetForm()
+      addToast({ type: 'success', title: 'Success', message: 'Expense updated successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to update expense' })
+      if (error.errors) setFormErrors(error.errors)
+    },
+  })
+
+  // Delete expense mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/expenses/${id}/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      setShowDeleteModal(false)
+      setSelectedExpense(null)
+      addToast({ type: 'success', title: 'Success', message: 'Expense deleted successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to delete expense' })
+    },
+  })
+
+  // Approve expense mutation
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => apiClient.post<Expense>(`/expenses/${id}/approve/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      setShowApprovalModal(false)
+      setSelectedExpense(null)
+      addToast({ type: 'success', title: 'Approved', message: 'Expense has been approved' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to approve expense' })
+    },
+  })
+
+  // Reject expense mutation
+  const rejectMutation = useMutation({
+    mutationFn: (id: number) => apiClient.post<Expense>(`/expenses/${id}/reject/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      setShowApprovalModal(false)
+      setSelectedExpense(null)
+      addToast({ type: 'info', title: 'Rejected', message: 'Expense has been rejected' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to reject expense' })
+    },
+  })
+
+  // Mark paid mutation
+  const markPaidMutation = useMutation({
+    mutationFn: (id: number) => apiClient.post<Expense>(`/expenses/${id}/mark-paid/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      setShowApprovalModal(false)
+      setSelectedExpense(null)
+      addToast({ type: 'success', title: 'Paid', message: 'Expense marked as paid' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to mark expense as paid' })
+    },
+  })
+
+  // Helper functions
+  const resetForm = () => {
+    setFormData(initialFormData)
+    setFormErrors({})
+  }
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+    if (!formData.expense_type) errors.expense_type = 'Expense type is required'
+    if (!formData.description.trim()) errors.description = 'Description is required'
+    if (formData.amount <= 0) errors.amount = 'Amount must be greater than 0'
+    if (!formData.expense_date) errors.expense_date = 'Date is required'
+    if (!formData.account) errors.account = 'Account is required'
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleAdd = () => {
+    resetForm()
+    setShowAddModal(true)
+  }
+
+  const handleView = (expense: Expense) => {
+    setSelectedExpense(expense)
+    setShowViewModal(true)
+  }
+
+  const handleEdit = (expense: Expense) => {
+    setSelectedExpense(expense)
+    setFormData({
+      expense_type: expense.expense_type,
+      description: expense.description,
+      amount: expense.amount,
+      expense_date: expense.expense_date,
+      payment_method: expense.payment_method,
+      vendor_name: expense.vendor_name || '',
+      vendor_contact: expense.vendor_contact || '',
+      invoice_number: expense.invoice_number || '',
+      account: expense.account,
+      notes: expense.notes || '',
+    })
+    setFormErrors({})
+    setShowEditModal(true)
+  }
+
+  const handleDelete = (expense: Expense) => {
+    setSelectedExpense(expense)
+    setShowDeleteModal(true)
+  }
+
+  const handleApproval = (expense: Expense, action: 'approve' | 'reject' | 'mark_paid') => {
+    setSelectedExpense(expense)
+    setApprovalAction(action)
+    setShowApprovalModal(true)
+  }
+
+  const handleSaveNew = () => {
+    if (!validateForm()) return
+    createMutation.mutate(formData)
+  }
+
+  const handleSaveEdit = () => {
+    if (!validateForm() || !selectedExpense) return
+    updateMutation.mutate({ id: selectedExpense.id, data: formData })
+  }
+
+  const confirmDelete = () => {
+    if (selectedExpense) {
+      deleteMutation.mutate(selectedExpense.id)
+    }
+  }
+
+  const confirmApproval = () => {
+    if (!selectedExpense) return
+    if (approvalAction === 'approve') {
+      approveMutation.mutate(selectedExpense.id)
+    } else if (approvalAction === 'reject') {
+      rejectMutation.mutate(selectedExpense.id)
+    } else if (approvalAction === 'mark_paid') {
+      markPaidMutation.mutate(selectedExpense.id)
+    }
+  }
+
+  // Stats calculation
+  const totalExpenses = expenses.length
+  const pendingExpenses = expenses.filter((e) => e.status === 'pending').length
+  const approvedExpenses = expenses.filter((e) => e.status === 'approved').length
+  const totalAmount = expenses.filter((e) => e.status !== 'rejected').reduce((sum, e) => sum + e.amount, 0)
+
+  return (
     <AppLayout>
-      <div className="p-6 space-y-6">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Bank Accounts</h1>
-            <p className="text-gray-600">Manage all company bank accounts and financial holdings</p>
+            <h1 className="text-2xl font-bold text-foreground">Expenses</h1>
+            <p className="text-muted-foreground">Manage company expenses and approvals</p>
           </div>
-          <Button className="mofad-btn-primary" onClick={() => setShowAddModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Account
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+            <Button className="mofad-btn-primary" onClick={handleAdd}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Expense
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="mofad-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Accounts</p>
-                <p className="text-2xl font-bold text-gray-900">{totalAccounts}</p>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Expenses</p>
+                  <p className="text-2xl font-bold text-primary">{totalExpenses}</p>
+                </div>
+                <Receipt className="w-8 h-8 text-primary/60" />
               </div>
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Building className="h-5 w-5 text-blue-600" />
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="mofad-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Active Accounts</p>
-                <p className="text-2xl font-bold text-green-600">{activeAccounts}</p>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Pending Approval</p>
+                  <p className="text-2xl font-bold text-yellow-600">{pendingExpenses}</p>
+                </div>
+                <Clock className="w-8 h-8 text-yellow-600/60" />
               </div>
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-green-600" />
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="mofad-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Balance (NGN)</p>
-                <p className="text-2xl font-bold text-primary-600">{formatCurrency(totalBalance)}</p>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Approved</p>
+                  <p className="text-2xl font-bold text-blue-600">{approvedExpenses}</p>
+                </div>
+                <CheckCircle className="w-8 h-8 text-blue-600/60" />
               </div>
-              <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-primary-600" />
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="mofad-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">USD Holdings</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(usdBalance, 'USD')}</p>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Amount</p>
+                  <p className="text-2xl font-bold text-secondary">{formatCurrency(totalAmount)}</p>
+                </div>
+                <DollarSign className="w-8 h-8 text-secondary/60" />
               </div>
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-green-600" />
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search accounts..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <select
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-          >
-            <option value="all">All Types</option>
-            {accountTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-
-          <select
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="frozen">Frozen</option>
-          </select>
-
-          <select
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            value={bankFilter}
-            onChange={(e) => setBankFilter(e.target.value)}
-          >
-            <option value="all">All Banks</option>
-            {banks.map(bank => (
-              <option key={bank} value={bank}>{bank}</option>
-            ))}
-          </select>
-
-          <Button variant="outline">
-            Generate Report
-          </Button>
-        </div>
-
-        {/* Accounts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredAccounts.map((account) => (
-            <div key={account.id} className="mofad-card">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="flex items-center gap-2">
-                      {getAccountTypeIcon(account.accountType)}
-                      <h3 className="text-lg font-semibold text-gray-900">{account.accountName}</h3>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(account.status)}`}>
-                      {account.status.charAt(0).toUpperCase() + account.status.slice(1)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">{account.description}</p>
-                  <div className="text-xs text-gray-500">
-                    Account No: {account.accountNumber} | Opened: {formatDate(account.openingDate)}
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => handleView(account)}>
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(account)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(account.id)} className="text-red-600">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+        {/* Filters and Search */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search expenses..."
+                    className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
               </div>
 
-              {/* Bank Details */}
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">{account.bankName}</span>
-                  <span className="text-xs text-gray-500">Code: {account.bankCode}</span>
-                </div>
-                <div className="text-sm text-gray-600">
-                  {account.accountType} | {account.branch} Branch
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Officer: {account.accountOfficer}
-                </div>
-              </div>
+              <div className="flex gap-2">
+                <select
+                  className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="paid">Paid</option>
+                  <option value="rejected">Rejected</option>
+                </select>
 
-              {/* Balance */}
-              <div className="mb-4 text-center p-4 bg-primary-50 rounded-lg">
-                <div className="text-3xl font-bold text-primary-900 mb-1">
-                  {formatCurrency(account.balance, account.currency)}
-                </div>
-                <div className="text-sm text-primary-700">Available Balance</div>
+                <select
+                  className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={paymentMethodFilter}
+                  onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                >
+                  <option value="all">All Payment Methods</option>
+                  <option value="cash">Cash</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="card">Card</option>
+                  <option value="petty_cash">Petty Cash</option>
+                </select>
               </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              {/* Monthly Flow */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="text-center">
-                  <div className="text-lg font-bold text-green-600">
-                    {formatCurrency(account.monthlyInflow, account.currency)}
-                  </div>
-                  <div className="text-xs text-gray-600">Monthly Inflow</div>
+        {/* Error State */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <XCircle className="w-5 h-5 text-red-500" />
+                <div>
+                  <p className="font-medium text-red-800">Error loading expenses</p>
+                  <p className="text-sm text-red-600">{(error as any).message || 'An unexpected error occurred'}</p>
                 </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-red-600">
-                    {formatCurrency(account.monthlyOutflow, account.currency)}
-                  </div>
-                  <div className="text-xs text-gray-600">Monthly Outflow</div>
-                </div>
-              </div>
-
-              {/* Last Transaction */}
-              <div className="flex items-center justify-between text-sm text-gray-500 pt-3 border-t border-gray-200">
-                <span>Last Transaction</span>
-                <span>{new Date(account.lastTransactionDate).toLocaleDateString()}</span>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 mt-4">
-                <Button variant="outline" className="flex-1">
-                  View Transactions
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  Transfer
+                <Button variant="outline" size="sm" className="ml-auto" onClick={() => refetch()}>
+                  Retry
                 </Button>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {filteredAccounts.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No accounts found matching your criteria.</p>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
-        {/* Add Account Modal */}
+        {/* Expenses List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Expense Records</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-16 bg-muted rounded-md"></div>
+                  </div>
+                ))}
+              </div>
+            ) : expenses.length === 0 ? (
+              <div className="text-center py-12">
+                <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses found</h3>
+                <p className="text-gray-500 mb-4">
+                  {searchTerm || statusFilter !== 'all' || paymentMethodFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Get started by recording your first expense'}
+                </p>
+                <Button className="mofad-btn-primary" onClick={handleAdd}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Expense
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Expense #</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Description</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Vendor</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Amount</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Payment</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenses.map((expense: Expense) => (
+                      <tr key={expense.id} className="border-b border-border hover:bg-muted/50">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center">
+                            {getStatusIcon(expense.status)}
+                            <span className="ml-2 font-medium font-mono">{expense.expense_number}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="font-medium">{expense.description}</p>
+                            <p className="text-sm text-muted-foreground">{expense.expense_type_name}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-sm">{expense.vendor_name || '-'}</p>
+                          {expense.invoice_number && (
+                            <p className="text-xs text-muted-foreground">Inv: {expense.invoice_number}</p>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-primary">{formatCurrency(expense.amount)}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            {getPaymentMethodIcon(expense.payment_method)}
+                            <span className="text-sm">{getPaymentMethodLabel(expense.payment_method)}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">{getStatusBadge(expense.status)}</td>
+                        <td className="py-3 px-4 text-sm text-muted-foreground">
+                          {formatDateTime(expense.expense_date)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleView(expense)}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {expense.status === 'pending' && (
+                              <>
+                                <Button variant="ghost" size="sm" onClick={() => handleEdit(expense)}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleApproval(expense, 'approve')}
+                                  title="Approve"
+                                >
+                                  <Check className="w-4 h-4 text-green-500" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleApproval(expense, 'reject')}
+                                  title="Reject"
+                                >
+                                  <Ban className="w-4 h-4 text-red-500" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleDelete(expense)}>
+                                  <Trash2 className="w-4 h-4 text-red-500" />
+                                </Button>
+                              </>
+                            )}
+                            {expense.status === 'approved' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleApproval(expense, 'mark_paid')}
+                                title="Mark as Paid"
+                              >
+                                <Banknote className="w-4 h-4 text-green-500" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Add Expense Modal */}
         {showAddModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-bold mb-4">Add New Bank Account</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+                <h2 className="text-xl font-semibold">Record New Expense</h2>
+                <Button variant="ghost" onClick={() => setShowAddModal(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
-                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Expense Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                        formErrors.expense_type ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      value={formData.expense_type}
+                      onChange={(e) => setFormData({ ...formData, expense_type: parseInt(e.target.value) || 0 })}
+                    >
+                      <option value={0}>Select Type</option>
+                      {expenseTypes.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </select>
+                    {formErrors.expense_type && <p className="text-red-500 text-xs mt-1">{formErrors.expense_type}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
-                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Account <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                        formErrors.account ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      value={formData.account}
+                      onChange={(e) => setFormData({ ...formData, account: parseInt(e.target.value) || 0 })}
+                    >
+                      <option value={0}>Select Account</option>
+                      {accounts.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.account_code} - {account.account_name}
+                        </option>
+                      ))}
+                    </select>
+                    {formErrors.account && <p className="text-red-500 text-xs mt-1">{formErrors.account}</p>}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
-                      <option>Select Bank</option>
-                      <option>First Bank of Nigeria</option>
-                      <option>Zenith Bank</option>
-                      <option>United Bank for Africa</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Account Type</label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
-                      <option>Current Account</option>
-                      <option>Savings Account</option>
-                      <option>Fixed Deposit</option>
-                      <option>Domiciliary Account</option>
-                    </select>
-                  </div>
-                </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" rows={3}></textarea>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                      formErrors.description ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Expense description"
+                  />
+                  {formErrors.description && <p className="text-red-500 text-xs mt-1">{formErrors.description}</p>}
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Initial Balance</label>
-                    <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Amount (₦) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                        formErrors.amount ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      value={formData.amount}
+                      onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                      min="0"
+                      step="0.01"
+                    />
+                    {formErrors.amount && <p className="text-red-500 text-xs mt-1">{formErrors.amount}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
-                      <option>NGN</option>
-                      <option>USD</option>
-                      <option>EUR</option>
-                      <option>GBP</option>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                        formErrors.expense_date ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      value={formData.expense_date}
+                      onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
+                    />
+                    {formErrors.expense_date && <p className="text-red-500 text-xs mt-1">{formErrors.expense_date}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={formData.payment_method}
+                      onChange={(e) =>
+                        setFormData({ ...formData, payment_method: e.target.value as ExpenseFormData['payment_method'] })
+                      }
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="cheque">Cheque</option>
+                      <option value="card">Card</option>
+                      <option value="petty_cash">Petty Cash</option>
                     </select>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
-                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Name</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={formData.vendor_name}
+                      onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })}
+                      placeholder="Vendor/supplier name"
+                    />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Contact</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={formData.vendor_contact}
+                      onChange={(e) => setFormData({ ...formData, vendor_contact: e.target.value })}
+                      placeholder="Phone or email"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={formData.invoice_number}
+                    onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                    placeholder="External invoice number"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    rows={3}
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Additional notes"
+                  />
                 </div>
               </div>
-              <div className="flex gap-2 justify-end mt-6">
-                <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
-                <Button className="mofad-btn-primary">Create Account</Button>
+              <div className="flex justify-end gap-2 p-6 border-t sticky bottom-0 bg-white">
+                <Button variant="outline" onClick={() => setShowAddModal(false)}>
+                  Cancel
+                </Button>
+                <Button className="mofad-btn-primary" onClick={handleSaveNew} disabled={createMutation.isPending}>
+                  {createMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Save Expense
+                </Button>
               </div>
             </div>
           </div>
         )}
 
-        {/* View Account Modal */}
-        {showViewModal && selectedAccount && (
+        {/* Edit Modal - Similar to Add Modal */}
+        {showEditModal && selectedExpense && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
-              <h3 className="text-lg font-bold mb-4">Account Details</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+                <h2 className="text-xl font-semibold">Edit Expense - {selectedExpense.expense_number}</h2>
+                <Button variant="ghost" onClick={() => setShowEditModal(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="p-6 space-y-4">
+                {/* Same form fields as Add Modal */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Account Name</label>
-                    <p className="text-sm text-gray-900">{selectedAccount.accountName}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Expense Type *</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      value={formData.expense_type}
+                      onChange={(e) => setFormData({ ...formData, expense_type: parseInt(e.target.value) || 0 })}
+                    >
+                      <option value={0}>Select Type</option>
+                      {expenseTypes.map((type) => (
+                        <option key={type.id} value={type.id}>{type.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Account Number</label>
-                    <p className="text-sm text-gray-900">{selectedAccount.accountNumber}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Bank</label>
-                    <p className="text-sm text-gray-900">{selectedAccount.bankName} ({selectedAccount.bankCode})</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Type</label>
-                    <p className="text-sm text-gray-900">{selectedAccount.accountType}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Account *</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      value={formData.account}
+                      onChange={(e) => setFormData({ ...formData, account: parseInt(e.target.value) || 0 })}
+                    >
+                      <option value={0}>Select Account</option>
+                      {accounts.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.account_code} - {account.account_name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Description</label>
-                  <p className="text-sm text-gray-900">{selectedAccount.description}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Current Balance</label>
-                    <p className="text-lg font-bold text-primary-600">{formatCurrency(selectedAccount.balance, selectedAccount.currency)}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₦) *</label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      value={formData.amount}
+                      onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                      min="0"
+                      step="0.01"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Status</label>
-                    <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(selectedAccount.status)}`}>
-                      {selectedAccount.status}
-                    </span>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      value={formData.expense_date}
+                      onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
+                    />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      value={formData.payment_method}
+                      onChange={(e) =>
+                        setFormData({ ...formData, payment_method: e.target.value as ExpenseFormData['payment_method'] })
+                      }
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="cheque">Cheque</option>
+                      <option value="card">Card</option>
+                      <option value="petty_cash">Petty Cash</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Name</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      value={formData.vendor_name}
+                      onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      value={formData.invoice_number}
+                      onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    rows={3}
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  />
                 </div>
               </div>
-              <div className="flex gap-2 justify-end mt-6">
+              <div className="flex justify-end gap-2 p-6 border-t sticky bottom-0 bg-white">
+                <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+                <Button className="mofad-btn-primary" onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+                  {updateMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Update Expense
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* View Modal */}
+        {showViewModal && selectedExpense && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-xl font-semibold">Expense Details - {selectedExpense.expense_number}</h2>
+                <Button variant="ghost" onClick={() => setShowViewModal(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Expense Number</label>
+                    <p className="font-mono font-semibold">{selectedExpense.expense_number}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Status</label>
+                    <div>{getStatusBadge(selectedExpense.status)}</div>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Description</label>
+                  <p className="font-semibold">{selectedExpense.description}</p>
+                  <p className="text-sm text-muted-foreground">{selectedExpense.expense_type_name}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Amount</label>
+                    <p className="text-2xl font-bold text-primary">{formatCurrency(selectedExpense.amount)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Payment Method</label>
+                    <div className="flex items-center gap-2">
+                      {getPaymentMethodIcon(selectedExpense.payment_method)}
+                      <span>{getPaymentMethodLabel(selectedExpense.payment_method)}</span>
+                    </div>
+                  </div>
+                </div>
+                {selectedExpense.vendor_name && (
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Vendor</label>
+                      <p>{selectedExpense.vendor_name}</p>
+                    </div>
+                    {selectedExpense.invoice_number && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Invoice Number</label>
+                        <p>{selectedExpense.invoice_number}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Expense Date</label>
+                    <p>{formatDateTime(selectedExpense.expense_date)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Created</label>
+                    <p>{formatDateTime(selectedExpense.created_at)}</p>
+                  </div>
+                </div>
+                {selectedExpense.notes && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Notes</label>
+                    <p className="text-sm">{selectedExpense.notes}</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 p-6 border-t">
                 <Button variant="outline" onClick={() => setShowViewModal(false)}>Close</Button>
-                <Button className="mofad-btn-primary">View Transactions</Button>
+                {selectedExpense.status === 'pending' && (
+                  <Button className="mofad-btn-primary" onClick={() => {
+                    setShowViewModal(false)
+                    handleEdit(selectedExpense)
+                  }}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Approval Modal */}
+        {showApprovalModal && selectedExpense && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg max-w-md w-full m-4">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className={`text-xl font-semibold ${
+                  approvalAction === 'approve' || approvalAction === 'mark_paid' ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {approvalAction === 'approve' && 'Approve Expense'}
+                  {approvalAction === 'reject' && 'Reject Expense'}
+                  {approvalAction === 'mark_paid' && 'Mark as Paid'}
+                </h2>
+                <Button variant="ghost" onClick={() => setShowApprovalModal(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    approvalAction === 'reject' ? 'bg-red-100' : 'bg-green-100'
+                  }`}>
+                    {approvalAction === 'reject' ? (
+                      <Ban className="w-6 h-6 text-red-600" />
+                    ) : (
+                      <Check className="w-6 h-6 text-green-600" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{selectedExpense.expense_number}</h3>
+                    <p className="text-sm text-muted-foreground">{selectedExpense.description}</p>
+                    <p className="font-bold text-primary">{formatCurrency(selectedExpense.amount)}</p>
+                  </div>
+                </div>
+                <p className="text-gray-700">
+                  {approvalAction === 'approve' && 'Are you sure you want to approve this expense?'}
+                  {approvalAction === 'reject' && 'Are you sure you want to reject this expense?'}
+                  {approvalAction === 'mark_paid' && 'Are you sure you want to mark this expense as paid?'}
+                </p>
+              </div>
+              <div className="flex justify-end gap-2 p-6 border-t">
+                <Button variant="outline" onClick={() => setShowApprovalModal(false)}>Cancel</Button>
+                <Button
+                  className={approvalAction === 'reject' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}
+                  onClick={confirmApproval}
+                  disabled={approveMutation.isPending || rejectMutation.isPending || markPaidMutation.isPending}
+                >
+                  {(approveMutation.isPending || rejectMutation.isPending || markPaidMutation.isPending) ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : approvalAction === 'reject' ? (
+                    <Ban className="w-4 h-4 mr-2" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  {approvalAction === 'approve' && 'Approve'}
+                  {approvalAction === 'reject' && 'Reject'}
+                  {approvalAction === 'mark_paid' && 'Mark Paid'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Modal */}
+        {showDeleteModal && selectedExpense && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg max-w-md w-full m-4">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-xl font-semibold text-red-600">Delete Expense</h2>
+                <Button variant="ghost" onClick={() => setShowDeleteModal(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Delete Expense</h3>
+                    <p className="text-sm text-gray-600">This action cannot be undone</p>
+                  </div>
+                </div>
+                <p className="text-gray-700">
+                  Are you sure you want to delete expense <strong>{selectedExpense.expense_number}</strong>?
+                </p>
+              </div>
+              <div className="flex justify-end gap-2 p-6 border-t">
+                <Button variant="outline" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+                <Button
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={confirmDelete}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4 mr-2" />
+                  )}
+                  Delete
+                </Button>
               </div>
             </div>
           </div>
@@ -580,5 +1119,3 @@ function AccountsPage() {
     </AppLayout>
   )
 }
-
-export default AccountsPage

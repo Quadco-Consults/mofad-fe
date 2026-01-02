@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { useToast } from '@/components/ui/Toast'
+import { Customer, CustomerFormData, CustomerType, PaymentType, State } from '@/types/api'
 import {
   Plus,
   Search,
@@ -20,62 +22,59 @@ import {
   MapPin,
   Phone,
   Mail,
-  Star,
   CreditCard,
   X,
   Save,
   AlertTriangle,
+  Loader2,
+  RefreshCw,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react'
 
-interface Customer {
-  id: number
-  name: string
-  email: string
-  phone: string
-  customer_type: string
-  address: string
-  city: string
-  state: string
-  credit_limit: number
-  outstanding_balance: number
-  total_purchases: number
-  last_transaction: string
-  status: 'active' | 'inactive' | 'suspended'
-  rating: number
-  created_at: string
-}
-
 const getStatusBadge = (status: string) => {
-  const colors = {
+  const colors: Record<string, string> = {
     active: 'bg-green-100 text-green-800',
     inactive: 'bg-gray-100 text-gray-800',
-    suspended: 'bg-red-100 text-red-800'
+    suspended: 'bg-yellow-100 text-yellow-800',
+    blacklisted: 'bg-red-100 text-red-800'
   }
 
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status as keyof typeof colors]}`}>
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100 text-gray-800'}`}>
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   )
 }
 
-const getRatingStars = (rating: number) => {
-  return (
-    <div className="flex items-center gap-1">
-      {[...Array(5)].map((_, i) => (
-        <Star
-          key={i}
-          className={`w-4 h-4 ${
-            i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
-          }`}
-        />
-      ))}
-      <span className="ml-1 text-xs text-muted-foreground">({rating})</span>
-    </div>
-  )
+const initialFormData: CustomerFormData = {
+  name: '',
+  email: '',
+  phone: '',
+  alt_phone: '',
+  customer_type: undefined,
+  payment_type: undefined,
+  old_reference_id: '',
+  address: '',
+  city: '',
+  state: undefined,
+  postal_code: '',
+  business_name: '',
+  credit_limit: 0,
+  current_balance: 0,
+  payment_terms: '',
+  contact_person: '',
+  contact_person_phone: '',
+  contact_person_email: '',
+  status: 'active',
+  preferred_delivery_method: 'both',
+  notes: ''
 }
 
 export default function CustomersPage() {
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
+
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
@@ -84,38 +83,119 @@ export default function CustomersPage() {
   const [showViewModal, setShowViewModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    customer_type: 'Individual',
-    address: '',
-    city: '',
-    state: '',
-    credit_limit: 0,
-    status: 'active' as const
+  const [formData, setFormData] = useState<CustomerFormData>(initialFormData)
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+
+  // Fetch customers
+  const { data: customersData, isLoading, error, refetch } = useQuery({
+    queryKey: ['customers', searchTerm, statusFilter, typeFilter],
+    queryFn: async () => {
+      const params: Record<string, string> = {}
+      if (statusFilter !== 'all') params.status = statusFilter
+      if (typeFilter !== 'all') params.customer_type = typeFilter
+      if (searchTerm) params.search = searchTerm
+      return apiClient.get<Customer[]>('/customers/', params)
+    },
   })
 
-  const { data: customersList, isLoading } = useQuery({
-    queryKey: ['customers-list'],
-    queryFn: () => mockApi.get('/customers'),
+  // Fetch customer types for dropdown
+  const { data: customerTypesData } = useQuery({
+    queryKey: ['customer-types'],
+    queryFn: () => apiClient.get<CustomerType[]>('/customer-types/'),
   })
 
-  const customers = customersList || []
+  // Fetch payment types for dropdown
+  const { data: paymentTypesData } = useQuery({
+    queryKey: ['payment-types'],
+    queryFn: () => apiClient.get<PaymentType[]>('/payment-types/'),
+  })
+
+  // Fetch states for dropdown
+  const { data: statesData } = useQuery({
+    queryKey: ['states'],
+    queryFn: () => apiClient.get<State[]>('/states/'),
+  })
+
+  // Handle both array and paginated responses
+  const extractResults = (data: any) => {
+    if (Array.isArray(data)) return data
+    if (data?.results && Array.isArray(data.results)) return data.results
+    return []
+  }
+
+  const customers = extractResults(customersData)
+  const customerTypes = extractResults(customerTypesData)
+  const paymentTypes = extractResults(paymentTypesData)
+  const states = extractResults(statesData)
+
+  // Create customer mutation
+  const createMutation = useMutation({
+    mutationFn: (data: CustomerFormData) => apiClient.post<Customer>('/customers/', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      setShowAddModal(false)
+      resetForm()
+      addToast({ type: 'success', title: 'Success', message: 'Customer created successfully' })
+    },
+    onError: (error: any) => {
+      const message = error.message || 'Failed to create customer'
+      addToast({ type: 'error', title: 'Error', message })
+      if (error.errors) {
+        setFormErrors(error.errors)
+      }
+    },
+  })
+
+  // Update customer mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<CustomerFormData> }) =>
+      apiClient.patch<Customer>(`/customers/${id}/`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      setShowEditModal(false)
+      resetForm()
+      addToast({ type: 'success', title: 'Success', message: 'Customer updated successfully' })
+    },
+    onError: (error: any) => {
+      const message = error.message || 'Failed to update customer'
+      addToast({ type: 'error', title: 'Error', message })
+      if (error.errors) {
+        setFormErrors(error.errors)
+      }
+    },
+  })
+
+  // Delete customer mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/customers/${id}/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      setShowDeleteModal(false)
+      setSelectedCustomer(null)
+      addToast({ type: 'success', title: 'Success', message: 'Customer deleted successfully' })
+    },
+    onError: (error: any) => {
+      const message = error.message || 'Failed to delete customer'
+      addToast({ type: 'error', title: 'Error', message })
+    },
+  })
 
   // Helper functions
   const resetForm = () => {
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      customer_type: 'Individual',
-      address: '',
-      city: '',
-      state: '',
-      credit_limit: 0,
-      status: 'active'
-    })
+    setFormData(initialFormData)
+    setFormErrors({})
+  }
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    // All fields are optional, but validate format if provided
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Invalid email format'
+    }
+
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
   }
 
   const handleAdd = () => {
@@ -131,16 +211,29 @@ export default function CustomersPage() {
   const handleEdit = (customer: Customer) => {
     setSelectedCustomer(customer)
     setFormData({
-      name: customer.name,
-      email: customer.email,
-      phone: customer.phone,
+      name: customer.name || '',
+      email: customer.email || '',
+      phone: customer.phone || '',
+      alt_phone: customer.alt_phone || '',
       customer_type: customer.customer_type,
-      address: customer.address,
-      city: customer.city,
+      payment_type: customer.payment_type,
+      old_reference_id: customer.old_reference_id || '',
+      address: customer.address || '',
+      city: customer.city || '',
       state: customer.state,
+      postal_code: customer.postal_code || '',
+      business_name: customer.business_name || '',
       credit_limit: customer.credit_limit,
-      status: customer.status
+      current_balance: customer.current_balance,
+      payment_terms: customer.payment_terms || '',
+      contact_person: customer.contact_person || '',
+      contact_person_phone: customer.contact_person_phone || '',
+      contact_person_email: customer.contact_person_email || '',
+      status: customer.status,
+      preferred_delivery_method: customer.preferred_delivery_method,
+      notes: customer.notes || ''
     })
+    setFormErrors({})
     setShowEditModal(true)
   }
 
@@ -149,32 +242,66 @@ export default function CustomersPage() {
     setShowDeleteModal(true)
   }
 
-  const handleSave = () => {
-    // Here you would typically call an API to save the data
-    console.log('Saving customer:', formData)
-    setShowAddModal(false)
-    setShowEditModal(false)
-    resetForm()
+  const handleSaveNew = () => {
+    if (!validateForm()) return
+    createMutation.mutate(formData)
+  }
+
+  const handleSaveEdit = () => {
+    if (!validateForm() || !selectedCustomer) return
+    updateMutation.mutate({ id: selectedCustomer.id, data: formData })
   }
 
   const confirmDelete = () => {
-    // Here you would typically call an API to delete the customer
-    console.log('Deleting customer:', selectedCustomer?.id)
-    setShowDeleteModal(false)
-    setSelectedCustomer(null)
+    if (selectedCustomer) {
+      deleteMutation.mutate(selectedCustomer.id)
+    }
   }
 
-  // Filter customers
-  const filteredCustomers = customers.filter((customer: Customer) => {
-    const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.phone.includes(searchTerm)
+  // Stats calculation
+  const totalCustomers = customers.length
+  const activeCustomers = customers.filter(c => c.status === 'active').length
+  const totalOutstanding = customers.reduce((sum, c) => sum + (c.current_balance || 0), 0)
 
-    const matchesStatus = statusFilter === 'all' || customer.status === statusFilter
-    const matchesType = typeFilter === 'all' || customer.customer_type === typeFilter
-
-    return matchesSearch && matchesStatus && matchesType
-  })
+  // Input component with error handling
+  const FormInput = ({
+    label,
+    name,
+    type = 'text',
+    required = false,
+    placeholder = '',
+    value,
+    onChange,
+    className = ''
+  }: {
+    label: string
+    name: string
+    type?: string
+    required?: boolean
+    placeholder?: string
+    value: string | number
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void
+    className?: string
+  }) => (
+    <div className={className}>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        type={type}
+        name={name}
+        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+          formErrors[name] ? 'border-red-500' : 'border-gray-300'
+        }`}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+      />
+      {formErrors[name] && (
+        <p className="text-red-500 text-xs mt-1">{formErrors[name]}</p>
+      )}
+    </div>
+  )
 
   return (
     <AppLayout>
@@ -186,6 +313,10 @@ export default function CustomersPage() {
             <p className="text-muted-foreground">Manage customer information and relationships</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
             <Button variant="outline">
               <Download className="w-4 h-4 mr-2" />
               Export
@@ -204,7 +335,7 @@ export default function CustomersPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Customers</p>
-                  <p className="text-2xl font-bold text-primary">456</p>
+                  <p className="text-2xl font-bold text-primary">{totalCustomers}</p>
                 </div>
                 <Users className="w-8 h-8 text-primary/60" />
               </div>
@@ -216,9 +347,9 @@ export default function CustomersPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active</p>
-                  <p className="text-2xl font-bold text-green-600">389</p>
+                  <p className="text-2xl font-bold text-green-600">{activeCustomers}</p>
                 </div>
-                <Building className="w-8 h-8 text-green-600/60" />
+                <CheckCircle className="w-8 h-8 text-green-600/60" />
               </div>
             </CardContent>
           </Card>
@@ -228,7 +359,7 @@ export default function CustomersPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Outstanding</p>
-                  <p className="text-2xl font-bold text-orange-600">₦12.4M</p>
+                  <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalOutstanding)}</p>
                 </div>
                 <CreditCard className="w-8 h-8 text-orange-600/60" />
               </div>
@@ -239,10 +370,10 @@ export default function CustomersPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">New This Month</p>
-                  <p className="text-2xl font-bold text-secondary">23</p>
+                  <p className="text-sm text-muted-foreground">Customer Types</p>
+                  <p className="text-2xl font-bold text-secondary">{customerTypes?.length || 0}</p>
                 </div>
-                <Plus className="w-8 h-8 text-secondary/60" />
+                <Building className="w-8 h-8 text-secondary/60" />
               </div>
             </CardContent>
           </Card>
@@ -257,7 +388,7 @@ export default function CustomersPage() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Search customers..."
+                    placeholder="Search customers by name, email, phone..."
                     className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -275,6 +406,7 @@ export default function CustomersPage() {
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                   <option value="suspended">Suspended</option>
+                  <option value="blacklisted">Blacklisted</option>
                 </select>
 
                 <select
@@ -283,20 +415,32 @@ export default function CustomersPage() {
                   onChange={(e) => setTypeFilter(e.target.value)}
                 >
                   <option value="all">All Types</option>
-                  <option value="Corporate">Corporate</option>
-                  <option value="Individual">Individual</option>
-                  <option value="Government">Government</option>
-                  <option value="Reseller">Reseller</option>
+                  {customerTypes?.map((type) => (
+                    <option key={type.id} value={type.id}>{type.name}</option>
+                  ))}
                 </select>
-
-                <Button variant="outline">
-                  <Filter className="w-4 h-4 mr-2" />
-                  More Filters
-                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Error State */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <XCircle className="w-5 h-5 text-red-500" />
+                <div>
+                  <p className="font-medium text-red-800">Error loading customers</p>
+                  <p className="text-sm text-red-600">{(error as any).message || 'An unexpected error occurred'}</p>
+                </div>
+                <Button variant="outline" size="sm" className="ml-auto" onClick={() => refetch()}>
+                  Retry
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Customers List */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -304,14 +448,42 @@ export default function CustomersPage() {
             [...Array(9)].map((_, i) => (
               <Card key={i}>
                 <CardContent className="p-4">
-                  <div className="animate-pulse">
-                    <div className="h-32 bg-muted rounded-md"></div>
+                  <div className="animate-pulse space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2 mt-2"></div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-3 bg-gray-200 rounded"></div>
+                      <div className="h-3 bg-gray-200 rounded"></div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             ))
+          ) : customers.length === 0 ? (
+            <div className="col-span-full">
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No customers found</h3>
+                  <p className="text-gray-500 mb-4">
+                    {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
+                      ? 'Try adjusting your search or filters'
+                      : 'Get started by adding your first customer'}
+                  </p>
+                  <Button className="mofad-btn-primary" onClick={handleAdd}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Customer
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           ) : (
-            filteredCustomers.map((customer: Customer) => (
+            customers.map((customer) => (
               <Card key={customer.id} className="hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
@@ -320,30 +492,43 @@ export default function CustomersPage() {
                         <Users className="w-6 h-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-lg">{customer.name}</h3>
-                        <p className="text-sm text-muted-foreground">{customer.customer_type}</p>
+                        <h3 className="font-semibold text-lg">{customer.name || 'Unnamed Customer'}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {customer.customer_type_name || (customer.customer_type ? `Type ID: ${customer.customer_type}` : 'No type')}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{customer.customer_code}</p>
                       </div>
                     </div>
                     {getStatusBadge(customer.status)}
                   </div>
 
                   <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Mail className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground truncate">{customer.email}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Phone className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">{customer.phone}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground truncate">{customer.city}, {customer.state}</span>
-                    </div>
-                  </div>
-
-                  <div className="mb-4">
-                    {getRatingStars(customer.rating)}
+                    {customer.email && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground truncate">{customer.email}</span>
+                      </div>
+                    )}
+                    {customer.phone && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">{customer.phone}</span>
+                      </div>
+                    )}
+                    {(customer.city || customer.state_name) && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground truncate">
+                          {[customer.city, customer.state_name].filter(Boolean).join(', ') || 'No location'}
+                        </span>
+                      </div>
+                    )}
+                    {customer.payment_type_name && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <CreditCard className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">{customer.payment_type_name}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 text-sm mb-4">
@@ -352,18 +537,18 @@ export default function CustomersPage() {
                       <p className="font-semibold">{formatCurrency(customer.credit_limit)}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Outstanding</p>
-                      <p className={`font-semibold ${customer.outstanding_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {formatCurrency(customer.outstanding_balance)}
+                      <p className="text-muted-foreground">Balance</p>
+                      <p className={`font-semibold ${customer.current_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {formatCurrency(customer.current_balance)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Total Purchases</p>
-                      <p className="font-semibold">{formatCurrency(customer.total_purchases)}</p>
+                      <p className="text-muted-foreground">Total Spent</p>
+                      <p className="font-semibold">{formatCurrency(customer.total_spent)}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Last Transaction</p>
-                      <p className="font-semibold text-xs">{formatDateTime(customer.last_transaction).split(',')[0]}</p>
+                      <p className="text-muted-foreground">Verified</p>
+                      <p className="font-semibold">{customer.is_verified ? 'Yes' : 'No'}</p>
                     </div>
                   </div>
 
@@ -389,145 +574,158 @@ export default function CustomersPage() {
         {/* Add Customer Modal */}
         {showAddModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold">Add New Customer</h2>
+            <div className="bg-white rounded-lg max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+                <h2 className="text-xl font-semibold">Add Customer</h2>
                 <Button variant="ghost" onClick={() => setShowAddModal(false)}>
                   <X className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Customer Name *
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      placeholder="Enter customer name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Customer Type *
-                    </label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.customer_type}
-                      onChange={(e) => setFormData({...formData, customer_type: e.target.value})}
-                    >
-                      <option value="Individual">Individual</option>
-                      <option value="Corporate">Corporate</option>
-                      <option value="Government">Government</option>
-                      <option value="Reseller">Reseller</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      placeholder="customer@example.com"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone *
-                    </label>
-                    <input
-                      type="tel"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      placeholder="+234 000 0000 000"
-                    />
-                  </div>
-                </div>
+              <div className="p-6 space-y-6">
+                {/* Customer Name - Full Width */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Address
-                  </label>
-                  <textarea
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                    rows={3}
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    placeholder="Enter customer address"
+                  <label className="block text-sm text-gray-500 mb-1">Customer name</label>
+                  <input
+                    type="text"
+                    className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                    placeholder="Customer name"
+                    value={formData.name || ''}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Customer Type, Payment Type, Old Reference ID */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.city}
-                      onChange={(e) => setFormData({...formData, city: e.target.value})}
-                      placeholder="Enter city"
-                    />
+                    <label className="block text-sm text-gray-500 mb-1">Customer Type</label>
+                    <select
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent appearance-none cursor-pointer"
+                      value={formData.customer_type || ''}
+                      onChange={(e) => setFormData({...formData, customer_type: e.target.value ? parseInt(e.target.value) : undefined})}
+                    >
+                      <option value="">Customer Type</option>
+                      {customerTypes?.map((type) => (
+                        <option key={type.id} value={type.id}>{type.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      State
-                    </label>
+                    <label className="block text-sm text-gray-500 mb-1">Payment type</label>
+                    <select
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent appearance-none cursor-pointer"
+                      value={formData.payment_type || ''}
+                      onChange={(e) => setFormData({...formData, payment_type: e.target.value ? parseInt(e.target.value) : undefined})}
+                    >
+                      <option value="">Payment type</option>
+                      {paymentTypes?.map((type) => (
+                        <option key={type.id} value={type.id}>{type.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Old Reference ID</label>
                     <input
                       type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.state}
-                      onChange={(e) => setFormData({...formData, state: e.target.value})}
-                      placeholder="Enter state"
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                      placeholder="Old Reference ID"
+                      value={formData.old_reference_id || ''}
+                      onChange={(e) => setFormData({...formData, old_reference_id: e.target.value})}
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Email, Phone, Alternate Phone */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Credit Limit (₦)
-                    </label>
+                    <label className="block text-sm text-gray-500 mb-1">Email address</label>
                     <input
-                      type="number"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.credit_limit}
-                      onChange={(e) => setFormData({...formData, credit_limit: parseFloat(e.target.value) || 0})}
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
+                      type="email"
+                      className={`w-full px-0 py-2 border-0 border-b focus:outline-none focus:border-primary bg-transparent ${
+                        formErrors.email ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Email address"
+                      value={formData.email || ''}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    />
+                    {formErrors.email && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                      placeholder="Phone"
+                      value={formData.phone || ''}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Status
-                    </label>
+                    <label className="block text-sm text-gray-500 mb-1">Alternate phone</label>
+                    <input
+                      type="tel"
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                      placeholder="Alternate phone"
+                      value={formData.alt_phone || ''}
+                      onChange={(e) => setFormData({...formData, alt_phone: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                {/* State, Address */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Select state</label>
                     <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: e.target.value as 'active' | 'inactive' | 'suspended'})}
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent appearance-none cursor-pointer"
+                      value={formData.state || ''}
+                      onChange={(e) => setFormData({...formData, state: e.target.value ? parseInt(e.target.value) : undefined})}
                     >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="suspended">Suspended</option>
+                      <option value="">Select state</option>
+                      {states?.map((state) => (
+                        <option key={state.id} value={state.id}>{state.name}</option>
+                      ))}
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Address</label>
+                    <input
+                      type="text"
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                      placeholder="Address"
+                      value={formData.address || ''}
+                      onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                {/* Current Balance */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Current Balance</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                      placeholder="Current Balance"
+                      value={formData.current_balance || 0}
+                      onChange={(e) => setFormData({...formData, current_balance: parseFloat(e.target.value) || 0})}
+                    />
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 p-6 border-t">
-                <Button variant="outline" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </Button>
-                <Button className="mofad-btn-primary" onClick={handleSave}>
-                  <Save className="w-4 h-4 mr-2" />
-                  Add Customer
+              <div className="flex justify-end gap-2 p-6 border-t sticky bottom-0 bg-white">
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white px-8"
+                  onClick={handleSaveNew}
+                  disabled={createMutation.isPending}
+                >
+                  {createMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <>Submit <span className="ml-2">&#10148;</span></>
+                  )}
                 </Button>
               </div>
             </div>
@@ -537,144 +735,174 @@ export default function CustomersPage() {
         {/* Edit Customer Modal */}
         {showEditModal && selectedCustomer && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold">Edit Customer - {selectedCustomer.name}</h2>
+            <div className="bg-white rounded-lg max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+                <h2 className="text-xl font-semibold">Edit Customer - {selectedCustomer.name || selectedCustomer.customer_code}</h2>
                 <Button variant="ghost" onClick={() => setShowEditModal(false)}>
                   <X className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Customer Name *
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      placeholder="Enter customer name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Customer Type *
-                    </label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.customer_type}
-                      onChange={(e) => setFormData({...formData, customer_type: e.target.value})}
-                    >
-                      <option value="Individual">Individual</option>
-                      <option value="Corporate">Corporate</option>
-                      <option value="Government">Government</option>
-                      <option value="Reseller">Reseller</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      placeholder="customer@example.com"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone *
-                    </label>
-                    <input
-                      type="tel"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      placeholder="+234 000 0000 000"
-                    />
-                  </div>
-                </div>
+              <div className="p-6 space-y-6">
+                {/* Customer Name - Full Width */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Address
-                  </label>
-                  <textarea
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                    rows={3}
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    placeholder="Enter customer address"
+                  <label className="block text-sm text-gray-500 mb-1">Customer name</label>
+                  <input
+                    type="text"
+                    className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                    placeholder="Customer name"
+                    value={formData.name || ''}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Customer Type, Payment Type, Old Reference ID */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.city}
-                      onChange={(e) => setFormData({...formData, city: e.target.value})}
-                      placeholder="Enter city"
-                    />
+                    <label className="block text-sm text-gray-500 mb-1">Customer Type</label>
+                    <select
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent appearance-none cursor-pointer"
+                      value={formData.customer_type || ''}
+                      onChange={(e) => setFormData({...formData, customer_type: e.target.value ? parseInt(e.target.value) : undefined})}
+                    >
+                      <option value="">Customer Type</option>
+                      {customerTypes?.map((type) => (
+                        <option key={type.id} value={type.id}>{type.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      State
-                    </label>
+                    <label className="block text-sm text-gray-500 mb-1">Payment type</label>
+                    <select
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent appearance-none cursor-pointer"
+                      value={formData.payment_type || ''}
+                      onChange={(e) => setFormData({...formData, payment_type: e.target.value ? parseInt(e.target.value) : undefined})}
+                    >
+                      <option value="">Payment type</option>
+                      {paymentTypes?.map((type) => (
+                        <option key={type.id} value={type.id}>{type.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Old Reference ID</label>
                     <input
                       type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.state}
-                      onChange={(e) => setFormData({...formData, state: e.target.value})}
-                      placeholder="Enter state"
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                      placeholder="Old Reference ID"
+                      value={formData.old_reference_id || ''}
+                      onChange={(e) => setFormData({...formData, old_reference_id: e.target.value})}
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Email, Phone, Alternate Phone */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Credit Limit (₦)
-                    </label>
+                    <label className="block text-sm text-gray-500 mb-1">Email address</label>
                     <input
-                      type="number"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.credit_limit}
-                      onChange={(e) => setFormData({...formData, credit_limit: parseFloat(e.target.value) || 0})}
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
+                      type="email"
+                      className={`w-full px-0 py-2 border-0 border-b focus:outline-none focus:border-primary bg-transparent ${
+                        formErrors.email ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Email address"
+                      value={formData.email || ''}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    />
+                    {formErrors.email && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                      placeholder="Phone"
+                      value={formData.phone || ''}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Status
-                    </label>
+                    <label className="block text-sm text-gray-500 mb-1">Alternate phone</label>
+                    <input
+                      type="tel"
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                      placeholder="Alternate phone"
+                      value={formData.alt_phone || ''}
+                      onChange={(e) => setFormData({...formData, alt_phone: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                {/* State, Address */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Select state</label>
                     <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: e.target.value as 'active' | 'inactive' | 'suspended'})}
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent appearance-none cursor-pointer"
+                      value={formData.state || ''}
+                      onChange={(e) => setFormData({...formData, state: e.target.value ? parseInt(e.target.value) : undefined})}
+                    >
+                      <option value="">Select state</option>
+                      {states?.map((state) => (
+                        <option key={state.id} value={state.id}>{state.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Address</label>
+                    <input
+                      type="text"
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                      placeholder="Address"
+                      value={formData.address || ''}
+                      onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                {/* Current Balance, Status */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Current Balance</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent"
+                      placeholder="Current Balance"
+                      value={formData.current_balance || 0}
+                      onChange={(e) => setFormData({...formData, current_balance: parseFloat(e.target.value) || 0})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Status</label>
+                    <select
+                      className="w-full px-0 py-2 border-0 border-b border-gray-300 focus:outline-none focus:border-primary bg-transparent appearance-none cursor-pointer"
+                      value={formData.status || 'active'}
+                      onChange={(e) => setFormData({...formData, status: e.target.value as CustomerFormData['status']})}
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
                       <option value="suspended">Suspended</option>
+                      <option value="blacklisted">Blacklisted</option>
                     </select>
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 p-6 border-t">
+              <div className="flex justify-end gap-2 p-6 border-t sticky bottom-0 bg-white">
                 <Button variant="outline" onClick={() => setShowEditModal(false)}>
                   Cancel
                 </Button>
-                <Button className="mofad-btn-primary" onClick={handleSave}>
-                  <Save className="w-4 h-4 mr-2" />
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white px-8"
+                  onClick={handleSaveEdit}
+                  disabled={updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
                   Update Customer
                 </Button>
               </div>
@@ -687,75 +915,123 @@ export default function CustomersPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold">Customer Details - {selectedCustomer.name}</h2>
+                <h2 className="text-xl font-semibold">Customer Details</h2>
                 <Button variant="ghost" onClick={() => setShowViewModal(false)}>
                   <X className="w-4 h-4" />
                 </Button>
               </div>
               <div className="p-6 space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                    <Users className="w-8 h-8 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold">{selectedCustomer.name || 'Unnamed Customer'}</h3>
+                    <p className="text-muted-foreground">{selectedCustomer.customer_code}</p>
+                    {getStatusBadge(selectedCustomer.status)}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
-                      <p className="text-gray-900 font-semibold">{selectedCustomer.name}</p>
+                      <label className="text-sm font-medium text-gray-500">Customer Type</label>
+                      <p className="text-gray-900">{selectedCustomer.customer_type_name || (selectedCustomer.customer_type ? `ID: ${selectedCustomer.customer_type}` : '-')}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Customer Type</label>
-                      <p className="text-gray-900">{selectedCustomer.customer_type}</p>
+                      <label className="text-sm font-medium text-gray-500">Payment Type</label>
+                      <p className="text-gray-900">{selectedCustomer.payment_type_name || (selectedCustomer.payment_type ? `ID: ${selectedCustomer.payment_type}` : '-')}</p>
+                    </div>
+                    {selectedCustomer.old_reference_id && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Old Reference ID</label>
+                        <p className="text-gray-900">{selectedCustomer.old_reference_id}</p>
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Email</label>
+                      <p className="text-gray-900">{selectedCustomer.email || '-'}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <p className="text-gray-900">{selectedCustomer.email}</p>
+                      <label className="text-sm font-medium text-gray-500">Phone</label>
+                      <p className="text-gray-900">{selectedCustomer.phone || '-'}</p>
+                    </div>
+                    {selectedCustomer.alt_phone && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Alternate Phone</label>
+                        <p className="text-gray-900">{selectedCustomer.alt_phone}</p>
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Address</label>
+                      <p className="text-gray-900">{selectedCustomer.address || '-'}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                      <p className="text-gray-900">{selectedCustomer.phone}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                      {getStatusBadge(selectedCustomer.status)}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
-                      {getRatingStars(selectedCustomer.rating)}
+                      <label className="text-sm font-medium text-gray-500">State</label>
+                      <p className="text-gray-900">{selectedCustomer.state_name || (selectedCustomer.state ? `ID: ${selectedCustomer.state}` : '-')}</p>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                      <p className="text-gray-900">{selectedCustomer.address}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                      <p className="text-gray-900">{selectedCustomer.city}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                      <p className="text-gray-900">{selectedCustomer.state}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Credit Limit</label>
+                      <label className="text-sm font-medium text-gray-500">Credit Limit</label>
                       <p className="text-gray-900 font-semibold">{formatCurrency(selectedCustomer.credit_limit)}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Outstanding Balance</label>
-                      <p className={`font-semibold ${selectedCustomer.outstanding_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {formatCurrency(selectedCustomer.outstanding_balance)}
+                      <label className="text-sm font-medium text-gray-500">Current Balance</label>
+                      <p className={`font-semibold ${selectedCustomer.current_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {formatCurrency(selectedCustomer.current_balance)}
                       </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Total Purchases</label>
-                      <p className="text-gray-900 font-semibold">{formatCurrency(selectedCustomer.total_purchases)}</p>
+                      <label className="text-sm font-medium text-gray-500">Total Spent</label>
+                      <p className="text-gray-900 font-semibold">{formatCurrency(selectedCustomer.total_spent)}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Verified</label>
+                      <p className="text-gray-900">{selectedCustomer.is_verified ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Delivery Preference</label>
+                      <p className="text-gray-900 capitalize">{selectedCustomer.preferred_delivery_method}</p>
                     </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Transaction</label>
-                  <p className="text-gray-900">{formatDateTime(selectedCustomer.last_transaction)}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Member Since</label>
-                  <p className="text-gray-900">{formatDateTime(selectedCustomer.created_at)}</p>
+
+                {selectedCustomer.contact_person && (
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium text-gray-900 mb-2">Contact Person</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Name</label>
+                        <p className="text-gray-900">{selectedCustomer.contact_person}</p>
+                      </div>
+                      {selectedCustomer.contact_person_phone && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Phone</label>
+                          <p className="text-gray-900">{selectedCustomer.contact_person_phone}</p>
+                        </div>
+                      )}
+                      {selectedCustomer.contact_person_email && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Email</label>
+                          <p className="text-gray-900">{selectedCustomer.contact_person_email}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t pt-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <label className="text-gray-500">Created</label>
+                      <p className="text-gray-900">{formatDateTime(selectedCustomer.created_at)}</p>
+                    </div>
+                    <div>
+                      <label className="text-gray-500">Last Updated</label>
+                      <p className="text-gray-900">{formatDateTime(selectedCustomer.updated_at)}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end gap-2 p-6 border-t">
@@ -803,8 +1079,16 @@ export default function CustomersPage() {
                 <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
                   Cancel
                 </Button>
-                <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={confirmDelete}>
-                  <Trash2 className="w-4 h-4 mr-2" />
+                <Button
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={confirmDelete}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4 mr-2" />
+                  )}
                   Delete Customer
                 </Button>
               </div>

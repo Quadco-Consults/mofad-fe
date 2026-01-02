@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
+import { useQuery } from '@tanstack/react-query'
+import Link from 'next/link'
+import apiClient from '@/lib/apiClient'
 import {
   Bell,
   Menu,
@@ -9,9 +12,54 @@ import {
   User,
   LogOut,
   Settings,
-  ChevronDown
+  ChevronDown,
+  ShoppingCart,
+  CreditCard,
+  Package,
+  AlertTriangle,
+  Clock,
+  CheckCircle,
+  MessageSquare,
+  Star,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Notification, NotificationType, UnreadCount } from '@/types/api'
+
+// Extract results helper
+const extractResults = (data: any) => {
+  if (Array.isArray(data)) return data
+  if (data?.results && Array.isArray(data.results)) return data.results
+  return []
+}
+
+// Icon mapping for notification types
+const getNotificationIcon = (type: NotificationType) => {
+  const icons: Record<NotificationType, React.ReactNode> = {
+    system: <Bell className="w-4 h-4" />,
+    order: <ShoppingCart className="w-4 h-4" />,
+    payment: <CreditCard className="w-4 h-4" />,
+    inventory: <Package className="w-4 h-4" />,
+    alert: <AlertTriangle className="w-4 h-4" />,
+    reminder: <Clock className="w-4 h-4" />,
+    task: <CheckCircle className="w-4 h-4" />,
+    message: <MessageSquare className="w-4 h-4" />,
+    promotion: <Star className="w-4 h-4" />,
+  }
+  return icons[type] || <Bell className="w-4 h-4" />
+}
+
+// Relative time helper
+const getRelativeTime = (dateString: string) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+  if (diffInSeconds < 60) return 'Just now'
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
 interface HeaderProps {
   onToggleSidebar: () => void
@@ -21,6 +69,23 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   const { user, logout } = useAuthStore()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+
+  // Fetch unread count
+  const { data: unreadCountData } = useQuery({
+    queryKey: ['notifications-unread-count'],
+    queryFn: () => apiClient.get<UnreadCount>('/notifications/unread-count/'),
+    refetchInterval: 30000,
+  })
+
+  // Fetch recent notifications
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications-preview'],
+    queryFn: () => apiClient.get<Notification[]>('/notifications/', { status: 'unread' }),
+    enabled: showNotifications,
+  })
+
+  const unreadCount = unreadCountData?.total ?? 0
+  const notifications = extractResults(notificationsData).slice(0, 5)
 
   const handleLogout = async () => {
     await logout()
@@ -80,37 +145,63 @@ export function Header({ onToggleSidebar }: HeaderProps) {
               className="relative"
             >
               <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                3
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </Button>
 
             {showNotifications && (
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-4 border-b border-gray-200">
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                   <h3 className="font-medium text-gray-900">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
+                      {unreadCount} unread
+                    </span>
+                  )}
                 </div>
                 <div className="max-h-64 overflow-y-auto">
-                  <div className="p-4 border-b border-gray-100 hover:bg-gray-50">
-                    <p className="text-sm font-medium text-gray-900">New PRF Approval Required</p>
-                    <p className="text-sm text-gray-600">PRF-000123 awaiting your approval</p>
-                    <p className="text-xs text-gray-500 mt-1">5 minutes ago</p>
-                  </div>
-                  <div className="p-4 border-b border-gray-100 hover:bg-gray-50">
-                    <p className="text-sm font-medium text-gray-900">Low Stock Alert</p>
-                    <p className="text-sm text-gray-600">Mobil Super 5W-30 running low in Lagos warehouse</p>
-                    <p className="text-xs text-gray-500 mt-1">1 hour ago</p>
-                  </div>
-                  <div className="p-4 hover:bg-gray-50">
-                    <p className="text-sm font-medium text-gray-900">Payment Received</p>
-                    <p className="text-sm text-gray-600">₦2,500,000 payment from Conoil Plc</p>
-                    <p className="text-xs text-gray-500 mt-1">2 hours ago</p>
-                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No new notifications</p>
+                    </div>
+                  ) : (
+                    notifications.map((notification: Notification) => (
+                      <div
+                        key={notification.id}
+                        className="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                      >
+                        <div className="flex gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-primary-50 rounded-full flex items-center justify-center text-primary-600">
+                            {getNotificationIcon(notification.notification_type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {notification.title}
+                            </p>
+                            <p className="text-sm text-gray-600 line-clamp-1">
+                              {notification.message}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {getRelativeTime(notification.created_at)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
                 <div className="p-4 border-t border-gray-200">
-                  <button className="text-sm text-primary-600 hover:text-primary-800 font-medium">
+                  <Link
+                    href="/notifications"
+                    className="text-sm text-primary-600 hover:text-primary-800 font-medium"
+                    onClick={() => setShowNotifications(false)}
+                  >
                     View all notifications
-                  </button>
+                  </Link>
                 </div>
               </div>
             )}

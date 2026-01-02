@@ -47,7 +47,13 @@ export interface ApiError {
 
 class MockApiClient {
   // Mock login - accepts any valid email/password combination
-  async login(credentials: LoginForm) {
+  // Returns same format as apiClient for type compatibility
+  async login(credentials: LoginForm): Promise<{
+    user: User
+    tokens: { access_token: string; refresh_token: string } | null
+    is_mfa_required: boolean
+    force_password_reset: boolean
+  }> {
     await delay(1500) // Simulate network delay
 
     const { email, password } = credentials
@@ -69,19 +75,26 @@ class MockApiClient {
 
     // Generate mock token
     const token = btoa(`${email}:${Date.now()}:${Math.random()}`)
+    const refreshToken = btoa(`refresh:${email}:${Date.now()}:${Math.random()}`)
 
     // Store in localStorage
     if (typeof window !== 'undefined') {
       localStorage.setItem('auth_token', token)
+      localStorage.setItem('refresh_token', refreshToken)
     }
 
     return {
-      token,
       user: {
         ...MOCK_USER,
         email, // Use the email from login
         name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase())
-      }
+      },
+      tokens: {
+        access_token: token,
+        refresh_token: refreshToken
+      },
+      is_mfa_required: false,
+      force_password_reset: false
     }
   }
 

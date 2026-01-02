@@ -87,7 +87,7 @@ export default function SubstoresPage() {
   const substores = substoresList || []
 
   // Get unique states for filter
-  const states = Array.from(new Set(substores.map((s: Substore) => s.state)))
+  const states: string[] = Array.from(new Set(substores.map((s: Substore) => s.state)))
 
   // Filter substores
   const filteredSubstores = substores.filter((substore: Substore) => {

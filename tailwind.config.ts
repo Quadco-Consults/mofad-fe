@@ -23,34 +23,34 @@ const config: Config = {
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
-          // MOFAD Primary Brand Colors (Bright Red-Orange)
-          50: '#fef2f2',
-          100: '#fee2e2',
-          200: '#fecaca',
-          300: '#fca5a5',
-          400: '#f87171',
-          500: '#ef4444', // Brighter red
-          600: '#dc2626',
-          700: '#b91c1c',
-          800: '#991b1b',
-          900: '#7f1d1d',
-          950: '#450a0a',
+          // MOFAD Primary Brand Colors (Dark Green #1F4224)
+          50: '#f0fdf4',
+          100: '#dcfce7',
+          200: '#bbf7d0',
+          300: '#86efac',
+          400: '#4ade80',
+          500: '#1F4224', // Main MOFAD green
+          600: '#1a3820',
+          700: '#152e1a',
+          800: '#102415',
+          900: '#0c1a10',
+          950: '#060d08',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
           foreground: 'hsl(var(--secondary-foreground))',
-          // MOFAD Secondary Brand Colors (Orange/Gold from logo)
-          50: '#fff7ed',
-          100: '#ffedd5',
-          200: '#fed7aa',
-          300: '#fdba74',
-          400: '#fb923c',
-          500: '#f97316', // Main orange from logo
-          600: '#ea580c',
-          700: '#c2410c',
-          800: '#9a3412',
-          900: '#7c2d12',
-          950: '#431407',
+          // MOFAD Secondary Brand Colors (Gold #D0A33E)
+          50: '#fefce8',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#D0A33E', // Main MOFAD gold
+          500: '#c49535',
+          600: '#a67c2e',
+          700: '#876426',
+          800: '#6b4f1f',
+          900: '#4f3a17',
+          950: '#33250f',
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',
@@ -64,28 +64,29 @@ const config: Config = {
           100: '#fef3c7',
           200: '#fde68a',
           300: '#fcd34d',
-          400: '#fbbf24',
-          500: '#f59e0b', // Gold accent
-          600: '#d97706',
-          700: '#b45309',
-          800: '#92400e',
-          900: '#78350f',
-          950: '#451a03',
+          400: '#D0A33E',
+          500: '#c49535',
+          600: '#a67c2e',
+          700: '#876426',
+          800: '#6b4f1f',
+          900: '#4f3a17',
+          950: '#33250f',
         },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
-        // MOFAD Brand Gradients and Special Colors
+        // MOFAD Brand Colors
         mofad: {
-          primary: '#ef4444', // Brighter red
-          secondary: '#f97316', // Main orange
+          primary: '#1F4224', // Dark green
+          secondary: '#D0A33E', // Gold
+          black: '#000000',
           gradient: {
-            start: '#ef4444', // Brighter red
-            end: '#fd9a32',   // From Laravel custom.css
+            start: '#1F4224',
+            end: '#D0A33E',
           },
-          dark: '#dc2626', // Lighter dark red
-          light: '#fecaca', // Lighter red
+          dark: '#152e1a',
+          light: '#dcfce7',
         },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -100,18 +101,18 @@ const config: Config = {
         sans: ['Inter', 'ui-sans-serif', 'system-ui'],
       },
       backgroundImage: {
-        // MOFAD Brand Gradients - Enhanced to match Laravel app
-        'mofad-gradient': 'linear-gradient(45deg, #9d0707, #fd9a32)',
-        'mofad-gradient-reverse': 'linear-gradient(225deg, #9d0707, #fd9a32)',
-        'mofad-header': 'linear-gradient(135deg, #7f1d1d, #dc2626, #22c55e, #f97316)',
-        'mofad-full': 'linear-gradient(45deg, #9d0707, #dc2626, #22c55e, #fd9a32)',
-        'mofad-brand': 'linear-gradient(45deg, #dc2626, #f97316)',
-        'mofad-subtle': 'linear-gradient(45deg, #fee2e2, #fff7ed)',
+        // MOFAD Brand Gradients
+        'mofad-gradient': 'linear-gradient(45deg, #1F4224, #D0A33E)',
+        'mofad-gradient-reverse': 'linear-gradient(225deg, #1F4224, #D0A33E)',
+        'mofad-header': 'linear-gradient(135deg, #1F4224, #2d5a32, #D0A33E)',
+        'mofad-full': 'linear-gradient(45deg, #1F4224, #2d5a32, #D0A33E, #000000)',
+        'mofad-brand': 'linear-gradient(45deg, #1F4224, #D0A33E)',
+        'mofad-subtle': 'linear-gradient(45deg, #f0fdf4, #fefce8)',
       },
       boxShadow: {
         'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
         'card-hover': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        'mofad': '0 4px 15px 0 rgba(220, 38, 38, 0.2)',
+        'mofad': '0 4px 15px 0 rgba(31, 66, 36, 0.2)',
       },
     },
   },

@@ -21,6 +21,16 @@ import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions'
 import { PendingApprovals } from '@/components/dashboard/PendingApprovals'
 
+interface DashboardStats {
+  total_sales_ytd?: number
+  total_orders?: number
+  pending_approvals?: number
+  customer_count?: number
+  substore_count?: number
+  lubebay_count?: number
+  low_stock_items?: number
+}
+
 interface StatCardProps {
   title: string
   value: string | number
@@ -46,7 +56,7 @@ function StatCard({ title, value, change, icon: Icon, color }: StatCardProps) {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">
+            <p className="text-xl font-bold text-gray-900 mt-2">
               {typeof value === 'number' ? formatNumber(value) : value}
             </p>
             {change !== undefined && (
@@ -67,7 +77,7 @@ function StatCard({ title, value, change, icon: Icon, color }: StatCardProps) {
             )}
           </div>
           <div className={`p-3 rounded-full ${iconBg}`}>
-            <Icon className={`h-8 w-8 text-white`} />
+            <Icon className="h-5 w-5 text-white" />
           </div>
         </div>
       </CardContent>
@@ -82,12 +92,12 @@ export default function DashboardPage() {
   })
 
   // TODO: Implement sales analytics endpoint in Django
-  const { data: salesAnalytics, isLoading: analyticsLoading } = useQuery({
+  const { data: salesAnalytics, isLoading: analyticsLoading } = useQuery<{ data?: unknown }>({
     queryKey: ['sales-analytics'],
-    queryFn: () => Promise.resolve({}), // Placeholder until backend implements this endpoint
+    queryFn: () => Promise.resolve({ data: null }), // Placeholder until backend implements this endpoint
   })
 
-  const stats = dashboardStats || {}
+  const stats: DashboardStats = dashboardStats || {}
 
   return (
     <AppLayout>
@@ -97,7 +107,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-gray-600 mt-1">
-              Welcome back! Here's what's happening with your distribution network.
+              Welcome back! Here&apos;s what&apos;s happening with your distribution network.
             </p>
           </div>
           <div className="text-right">
@@ -157,7 +167,7 @@ export default function DashboardPage() {
             title="Low Stock Items"
             value={stats.low_stock_items || 0}
             icon={Package}
-            color={stats.low_stock_items > 5 ? 'red' : 'green'}
+            color={(stats.low_stock_items || 0) > 5 ? 'red' : 'green'}
           />
         </div>
 

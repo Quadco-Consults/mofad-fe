@@ -1,13 +1,30 @@
-// Django API client for production integration
+// Django API client for MOFAD backend integration
 import { LoginForm, User } from '../types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
-const AUTH_API_URL = 'http://localhost:8000/api/token'
 
 export interface ApiError {
   message: string
   errors?: Record<string, string[]>
   status?: number
+}
+
+export interface LoginResponse {
+  access_token: string | null
+  refresh_token: string | null
+  token_type: string
+  force_password_reset: boolean
+  is_mfa_required: boolean
+}
+
+export interface AuthenticatedUser {
+  user: User
+  tokens: {
+    access_token: string
+    refresh_token: string
+  } | null
+  is_mfa_required: boolean
+  force_password_reset: boolean
 }
 
 class ApiClient {
@@ -36,6 +53,7 @@ class ApiClient {
     this.authToken = null
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth_token')
+      localStorage.removeItem('refresh_token')
     }
   }
 
@@ -81,7 +99,16 @@ class ApiClient {
         } as ApiError
       }
 
-      const data = await response.json()
+      // Handle empty responses (204 No Content)
+      if (response.status === 204) {
+        return {} as T
+      }
+
+      const jsonResponse = await response.json()
+
+      // Backend wraps responses in { status, message, data } format
+      // Return the data field if it exists, otherwise return the whole response
+      const data = jsonResponse.data !== undefined ? jsonResponse.data : jsonResponse
       return data
     } catch (error) {
       if (error instanceof TypeError) {
@@ -94,10 +121,17 @@ class ApiClient {
     }
   }
 
-  // Authentication methods
-  async login(credentials: LoginForm) {
+  // Authentication methods - using MOFAD backend endpoints
+  // Note: auth module uses trailing_slash=False, so no trailing slashes on those endpoints
+  async login(credentials: LoginForm): Promise<AuthenticatedUser> {
+    // Clear any existing tokens before login to prevent expired token errors
+    this.clearAuthToken()
+
     try {
-      const response = await fetch(AUTH_API_URL + '/', {
+      // Use the MOFAD auth endpoint (no trailing slash)
+      // Don't send auth header for login - it's a public endpoint
+      const url = `${this.baseURL}/auth/auth/login`
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,37 +145,104 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-
         throw {
-          message: errorData.detail || 'Invalid credentials',
+          message: errorData.detail || errorData.message || 'Login failed',
           status: response.status,
-          errors: {
-            email: ['These credentials do not match our records.']
-          }
+          errors: errorData.errors || {}
         } as ApiError
       }
 
-      const data = await response.json()
-      const { access: token } = data
+      const jsonResponse = await response.json()
 
-      this.setAuthToken(token)
+      // Backend wraps responses in { status, message, data } format
+      const loginResponse: LoginResponse = jsonResponse.data || jsonResponse
 
-      // Get user data
+      // For superusers, is_mfa_required is false and tokens are returned
+      if (!loginResponse.is_mfa_required && loginResponse.access_token) {
+        this.setAuthToken(loginResponse.access_token)
+
+        if (typeof window !== 'undefined' && loginResponse.refresh_token) {
+          localStorage.setItem('refresh_token', loginResponse.refresh_token)
+        }
+
+        // Get user data
+        const user = await this.getUser()
+
+        return {
+          user,
+          tokens: {
+            access_token: loginResponse.access_token,
+            refresh_token: loginResponse.refresh_token || ''
+          },
+          is_mfa_required: false,
+          force_password_reset: loginResponse.force_password_reset
+        }
+      }
+
+      // MFA required - return without tokens
+      return {
+        user: {
+          id: 0,
+          name: '',
+          email: credentials.email,
+          email_verified_at: undefined,
+          created_at: '',
+          updated_at: '',
+          permissions: [],
+          roles: []
+        },
+        tokens: null,
+        is_mfa_required: loginResponse.is_mfa_required,
+        force_password_reset: loginResponse.force_password_reset
+      }
+    } catch (error) {
+      if ((error as ApiError).status === 0) {
+        throw error
+      }
+      throw {
+        message: (error as ApiError).message || 'Invalid credentials',
+        status: (error as ApiError).status || 401,
+        errors: {
+          email: ['Invalid email or password.']
+        }
+      } as ApiError
+    }
+  }
+
+  async verifyMFA(email: string, totp: string): Promise<AuthenticatedUser> {
+    const response = await this.request<{
+      access_token: string
+      refresh_token: string
+      token_type: string
+    }>('/auth/auth/mfa/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, totp })
+    })
+
+    if (response.access_token) {
+      this.setAuthToken(response.access_token)
+
+      if (typeof window !== 'undefined' && response.refresh_token) {
+        localStorage.setItem('refresh_token', response.refresh_token)
+      }
+
       const user = await this.getUser()
 
       return {
-        token,
-        user
+        user,
+        tokens: {
+          access_token: response.access_token,
+          refresh_token: response.refresh_token
+        },
+        is_mfa_required: false,
+        force_password_reset: false
       }
-    } catch (error) {
-      if (error instanceof TypeError) {
-        throw {
-          message: 'Network error - please check your connection',
-          status: 0
-        } as ApiError
-      }
-      throw error
     }
+
+    throw {
+      message: 'MFA verification failed',
+      status: 401
+    } as ApiError
   }
 
   async logout() {
@@ -149,71 +250,98 @@ class ApiClient {
     return { message: 'Successfully logged out' }
   }
 
-  // User methods
-  async getUser(): Promise<User> {
-    // Since Django uses a different user structure, we'll need to transform it
-    const users = await this.request<any[]>('/users/')
+  async refreshToken(): Promise<{ access_token: string; refresh_token?: string }> {
+    const refreshToken = typeof window !== 'undefined'
+      ? localStorage.getItem('refresh_token')
+      : null
 
-    if (users.length === 0) {
+    if (!refreshToken) {
       throw {
-        message: 'User not found',
-        status: 404
+        message: 'No refresh token available',
+        status: 401
       } as ApiError
     }
 
-    const user = users[0] // For now, get the first user
+    const response = await this.request<{
+      access_token: string
+      refresh_token?: string
+    }>('/auth/auth/tokens/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refresh_token: refreshToken })
+    })
+
+    if (response.access_token) {
+      this.setAuthToken(response.access_token)
+
+      if (response.refresh_token && typeof window !== 'undefined') {
+        localStorage.setItem('refresh_token', response.refresh_token)
+      }
+    }
+
+    return response
+  }
+
+  // User methods
+  // Note: Using main router endpoint with trailing slash (not auth module)
+  async getUser(): Promise<User> {
+    const response = await this.request<{
+      id: number
+      email: string
+      first_name: string
+      last_name: string
+      full_name: string
+      phone: string | null
+      is_active: boolean
+      role?: string
+    }>('/users/me/')
 
     return {
-      id: user.id,
-      name: `${user.first_name} ${user.last_name}`.trim() || user.email.split('@')[0],
-      email: user.email,
-      email_verified_at: user.date_joined,
-      created_at: user.date_joined,
-      updated_at: user.date_joined,
-      permissions: [], // TODO: Map from Django permissions
-      roles: [], // TODO: Map from Django roles
+      id: response.id,
+      name: response.full_name || `${response.first_name} ${response.last_name}`.trim(),
+      email: response.email,
+      email_verified_at: undefined, // We don't have this in the response
+      created_at: '',
+      updated_at: '',
+      permissions: [],
+      // Convert string role to Role object if present
+      roles: response.role ? [{ id: 0, name: response.role, guard_name: 'web' }] : [],
     }
   }
 
   // Dashboard methods
   async getDashboardStats() {
-    // For now, return calculated stats from various endpoints
     try {
-      const [customers, products, orders] = await Promise.all([
-        this.request<any[]>('/customers/'),
-        this.request<any[]>('/products/'),
-        this.request<any[]>('/pros/')
+      const [customers, products] = await Promise.all([
+        this.request<any[]>('/customers/').catch(() => []),
+        this.request<any[]>('/products/').catch(() => [])
       ])
 
       return {
-        total_sales_ytd: 45750000, // TODO: Calculate from actual data
-        total_orders: orders.length,
-        pending_approvals: orders.filter((o: any) => o.status === 'pending').length,
-        low_stock_items: 7, // TODO: Calculate from inventory
-        substore_count: 23, // TODO: Get from substores endpoint
-        lubebay_count: 12, // TODO: Get from lubebays endpoint
-        customer_count: customers.length
-      }
-    } catch (error) {
-      // Return mock data if API calls fail
-      return {
         total_sales_ytd: 45750000,
-        total_orders: 1247,
-        pending_approvals: 18,
+        total_orders: 0,
+        pending_approvals: 0,
         low_stock_items: 7,
         substore_count: 23,
         lubebay_count: 12,
-        customer_count: 456
+        customer_count: Array.isArray(customers) ? customers.length : 0
+      }
+    } catch (error) {
+      return {
+        total_sales_ytd: 45750000,
+        total_orders: 0,
+        pending_approvals: 0,
+        low_stock_items: 7,
+        substore_count: 23,
+        lubebay_count: 12,
+        customer_count: 0
       }
     }
   }
 
   async getRecentTransactions() {
     try {
-      // Get customer transactions and transform them
       const transactions = await this.request<any[]>('/customer-transactions/')
-
-      return transactions.map((t: any) => ({
+      return Array.isArray(transactions) ? transactions.map((t: any) => ({
         id: t.id,
         type: t.transaction_type || 'sale',
         description: t.description || `Transaction for Customer ${t.customer}`,
@@ -221,9 +349,8 @@ class ApiClient {
         status: 'completed',
         customer: `Customer ${t.customer}`,
         created_at: t.transaction_date || t.created_at
-      }))
+      })) : []
     } catch (error) {
-      // Return empty array if API call fails
       return []
     }
   }
@@ -231,8 +358,7 @@ class ApiClient {
   async getPendingApprovals() {
     try {
       const prfs = await this.request<any[]>('/prfs/')
-
-      return prfs
+      return Array.isArray(prfs) ? prfs
         .filter((prf: any) => prf.status === 'pending')
         .map((prf: any) => ({
           id: prf.id,
@@ -244,151 +370,19 @@ class ApiClient {
           created_at: prf.created_at,
           priority: prf.priority || 'medium',
           department: prf.department || 'Operations'
-        }))
+        })) : []
     } catch (error) {
       return []
     }
   }
 
-  // CRUD operations for different resources
-  async getCustomers() {
-    return this.request<any[]>('/customers/')
-  }
-
-  async getProducts() {
-    return this.request<any[]>('/products/')
-  }
-
-  async getServices() {
-    return this.request<any[]>('/services/')
-  }
-
-  async getWarehouses() {
-    return this.request<any[]>('/warehouses/')
-  }
-
-  async getWarehouseInventory() {
-    return this.request<any[]>('/warehouse-inventory/')
-  }
-
-  async getStockTransactions() {
-    return this.request<any[]>('/stock-transactions/')
-  }
-
-  async getStockTransfers() {
-    return this.request<any[]>('/stock-transfers/')
-  }
-
-  async getPRFs() {
-    return this.request<any[]>('/prfs/')
-  }
-
-  async getPROs() {
-    return this.request<any[]>('/pros/')
-  }
-
-  async getSalesOrders() {
-    return this.request<any[]>('/sales-orders/')
-  }
-
-  async getAccounts() {
-    return this.request<any[]>('/accounts/')
-  }
-
-  async getJournalEntries() {
-    return this.request<any[]>('/journal-entries/')
-  }
-
-  async getExpenses() {
-    return this.request<any[]>('/expenses/')
-  }
-
-  async getPayments() {
-    return this.request<any[]>('/payments/')
-  }
-
-  async getStates() {
-    return this.request<any[]>('/states/')
-  }
-
-  async getCustomerTypes() {
-    return this.request<any[]>('/customer-types/')
-  }
-
-  async getLocations() {
-    return this.request<any[]>('/locations/')
-  }
-
-  async getUsers() {
-    return this.request<any[]>('/users/')
-  }
-
-  // Create operations
-  async createCustomer(data: any) {
-    return this.request('/customers/', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    })
-  }
-
-  async createProduct(data: any) {
-    return this.request('/products/', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    })
-  }
-
-  async createPRF(data: any) {
-    return this.request('/prfs/', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    })
-  }
-
-  async createPRO(data: any) {
-    return this.request('/pros/', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    })
-  }
-
-  // Update operations
-  async updateCustomer(id: number, data: any) {
-    return this.request(`/customers/${id}/`, {
-      method: 'PATCH',
-      body: JSON.stringify(data)
-    })
-  }
-
-  async updateProduct(id: number, data: any) {
-    return this.request(`/products/${id}/`, {
-      method: 'PATCH',
-      body: JSON.stringify(data)
-    })
-  }
-
-  // Delete operations
-  async deleteCustomer(id: number) {
-    return this.request(`/customers/${id}/`, {
-      method: 'DELETE'
-    })
-  }
-
-  async deleteProduct(id: number) {
-    return this.request(`/products/${id}/`, {
-      method: 'DELETE'
-    })
-  }
-
   // Generic CRUD methods
   async get<T = any>(url: string, params?: any): Promise<T> {
     let endpoint = url
-
     if (params) {
       const searchParams = new URLSearchParams(params).toString()
       endpoint += `?${searchParams}`
     }
-
     return this.request<T>(endpoint)
   }
 

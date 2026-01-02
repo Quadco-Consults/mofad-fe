@@ -14,9 +14,13 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
+  isMfaRequired: boolean
+  pendingEmail: string | null
+  forcePasswordReset: boolean
 
   // Actions
-  login: (credentials: LoginForm) => Promise<void>
+  login: (credentials: LoginForm) => Promise<{ requiresMfa?: boolean; forcePasswordReset?: boolean }>
+  verifyMfa: (totp: string) => Promise<void>
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
   clearError: () => void
@@ -29,20 +33,49 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      isMfaRequired: false,
+      pendingEmail: null,
+      forcePasswordReset: false,
 
       login: async (credentials: LoginForm) => {
-        set({ isLoading: true, error: null })
+        set({ isLoading: true, error: null, isMfaRequired: false, pendingEmail: null })
         try {
           const response = await api.login(credentials)
-          const user = response.user || response.data?.user
 
-          if (user) {
+          // Check if MFA is required
+          if (response.is_mfa_required) {
+            set({
+              isLoading: false,
+              isMfaRequired: true,
+              pendingEmail: credentials.email,
+              forcePasswordReset: response.force_password_reset,
+            })
+            return { requiresMfa: true }
+          }
+
+          // Check if force password reset is required
+          if (response.force_password_reset) {
+            set({
+              isLoading: false,
+              forcePasswordReset: true,
+              pendingEmail: credentials.email,
+            })
+            return { forcePasswordReset: true }
+          }
+
+          // Login successful - user is authenticated
+          const user = response.user
+          if (user && user.id) {
             set({
               user,
               isAuthenticated: true,
               isLoading: false,
               error: null,
+              isMfaRequired: false,
+              pendingEmail: null,
+              forcePasswordReset: false,
             })
+            return {}
           } else {
             throw new Error('Invalid response from server')
           }
@@ -52,6 +85,40 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
             isLoading: false,
             error: error.message || 'Login failed',
+            isMfaRequired: false,
+            pendingEmail: null,
+          })
+          throw error
+        }
+      },
+
+      verifyMfa: async (totp: string) => {
+        const { pendingEmail } = get()
+        if (!pendingEmail) {
+          throw new Error('No pending MFA verification')
+        }
+
+        set({ isLoading: true, error: null })
+        try {
+          const response = await apiClient.verifyMFA(pendingEmail, totp)
+          const user = response.user
+
+          if (user && user.id) {
+            set({
+              user,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+              isMfaRequired: false,
+              pendingEmail: null,
+            })
+          } else {
+            throw new Error('MFA verification failed')
+          }
+        } catch (error: any) {
+          set({
+            isLoading: false,
+            error: error.message || 'MFA verification failed',
           })
           throw error
         }
@@ -69,6 +136,9 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
             isLoading: false,
             error: null,
+            isMfaRequired: false,
+            pendingEmail: null,
+            forcePasswordReset: false,
           })
         }
       },
@@ -80,30 +150,39 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: null,
             isAuthenticated: false,
-            isLoading: false
+            isLoading: false,
+            isMfaRequired: false,
+            pendingEmail: null,
+            forcePasswordReset: false,
           })
           return
         }
 
         set({ isLoading: true })
         try {
-          const response = await api.getUser()
-          const user = response.user || response.data || response
+          const user = await api.getUser()
 
           set({
             user,
             isAuthenticated: true,
             isLoading: false,
             error: null,
+            isMfaRequired: false,
+            pendingEmail: null,
+            forcePasswordReset: false,
           })
         } catch (error) {
           // Token is invalid or expired
           localStorage.removeItem('auth_token')
+          localStorage.removeItem('refresh_token')
           set({
             user: null,
             isAuthenticated: false,
             isLoading: false,
             error: null,
+            isMfaRequired: false,
+            pendingEmail: null,
+            forcePasswordReset: false,
           })
         }
       },
@@ -117,6 +196,9 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        isMfaRequired: state.isMfaRequired,
+        pendingEmail: state.pendingEmail,
+        forcePasswordReset: state.forcePasswordReset,
       }),
     }
   )
