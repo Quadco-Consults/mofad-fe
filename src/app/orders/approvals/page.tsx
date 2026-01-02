@@ -28,7 +28,9 @@ interface Approval {
   description: string
   amount: number
   requested_by: string
-  department: string
+  customer_name?: string // For PRF (customer orders)
+  supplier_name?: string // For PRO (supplier orders)
+  department?: string // For internal processes
   priority: 'low' | 'medium' | 'high' | 'urgent'
   created_at: string
   current_level: number
@@ -276,12 +278,26 @@ export default function ApprovalsPage() {
                               <p className="font-medium">{approval.type}</p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground">Requested By</p>
-                              <p className="font-medium">{approval.requested_by}</p>
+                              <p className="text-muted-foreground">
+                                {approval.type === 'PRF' ? 'Customer' :
+                                 approval.type === 'PRO' ? 'Supplier' : 'Requested By'}
+                              </p>
+                              <p className="font-medium">
+                                {approval.type === 'PRF' ? approval.customer_name :
+                                 approval.type === 'PRO' ? approval.supplier_name :
+                                 approval.requested_by}
+                              </p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground">Department</p>
-                              <p className="font-medium">{approval.department}</p>
+                              <p className="text-muted-foreground">
+                                {approval.type === 'PRF' ? 'Sales Rep' :
+                                 approval.type === 'PRO' ? 'Procurement' : 'Department'}
+                              </p>
+                              <p className="font-medium">
+                                {approval.type === 'PRF' ? approval.requested_by :
+                                 approval.type === 'PRO' ? approval.requested_by :
+                                 approval.department}
+                              </p>
                             </div>
                             <div>
                               <p className="text-muted-foreground">Submitted</p>

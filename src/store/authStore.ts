@@ -77,14 +77,16 @@ export const useAuthStore = create<AuthState>()(
             })
             return {}
           } else {
-            throw new Error('Invalid response from server')
+            throw new Error('Invalid user data received from server')
           }
         } catch (error: any) {
+          const errorMessage = error?.message || 'Login failed'
+
           set({
             user: null,
             isAuthenticated: false,
             isLoading: false,
-            error: error.message || 'Login failed',
+            error: errorMessage,
             isMfaRequired: false,
             pendingEmail: null,
           })

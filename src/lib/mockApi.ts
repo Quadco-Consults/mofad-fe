@@ -439,6 +439,334 @@ class MockApiClient {
     ]
   }
 
+  getMockSuppliersData() {
+    return [
+      {
+        id: 1,
+        name: 'NNPC Retail Ltd',
+        email: 'supply@nnpcretail.com',
+        phone: '+234-901-234-5678',
+        address: '123 Herbert Macaulay Way, Central Business District, Abuja',
+        contact_person: 'Mr. Adamu Mohammed',
+        contact_phone: '+234-803-555-0001',
+        payment_terms: 'NET 30',
+        credit_limit: 50000000,
+        current_balance: 12500000,
+        supplier_type: 'Primary',
+        products_supplied: ['PMS (Petrol)', 'AGO (Diesel)', 'DPK (Kerosene)'],
+        rating: 4.8,
+        status: 'active',
+        last_order_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        total_orders_ytd: 25,
+        total_value_ytd: 125000000,
+        created_at: new Date(Date.now() - 1095 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 2,
+        name: 'Total Energies Nigeria',
+        email: 'procurement@totalenergies.ng',
+        phone: '+234-701-800-9000',
+        address: '16 Broad Street, Victoria Island, Lagos',
+        contact_person: 'Mrs. Florence Okafor',
+        contact_phone: '+234-805-666-0002',
+        payment_terms: 'NET 15',
+        credit_limit: 25000000,
+        current_balance: 4500000,
+        supplier_type: 'Premium',
+        products_supplied: ['Engine Oil SAE 20W-50', 'Engine Oil SAE 10W-30', 'Brake Fluid DOT-3'],
+        rating: 4.9,
+        status: 'active',
+        last_order_date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+        total_orders_ytd: 18,
+        total_value_ytd: 45000000,
+        created_at: new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 3,
+        name: 'Shell Nigeria Ltd',
+        email: 'orders@shell.ng',
+        phone: '+234-802-400-7000',
+        address: '21A Kofo Abayomi Street, Victoria Island, Lagos',
+        contact_person: 'Mr. David Chen',
+        contact_phone: '+234-807-777-0003',
+        payment_terms: 'NET 30',
+        credit_limit: 30000000,
+        current_balance: 8900000,
+        supplier_type: 'Premium',
+        products_supplied: ['Engine Oil SAE 10W-30', 'Gear Oil SAE 80W-90', 'Fuel System Cleaner'],
+        rating: 4.7,
+        status: 'active',
+        last_order_date: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString(),
+        total_orders_ytd: 15,
+        total_value_ytd: 32000000,
+        created_at: new Date(Date.now() - 912 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 4,
+        name: 'Mobil Oil Nigeria',
+        email: 'supply@mobiloil.ng',
+        phone: '+234-803-500-8000',
+        address: '54 Marina Street, Lagos Island, Lagos',
+        contact_person: 'Engr. Kemi Adebayo',
+        contact_phone: '+234-809-888-0004',
+        payment_terms: 'NET 45',
+        credit_limit: 20000000,
+        current_balance: 6200000,
+        supplier_type: 'Standard',
+        products_supplied: ['Gear Oil SAE 80W-90', 'Engine Oil Additive', 'Radiator Coolant'],
+        rating: 4.6,
+        status: 'active',
+        last_order_date: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
+        total_orders_ytd: 12,
+        total_value_ytd: 18500000,
+        created_at: new Date(Date.now() - 1460 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 5,
+        name: 'Gas Plus Ltd',
+        email: 'sales@gasplus.ng',
+        phone: '+234-804-600-9000',
+        address: '89 Allen Avenue, Ikeja, Lagos',
+        contact_person: 'Mr. Chukwuma Obi',
+        contact_phone: '+234-811-999-0005',
+        payment_terms: 'Cash on Delivery',
+        credit_limit: 15000000,
+        current_balance: 2100000,
+        supplier_type: 'Specialized',
+        products_supplied: ['Liquefied Petroleum Gas (LPG)'],
+        rating: 4.4,
+        status: 'active',
+        last_order_date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+        total_orders_ytd: 24,
+        total_value_ytd: 28000000,
+        created_at: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 6,
+        name: 'Valvoline Nigeria',
+        email: 'procurement@valvoline.ng',
+        phone: '+234-805-700-1000',
+        address: '12 Isaac John Street, Ikeja GRA, Lagos',
+        contact_person: 'Dr. Sarah Johnson',
+        contact_phone: '+234-813-111-0006',
+        payment_terms: 'NET 60',
+        credit_limit: 18000000,
+        current_balance: 3400000,
+        supplier_type: 'Standard',
+        products_supplied: ['Brake Fluid DOT-3', 'Engine Oil Additive'],
+        rating: 4.5,
+        status: 'active',
+        last_order_date: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString(),
+        total_orders_ytd: 9,
+        total_value_ytd: 12800000,
+        created_at: new Date(Date.now() - 548 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    ]
+  }
+
+  getMockSupplierProductsData() {
+    return [
+      // NNPC Retail Ltd Products
+      {
+        id: 1,
+        supplier_id: 1,
+        supplier_name: 'NNPC Retail Ltd',
+        product_name: 'Premium Motor Spirit (PMS)',
+        product_code: 'PMS-001',
+        category: 'Fuel',
+        unit_type: 'Litres',
+        supplier_price: 580,
+        current_market_price: 617,
+        minimum_order_quantity: 10000,
+        lead_time_days: 7,
+        availability_status: 'available',
+        quality_grade: 'Premium',
+        specifications: 'Octane Rating: 91, Sulphur Content: < 150ppm',
+        last_updated: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 2,
+        supplier_id: 1,
+        supplier_name: 'NNPC Retail Ltd',
+        product_name: 'Automotive Gas Oil (AGO)',
+        product_code: 'AGO-001',
+        category: 'Fuel',
+        unit_type: 'Litres',
+        supplier_price: 795,
+        current_market_price: 850,
+        minimum_order_quantity: 8000,
+        lead_time_days: 5,
+        availability_status: 'available',
+        quality_grade: 'Standard',
+        specifications: 'Cetane Number: 51, Sulphur Content: < 10ppm',
+        last_updated: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 3,
+        supplier_id: 1,
+        supplier_name: 'NNPC Retail Ltd',
+        product_name: 'Dual Purpose Kerosene (DPK)',
+        product_code: 'DPK-001',
+        category: 'Fuel',
+        unit_type: 'Litres',
+        supplier_price: 710,
+        current_market_price: 750,
+        minimum_order_quantity: 5000,
+        lead_time_days: 3,
+        availability_status: 'limited',
+        quality_grade: 'Standard',
+        specifications: 'Flash Point: > 38°C, Smoke Point: > 25mm',
+        last_updated: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString()
+      },
+
+      // Total Energies Nigeria Products
+      {
+        id: 4,
+        supplier_id: 2,
+        supplier_name: 'Total Energies Nigeria',
+        product_name: 'Engine Oil SAE 20W-50',
+        product_code: 'EO-20W50',
+        category: 'Lubricants',
+        unit_type: 'Litres',
+        supplier_price: 3200,
+        current_market_price: 4500,
+        minimum_order_quantity: 100,
+        lead_time_days: 14,
+        availability_status: 'available',
+        quality_grade: 'Premium',
+        specifications: 'API SN/CF, Viscosity Index: 120',
+        last_updated: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 5,
+        supplier_id: 2,
+        supplier_name: 'Total Energies Nigeria',
+        product_name: 'Brake Fluid DOT-3',
+        product_code: 'BF-DOT3',
+        category: 'Lubricants',
+        unit_type: 'Litres',
+        supplier_price: 1600,
+        current_market_price: 2200,
+        minimum_order_quantity: 50,
+        lead_time_days: 10,
+        availability_status: 'available',
+        quality_grade: 'Standard',
+        specifications: 'DOT 3 Specification, Dry Boiling Point: > 205°C',
+        last_updated: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()
+      },
+
+      // Shell Nigeria Ltd Products
+      {
+        id: 6,
+        supplier_id: 3,
+        supplier_name: 'Shell Nigeria Ltd',
+        product_name: 'Engine Oil SAE 10W-30',
+        product_code: 'EO-10W30',
+        category: 'Lubricants',
+        unit_type: 'Litres',
+        supplier_price: 3800,
+        current_market_price: 5200,
+        minimum_order_quantity: 80,
+        lead_time_days: 21,
+        availability_status: 'available',
+        quality_grade: 'Premium',
+        specifications: 'API SP, ACEA A3/B4, Viscosity Index: 155',
+        last_updated: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 7,
+        supplier_id: 3,
+        supplier_name: 'Shell Nigeria Ltd',
+        product_name: 'Fuel System Cleaner',
+        product_code: 'FSC-001',
+        category: 'Additives',
+        unit_type: 'Litres',
+        supplier_price: 900,
+        current_market_price: 1500,
+        minimum_order_quantity: 25,
+        lead_time_days: 7,
+        availability_status: 'available',
+        quality_grade: 'Premium',
+        specifications: 'Detergent/Dispersant Package, Corrosion Inhibitor',
+        last_updated: new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString()
+      },
+
+      // Mobil Oil Nigeria Products
+      {
+        id: 8,
+        supplier_id: 4,
+        supplier_name: 'Mobil Oil Nigeria',
+        product_name: 'Gear Oil SAE 80W-90',
+        product_code: 'GO-80W90',
+        category: 'Lubricants',
+        unit_type: 'Litres',
+        supplier_price: 2900,
+        current_market_price: 3800,
+        minimum_order_quantity: 60,
+        lead_time_days: 18,
+        availability_status: 'available',
+        quality_grade: 'Standard',
+        specifications: 'API GL-4, Extreme Pressure Additives',
+        last_updated: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 9,
+        supplier_id: 4,
+        supplier_name: 'Mobil Oil Nigeria',
+        product_name: 'Radiator Coolant',
+        product_code: 'RC-001',
+        category: 'Additives',
+        unit_type: 'Litres',
+        supplier_price: 1200,
+        current_market_price: 1800,
+        minimum_order_quantity: 40,
+        lead_time_days: 12,
+        availability_status: 'available',
+        quality_grade: 'Standard',
+        specifications: 'Ethylene Glycol Base, Anti-Corrosion Inhibitors',
+        last_updated: new Date(Date.now() - 120 * 60 * 60 * 1000).toISOString()
+      },
+
+      // Gas Plus Ltd Products
+      {
+        id: 10,
+        supplier_id: 5,
+        supplier_name: 'Gas Plus Ltd',
+        product_name: 'Liquefied Petroleum Gas (LPG)',
+        product_code: 'LPG-001',
+        category: 'Fuel',
+        unit_type: 'Kg',
+        supplier_price: 1100,
+        current_market_price: 1200,
+        minimum_order_quantity: 500,
+        lead_time_days: 3,
+        availability_status: 'available',
+        quality_grade: 'Standard',
+        specifications: 'Propane/Butane Mix 60/40, Purity > 95%',
+        last_updated: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+      },
+
+      // Valvoline Nigeria Products
+      {
+        id: 11,
+        supplier_id: 6,
+        supplier_name: 'Valvoline Nigeria',
+        product_name: 'Engine Oil Additive',
+        product_code: 'EOA-001',
+        category: 'Additives',
+        unit_type: 'Litres',
+        supplier_price: 1800,
+        current_market_price: 2800,
+        minimum_order_quantity: 20,
+        lead_time_days: 15,
+        availability_status: 'available',
+        quality_grade: 'Premium',
+        specifications: 'Zinc Dialkyl Dithiophosphate (ZDDP), Friction Modifiers',
+        last_updated: new Date(Date.now() - 144 * 60 * 60 * 1000).toISOString()
+      }
+    ]
+  }
+
   // Generic mock methods
   async get<T = any>(url: string, params?: any): Promise<T> {
     await delay(800)
@@ -497,6 +825,12 @@ class MockApiClient {
     }
     if (url.includes('channels/lubebays')) {
       return this.getMockLubebaysData() as T
+    }
+    if (url.includes('suppliers/products')) {
+      return this.getMockSupplierProductsData() as T
+    }
+    if (url.includes('suppliers')) {
+      return this.getMockSuppliersData() as T
     }
 
     // Default empty response

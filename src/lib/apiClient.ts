@@ -299,11 +299,10 @@ class ApiClient {
       id: response.id,
       name: response.full_name || `${response.first_name} ${response.last_name}`.trim(),
       email: response.email,
-      email_verified_at: undefined, // We don't have this in the response
+      email_verified_at: undefined,
       created_at: '',
       updated_at: '',
       permissions: [],
-      // Convert string role to Role object if present
       roles: response.role ? [{ id: 0, name: response.role, guard_name: 'web' }] : [],
     }
   }
