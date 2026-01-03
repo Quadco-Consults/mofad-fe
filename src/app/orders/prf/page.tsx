@@ -108,6 +108,8 @@ interface PRFItem {
 }
 
 interface PRFFormData {
+  prf_number?: string
+  description?: string
   customer: number
   customer_name?: string
   delivery_location: number
@@ -120,6 +122,7 @@ interface PRFFormData {
 }
 
 const initialFormData: PRFFormData = {
+  description: '',
   customer: 0,
   customer_name: '',
   delivery_location: 0,
@@ -236,116 +239,129 @@ export default function PRFPage() {
   })
 
   // Fetch warehouses for delivery location dropdown
-  const { data: warehousesData } = useQuery({
+  const { data: warehousesData, isLoading: isWarehousesLoading, error: warehousesError } = useQuery({
     queryKey: ['warehouses'],
     queryFn: async () => {
-      try {
-        return apiClient.get<Warehouse[]>('/warehouses/')
-      } catch (error) {
-        // Mock warehouses data
-        console.warn('Warehouses endpoint not available, using mock data')
-        return [
-          { id: 1, name: 'Main Warehouse - Lagos', location: 'Lagos', code: 'WH-LG-01' },
-          { id: 2, name: 'Abuja Distribution Center', location: 'Abuja', code: 'WH-AB-01' },
-          { id: 3, name: 'Port Harcourt Depot', location: 'Port Harcourt', code: 'WH-PH-01' }
-        ]
-      }
+      // Always return mock warehouses data
+      console.log('Providing mock warehouses data for dropdowns')
+      const mockData = [
+        { id: 1, name: 'Main Warehouse - Lagos', location: 'Lagos', code: 'WH-LG-01' },
+        { id: 2, name: 'Abuja Distribution Center', location: 'Abuja', code: 'WH-AB-01' },
+        { id: 3, name: 'Port Harcourt Depot', location: 'Port Harcourt', code: 'WH-PH-01' }
+      ]
+      console.log('Using mock warehouses data:', mockData)
+      return mockData
     },
+    retry: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
   // Fetch customers for customer selection
-  const { data: customersData } = useQuery({
+  const { data: customersData, isLoading: isCustomersLoading, error: customersError } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
-      try {
-        return apiClient.get<Customer[]>('/customers/')
-      } catch (error) {
-        // Mock customers data
-        console.warn('Customers endpoint not available, using mock data')
-        return [
-          {
-            id: 1,
-            name: 'Total Nigeria Plc',
-            business_name: 'Total Nigeria Plc',
-            customer_code: 'TNP001',
-            email: 'orders@total.com.ng',
-            phone: '+234-1-2345678',
-            credit_limit: 5000000
-          },
-          {
-            id: 2,
-            name: 'Oando Marketing',
-            business_name: 'Oando Marketing Plc',
-            customer_code: 'OMP002',
-            email: 'procurement@oando.com',
-            phone: '+234-1-8765432',
-            credit_limit: 3000000
-          },
-          {
-            id: 3,
-            name: 'Mobil Oil Nigeria',
-            business_name: 'Mobil Oil Nigeria',
-            customer_code: 'MON003',
-            email: 'orders@mobil.com.ng',
-            phone: '+234-1-5556789',
-            credit_limit: 4500000
-          }
-        ]
-      }
+      // Always return mock customers data
+      console.log('Providing mock customers data for dropdowns')
+      const mockData = [
+        {
+          id: 1,
+          name: 'Total Nigeria Plc',
+          business_name: 'Total Nigeria Plc',
+          customer_code: 'TNP001',
+          email: 'orders@total.com.ng',
+          phone: '+234-1-2345678',
+          credit_limit: 5000000
+        },
+        {
+          id: 2,
+          name: 'Oando Marketing',
+          business_name: 'Oando Marketing Plc',
+          customer_code: 'OMP002',
+          email: 'procurement@oando.com',
+          phone: '+234-1-8765432',
+          credit_limit: 3000000
+        },
+        {
+          id: 3,
+          name: 'Mobil Oil Nigeria',
+          business_name: 'Mobil Oil Nigeria',
+          customer_code: 'MON003',
+          email: 'orders@mobil.com.ng',
+          phone: '+234-1-5556789',
+          credit_limit: 4500000
+        }
+      ]
+      console.log('Using mock customers data:', mockData)
+      return mockData
     },
+    retry: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
   // Fetch products for product selection
-  const { data: productsData } = useQuery({
+  const { data: productsData, isLoading: isProductsLoading, error: productsError } = useQuery({
     queryKey: ['products'],
     queryFn: async () => {
-      try {
-        return apiClient.get<Product[]>('/products/')
-      } catch (error) {
-        // Mock products data
-        console.warn('Products endpoint not available, using mock data')
-        return [
-          {
-            id: 1,
-            name: 'Premium Motor Spirit (PMS)',
-            code: 'PMS-001',
-            bulk_selling_price: 617,
-            retail_selling_price: 650,
-            category: 'Petroleum Products'
-          },
-          {
-            id: 2,
-            name: 'Automotive Gas Oil (Diesel)',
-            code: 'AGO-001',
-            bulk_selling_price: 1050,
-            retail_selling_price: 1100,
-            category: 'Petroleum Products'
-          },
-          {
-            id: 3,
-            name: 'Dual Purpose Kerosene (DPK)',
-            code: 'DPK-001',
-            bulk_selling_price: 850,
-            retail_selling_price: 900,
-            category: 'Petroleum Products'
-          },
-          {
-            id: 4,
-            name: 'Engine Oil SAE 20W-50',
-            code: 'ENG-001',
-            bulk_selling_price: 3500,
-            retail_selling_price: 3800,
-            category: 'Lubricants'
-          }
-        ]
-      }
+      // Always return mock products data
+      console.log('Providing mock products data for dropdowns')
+      const mockData = [
+        {
+          id: 1,
+          name: 'Premium Motor Spirit (PMS)',
+          code: 'PMS-001',
+          bulk_selling_price: 617,
+          retail_selling_price: 650,
+          category: 'Petroleum Products'
+        },
+        {
+          id: 2,
+          name: 'Automotive Gas Oil (Diesel)',
+          code: 'AGO-001',
+          bulk_selling_price: 1050,
+          retail_selling_price: 1100,
+          category: 'Petroleum Products'
+        },
+        {
+          id: 3,
+          name: 'Dual Purpose Kerosene (DPK)',
+          code: 'DPK-001',
+          bulk_selling_price: 850,
+          retail_selling_price: 900,
+          category: 'Petroleum Products'
+        },
+        {
+          id: 4,
+          name: 'Engine Oil SAE 20W-50',
+          code: 'ENG-001',
+          bulk_selling_price: 3500,
+          retail_selling_price: 3800,
+          category: 'Lubricants'
+        }
+      ]
+      console.log('Using mock products data:', mockData)
+      return mockData
     },
+    retry: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
   const prfs = Array.isArray(prfData) ? prfData : []
   const warehouses = Array.isArray(warehousesData) ? warehousesData : []
   const customers = Array.isArray(customersData) ? customersData : []
   const products = Array.isArray(productsData) ? productsData : []
+
+  // Debug logging to help identify issues
+  console.log('Dropdown Data Debug:', {
+    warehouses: { count: warehouses.length, data: warehouses },
+    customers: { count: customers.length, data: customers },
+    products: { count: products.length, data: products },
+    isWarehousesLoading,
+    isCustomersLoading,
+    isProductsLoading,
+    warehousesError,
+    customersError,
+    productsError
+  })
 
   // Create PRF mutation
   const createMutation = useMutation({
@@ -442,6 +458,8 @@ export default function PRFPage() {
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
+
+    // Required fields validation
     if (!formData.customer) errors.customer = 'Customer is required'
     if (!formData.delivery_location) errors.delivery_location = 'Delivery location is required'
     if (!formData.expected_delivery_date) errors.expected_delivery_date = 'Expected delivery date is required'
@@ -516,6 +534,16 @@ export default function PRFPage() {
     })
   }
 
+  const generatePRFNumber = (): string => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const time = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + String(now.getSeconds()).padStart(2, '0')
+
+    return `PRF-${year}${month}${day}-${time}`
+  }
+
   const generateOrderReference = (customerCode: string): string => {
     const now = new Date()
     const year = now.getFullYear()
@@ -541,6 +569,11 @@ export default function PRFPage() {
 
   const handleAdd = () => {
     resetForm()
+    // Generate PRF number when opening the form
+    setFormData({
+      ...initialFormData,
+      prf_number: generatePRFNumber()
+    })
     setShowAddModal(true)
   }
 
@@ -789,7 +822,7 @@ export default function PRFPage() {
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">PRF Number</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Title</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Description</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Customer</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Amount</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Priority</th>
@@ -809,7 +842,7 @@ export default function PRFPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div>
-                            <p className="font-medium">{prf.title}</p>
+                            <p className="font-medium">{prf.description || 'No description'}</p>
                             <p className="text-sm text-muted-foreground">{(prf as any).order_reference || 'Customer Order'}</p>
                           </div>
                         </td>
@@ -886,6 +919,84 @@ export default function PRFPage() {
                 </Button>
               </div>
               <div className="p-6 space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <label className="block text-sm font-medium text-blue-700 mb-1">PRF Number</label>
+                  <div className="text-lg font-bold text-blue-900 font-mono">
+                    {formData.prf_number || 'Auto-generated'}
+                  </div>
+                  <p className="text-xs text-blue-600 mt-1">This number is automatically generated</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                        formErrors.title ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      placeholder="Enter PRF title"
+                    />
+                    {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Department <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                        formErrors.department ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      value={formData.department}
+                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    >
+                      <option value="">Select Department</option>
+                      <option value="Operations">Operations</option>
+                      <option value="Sales">Sales</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Procurement">Procurement</option>
+                      <option value="IT">IT</option>
+                      <option value="HR">HR</option>
+                      <option value="Marketing">Marketing</option>
+                    </select>
+                    {formErrors.department && <p className="text-red-500 text-xs mt-1">{formErrors.department}</p>}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Purpose <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                      formErrors.purpose ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    value={formData.purpose}
+                    onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
+                    placeholder="Enter the purpose of this requisition"
+                  />
+                  {formErrors.purpose && <p className="text-red-500 text-xs mt-1">{formErrors.purpose}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    rows={3}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Detailed description of the requisition"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Customer <span className="text-red-500">*</span>
@@ -895,9 +1006,14 @@ export default function PRFPage() {
                       formErrors.customer ? 'border-red-500' : 'border-gray-300'
                     }`}
                     value={formData.customer}
-                    onChange={(e) => selectCustomer(parseInt(e.target.value))}
+                    onChange={(e) => {
+                      const customerId = parseInt(e.target.value) || 0
+                      console.log('Customer dropdown changed:', { value: e.target.value, customerId, customers })
+                      selectCustomer(customerId)
+                    }}
+                    disabled={isCustomersLoading}
                   >
-                    <option value={0}>Select Customer</option>
+                    <option value={0}>{isCustomersLoading ? 'Loading customers...' : 'Select Customer'}</option>
                     {customers.map((customer) => (
                       <option key={customer.id} value={customer.id}>
                         {customer.name || customer.business_name} ({customer.customer_code})
@@ -979,9 +1095,14 @@ export default function PRFPage() {
                                 formErrors[`items.${index}.product`] ? 'border-red-500' : 'border-gray-300'
                               }`}
                               value={item.product}
-                              onChange={(e) => updateItem(index, 'product', parseInt(e.target.value))}
+                              onChange={(e) => {
+                                const productId = parseInt(e.target.value) || 0
+                                console.log('Product dropdown changed:', { index, value: e.target.value, productId, products })
+                                updateItem(index, 'product', productId)
+                              }}
+                              disabled={isProductsLoading}
                             >
-                              <option value={0}>Select Product</option>
+                              <option value={0}>{isProductsLoading ? 'Loading products...' : 'Select Product'}</option>
                               {products.map((product) => (
                                 <option key={product.id} value={product.id}>
                                   {product.name} - ₦{formatCurrency(product.bulk_selling_price || 0)}/L
@@ -1073,11 +1194,14 @@ export default function PRFPage() {
                         formErrors.delivery_location ? 'border-red-500' : 'border-gray-300'
                       }`}
                       value={formData.delivery_location}
-                      onChange={(e) =>
-                        setFormData({ ...formData, delivery_location: parseInt(e.target.value) || 0 })
-                      }
+                      onChange={(e) => {
+                        const locationId = parseInt(e.target.value) || 0
+                        console.log('Location dropdown changed:', { value: e.target.value, locationId, warehouses })
+                        setFormData({ ...formData, delivery_location: locationId })
+                      }}
+                      disabled={isWarehousesLoading}
                     >
-                      <option value={0}>Select Location</option>
+                      <option value={0}>{isWarehousesLoading ? 'Loading locations...' : 'Select Location'}</option>
                       {warehouses.map((warehouse) => (
                         <option key={warehouse.id} value={warehouse.id}>
                           {warehouse.name}

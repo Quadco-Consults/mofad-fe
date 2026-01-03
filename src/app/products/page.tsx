@@ -37,6 +37,7 @@ const getCategoryIcon = (category: string) => {
     case 'fuel':
       return <Fuel className="w-5 h-5 text-red-500" />
     case 'lubricant':
+    case 'engine_oil':
       return <Droplets className="w-5 h-5 text-blue-500" />
     case 'additive':
       return <Settings className="w-5 h-5 text-green-500" />
@@ -53,6 +54,7 @@ const getCategoryLabel = (category: string) => {
   const labels: Record<string, string> = {
     'fuel': 'Fuel Products',
     'lubricant': 'Lubricants',
+    'engine_oil': 'Engine Oils',
     'additive': 'Additives',
     'service': 'Services',
     'equipment': 'Equipment',
@@ -128,7 +130,7 @@ export default function ProductsPage() {
     queryFn: () => apiClient.get<Product[]>('/products/low-stock/'),
   })
 
-  const products = Array.isArray(productsData) ? productsData : []
+  const products = productsData?.results || []
 
   // Create product mutation
   const createMutation = useMutation({
@@ -305,7 +307,7 @@ export default function ProductsPage() {
   const lowStockCount = lowStockProducts?.length || 0
   const categories = Array.from(new Set(products.map(p => p.category))).length
   const avgMargin = products.length > 0
-    ? products.reduce((sum, p) => sum + calculateProfitMargin(p.direct_sales_price, p.cost_price), 0) / products.length
+    ? products.reduce((sum, p) => sum + calculateProfitMargin(parseFloat(p.retail_selling_price) || parseFloat(p.direct_sales_price) || 0, parseFloat(p.cost_price)), 0) / products.length
     : 0
 
   // Form Input component
@@ -468,6 +470,7 @@ export default function ProductsPage() {
                   <option value="all">All Categories</option>
                   <option value="fuel">Fuel Products</option>
                   <option value="lubricant">Lubricants</option>
+                  <option value="engine_oil">Engine Oils</option>
                   <option value="additive">Additives</option>
                   <option value="service">Services</option>
                   <option value="equipment">Equipment</option>
@@ -506,130 +509,160 @@ export default function ProductsPage() {
           </Card>
         )}
 
-        {/* Products Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {isLoading ? (
-            [...Array(9)].map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
-                  <div className="animate-pulse space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+        {/* Products Table */}
+        <Card>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="p-6">
+                <div className="animate-pulse space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center space-x-4 py-3">
+                      <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
                       <div className="flex-1">
-                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                        <div className="h-3 bg-gray-200 rounded w-1/2 mt-2"></div>
+                        <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/4 mt-2"></div>
                       </div>
+                      <div className="w-20 h-4 bg-gray-200 rounded"></div>
+                      <div className="w-24 h-4 bg-gray-200 rounded"></div>
+                      <div className="w-16 h-4 bg-gray-200 rounded"></div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="h-3 bg-gray-200 rounded"></div>
-                      <div className="h-3 bg-gray-200 rounded"></div>
-                      <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : products.length === 0 ? (
-            <div className="col-span-full">
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-                  <p className="text-gray-500 mb-4">
-                    {searchTerm || categoryFilter !== 'all' || statusFilter !== 'all'
-                      ? 'Try adjusting your search or filters'
-                      : 'Get started by adding your first product'}
-                  </p>
-                  <Button className="mofad-btn-primary" onClick={handleAdd}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Product
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            products.map((product) => (
-              <Card key={product.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                        {getCategoryIcon(product.category)}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-lg">{product.name}</h3>
-                        <p className="text-sm text-muted-foreground font-mono">{product.code}</p>
-                      </div>
-                    </div>
-                    {getStatusBadge(product.is_active)}
-                  </div>
-
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Category</span>
-                      <span className="text-sm font-medium">{getCategoryLabel(product.category)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Direct Sales Price</span>
-                      <span className="text-sm font-bold text-primary">{formatCurrency(product.direct_sales_price)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Cost Price</span>
-                      <span className="text-sm font-medium">{formatCurrency(product.cost_price)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Profit Margin</span>
-                      <span className="text-sm font-bold text-green-600">
-                        {calculateProfitMargin(product.direct_sales_price, product.cost_price).toFixed(1)}%
-                      </span>
-                    </div>
-                    {product.brand && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Brand</span>
-                        <span className="text-sm font-medium">{product.brand}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="border-t pt-3 mb-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Unit: {product.unit_of_measure}</span>
-                      <span className="text-muted-foreground">
-                        Min Stock: {product.minimum_stock_level}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleView(product)}>
-                      <Eye className="w-4 h-4 mr-2" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(product)}>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleStatus(product)}
-                      disabled={activateMutation.isPending || deactivateMutation.isPending}
-                    >
-                      {product.is_active ? (
-                        <PowerOff className="w-4 h-4 text-yellow-600" />
-                      ) : (
-                        <Power className="w-4 h-4 text-green-600" />
-                      )}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(product)}>
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
+                  ))}
+                </div>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="p-12 text-center">
+                <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+                <p className="text-gray-500 mb-4">
+                  {searchTerm || categoryFilter !== 'all' || statusFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Get started by adding your first product'}
+                </p>
+                <Button className="mofad-btn-primary" onClick={handleAdd}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Product
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Product</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Code</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Category</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Brand</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Cost Price</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Retail Price</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Margin</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Stock</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {products.map((product) => (
+                      <tr key={product.id} className="hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                              {getCategoryIcon(product.category)}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{product.name}</div>
+                              <div className="text-sm text-gray-500">{product.viscosity_grade}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="font-mono text-sm text-gray-700">{product.code}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-700">{getCategoryLabel(product.category)}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-700 capitalize">{product.brand || '-'}</span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="font-medium text-gray-900">
+                            {formatCurrency(parseFloat(product.cost_price))}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="font-bold text-primary">
+                            {formatCurrency(parseFloat(product.retail_selling_price) || parseFloat(product.direct_sales_price) || 0)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="font-bold text-green-600">
+                            {calculateProfitMargin(
+                              parseFloat(product.retail_selling_price) || parseFloat(product.direct_sales_price) || 0,
+                              parseFloat(product.cost_price)
+                            ).toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900">0</div>
+                            <div className="text-gray-500">Min: {product.minimum_stock_level}</div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {getStatusBadge(product.is_active)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleView(product)}
+                              title="View"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleEdit(product)}
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleToggleStatus(product)}
+                              disabled={activateMutation.isPending || deactivateMutation.isPending}
+                              title={product.is_active ? "Deactivate" : "Activate"}
+                            >
+                              {product.is_active ? (
+                                <PowerOff className="w-4 h-4 text-yellow-600" />
+                              ) : (
+                                <Power className="w-4 h-4 text-green-600" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleDelete(product)}
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Add Product Modal */}
         {showAddModal && (

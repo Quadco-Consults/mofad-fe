@@ -18,6 +18,7 @@ import {
   ArrowDownLeft,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Card, CardContent } from '@/components/ui/Card'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useToast } from '@/components/ui/Toast'
 import apiClient from '@/lib/apiClient'
@@ -407,150 +408,185 @@ function LodgementsPage() {
           <Button variant="outline">Generate Report</Button>
         </div>
 
-        {/* Lodgements Grid */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="mofad-card animate-pulse">
-                <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-                <div className="h-16 bg-gray-200 rounded mb-4"></div>
-                <div className="space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-full"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+        {/* Lodgements Table */}
+        <Card>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="p-6">
+                <div className="animate-pulse space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center space-x-4 py-3">
+                      <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/4 mt-2"></div>
+                      </div>
+                      <div className="w-20 h-4 bg-gray-200 rounded"></div>
+                      <div className="w-24 h-4 bg-gray-200 rounded"></div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {lodgements.map((lodgement) => (
-              <div key={lodgement.id} className="mofad-card">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">{lodgement.payment_number}</h3>
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(lodgement.status)}`}
-                      >
-                        {getStatusIcon(lodgement.status)}
-                        <span className="ml-1">{getStatusLabel(lodgement.status)}</span>
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2">{lodgement.description}</p>
-                    <div className="text-xs text-gray-500">
-                      {getPaymentMethodLabel(lodgement.payment_method)} | {formatDate(lodgement.payment_date)}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => handleView(lodgement)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    {lodgement.status === 'pending' && (
-                      <>
-                        <Button variant="ghost" size="sm" onClick={() => handleVerify(lodgement)}>
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(lodgement)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(lodgement)}
-                      className="text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Amount */}
-                <div className="text-center p-4 bg-primary-50 rounded-lg mb-4">
-                  <div className="flex items-center justify-center text-3xl font-bold text-primary-900 mb-1">
-                    <ArrowDownLeft className="h-6 w-6 mr-2 text-green-600" />
-                    {formatCurrency(lodgement.amount)}
-                  </div>
-                  <div className="text-sm text-primary-700">Lodgement Amount</div>
-                </div>
-
-                {/* Details */}
-                <div className="space-y-3 mb-4">
-                  {lodgement.supplier_name && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Depositor</span>
-                      <span className="font-medium text-gray-900">{lodgement.supplier_name}</span>
-                    </div>
-                  )}
-                  {lodgement.bank_account && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Bank Account</span>
-                      <span className="font-medium text-gray-900">{lodgement.bank_account}</span>
-                    </div>
-                  )}
-                  {lodgement.reference_number && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Reference</span>
-                      <span className="font-medium text-gray-900">{lodgement.reference_number}</span>
-                    </div>
-                  )}
-                  {lodgement.transaction_reference && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Transaction Ref</span>
-                      <span className="font-medium text-gray-900 text-sm">{lodgement.transaction_reference}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Verification Info */}
-                {lodgement.status === 'cleared' && lodgement.cleared_at && (
-                  <div className="p-3 bg-green-50 rounded-lg mb-4">
-                    <div className="text-sm text-green-800">
-                      Verified on {formatDate(lodgement.cleared_at)}
-                    </div>
-                  </div>
-                )}
-
-                {lodgement.status === 'bounced' && (
-                  <div className="p-3 bg-red-50 rounded-lg mb-4">
-                    <div className="text-sm text-red-800">
-                      <strong>Rejected:</strong> Payment did not clear
-                    </div>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex gap-2 pt-3 border-t border-gray-200">
-                  <Button variant="outline" className="flex-1" onClick={() => handleView(lodgement)}>
-                    View Details
-                  </Button>
-                  {lodgement.status === 'pending' && (
-                    <Button
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => handleVerify(lodgement)}
-                    >
-                      Verify
-                    </Button>
-                  )}
-                </div>
+            ) : lodgements.length === 0 ? (
+              <div className="p-12 text-center">
+                <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No lodgements found</h3>
+                <p className="text-gray-500 mb-4">
+                  {searchTerm || statusFilter !== 'all' || paymentMethodFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Get started by adding your first lodgement'}
+                </p>
+                <Button className="mofad-btn-primary" onClick={() => setShowAddModal(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Lodgement
+                </Button>
               </div>
-            ))}
-          </div>
-        )}
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Payment</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Description</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Amount</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Method</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Depositor</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Reference</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Date</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {lodgements.map((lodgement) => (
+                      <tr key={lodgement.id} className="hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                              <ArrowDownLeft className="w-4 h-4 text-green-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{lodgement.payment_number}</div>
+                              <div className="text-sm text-gray-500">ID: {lodgement.id}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-sm text-gray-900 max-w-[200px] truncate" title={lodgement.description}>
+                            {lodgement.description}
+                          </p>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="font-bold text-green-600 text-lg">
+                            {formatCurrency(lodgement.amount)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-700">
+                            {getPaymentMethodLabel(lodgement.payment_method)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div>
+                            {lodgement.supplier_name && (
+                              <div className="text-sm font-medium text-gray-900">{lodgement.supplier_name}</div>
+                            )}
+                            {lodgement.bank_account && (
+                              <div className="text-sm text-gray-500">{lodgement.bank_account}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="space-y-1">
+                            {lodgement.reference_number && (
+                              <div className="text-sm text-gray-900">{lodgement.reference_number}</div>
+                            )}
+                            {lodgement.transaction_reference && (
+                              <div className="text-sm text-gray-500 truncate max-w-[120px]" title={lodgement.transaction_reference}>
+                                {lodgement.transaction_reference}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Clock className="w-3 h-3 text-gray-400" />
+                            <span className="text-sm text-gray-600">
+                              {formatDate(lodgement.payment_date)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(lodgement.status)}`}>
+                              {getStatusIcon(lodgement.status)}
+                              <span className="ml-1">{getStatusLabel(lodgement.status)}</span>
+                            </span>
+                          </div>
+                          {lodgement.status === 'cleared' && lodgement.cleared_at && (
+                            <div className="text-xs text-green-600 mt-1">
+                              Verified {formatDate(lodgement.cleared_at)}
+                            </div>
+                          )}
+                          {lodgement.status === 'bounced' && (
+                            <div className="text-xs text-red-600 mt-1">
+                              Payment bounced
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              title="View Details"
+                              onClick={() => handleView(lodgement)}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {lodgement.status === 'pending' && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  title="Verify Payment"
+                                  onClick={() => handleVerify(lodgement)}
+                                >
+                                  <CheckCircle className="w-4 h-4 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  title="Edit Lodgement"
+                                  onClick={() => handleEdit(lodgement)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              title="Delete Lodgement"
+                              onClick={() => handleDelete(lodgement)}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        {!isLoading && lodgements.length === 0 && (
-          <div className="text-center py-12">
-            <Building className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No lodgements found matching your criteria.</p>
-            <Button className="mt-4 mofad-btn-primary" onClick={() => setShowAddModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Record First Lodgement
-            </Button>
-          </div>
-        )}
 
         {/* Add/Edit Lodgement Modal */}
         {(showAddModal || showEditModal) && (

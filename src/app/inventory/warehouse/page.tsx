@@ -246,120 +246,170 @@ export default function WarehouseInventoryPage() {
           </CardContent>
         </Card>
 
-        {/* Inventory Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {isLoading ? (
-            [...Array(6)].map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <div className="animate-pulse">
-                    <div className="h-40 bg-muted rounded-md"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            filteredInventory.map((item: WarehouseInventory) => (
-              <Card key={item.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      {getCategoryIcon(item.category)}
-                      <div>
-                        <h3 className="font-semibold text-lg">{item.product_name}</h3>
-                        <p className="text-sm text-muted-foreground">{item.product_code}</p>
+        {/* Inventory Table */}
+        <Card>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="p-6">
+                <div className="animate-pulse space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center space-x-4 py-3">
+                      <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/4 mt-2"></div>
                       </div>
+                      <div className="w-20 h-4 bg-gray-200 rounded"></div>
+                      <div className="w-24 h-4 bg-gray-200 rounded"></div>
                     </div>
-                    {getStockStatusBadge(item.stock_status)}
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* Stock Level Progress */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">Stock Level</span>
-                        <div className="flex items-center gap-1">
-                          {getStockStatusIcon(item.stock_status)}
-                          <span className="text-sm font-bold">{item.current_stock.toLocaleString()} {item.unit_type}</span>
-                        </div>
-                      </div>
-
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all ${
-                            item.stock_status === 'critical' ? 'bg-red-500' :
-                            item.stock_status === 'low' ? 'bg-yellow-500' :
-                            item.stock_status === 'overstock' ? 'bg-blue-500' :
-                            'bg-green-500'
-                          }`}
-                          style={{
-                            width: `${Math.min((item.current_stock / item.max_level) * 100, 100)}%`
-                          }}
-                        ></div>
-                      </div>
-
-                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                        <span>Reorder: {item.reorder_level.toLocaleString()}</span>
-                        <span>Max: {item.max_level.toLocaleString()}</span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Cost Value</p>
-                        <p className="font-semibold">{formatCurrency(item.cost_value)}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Retail Value</p>
-                        <p className="font-semibold text-green-600">{formatCurrency(item.retail_value)}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Location</p>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-muted-foreground" />
-                          <p className="font-medium text-xs">{item.location}</p>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Days of Supply</p>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-muted-foreground" />
-                          <p className={`font-semibold text-xs ${
-                            item.days_of_supply <= 7 ? 'text-red-600' :
-                            item.days_of_supply <= 14 ? 'text-yellow-600' :
-                            'text-green-600'
-                          }`}>
-                            {item.days_of_supply} days
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-t pt-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground">Last Updated</span>
-                        <span className="text-xs font-medium">
-                          {formatDateTime(item.last_updated).split(',')[0]}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Details
-                      </Button>
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Edit className="w-4 h-4 mr-2" />
-                        Adjust
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
+                  ))}
+                </div>
+              </div>
+            ) : filteredInventory.length === 0 ? (
+              <div className="p-12 text-center">
+                <Warehouse className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No inventory found</h3>
+                <p className="text-gray-500 mb-4">
+                  {searchTerm || categoryFilter !== 'all' || stockStatusFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Get started by adding items to your warehouse'}
+                </p>
+                <Button className="mofad-btn-primary">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Stock Adjustment
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Product</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Category</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Current Stock</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Stock Level</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Reorder Point</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Cost Value</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Retail Value</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Location</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Days Supply</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Last Updated</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredInventory.map((item: WarehouseInventory) => (
+                      <tr key={item.id} className="hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            {getCategoryIcon(item.category)}
+                            <div>
+                              <div className="font-medium text-gray-900">{item.product_name}</div>
+                              <div className="text-sm text-gray-500">{item.product_code}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-700">{item.category}</span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {getStockStatusIcon(item.stock_status)}
+                            <span className="font-bold text-gray-900">{item.current_stock.toLocaleString()}</span>
+                            <span className="text-sm text-gray-500">{item.unit_type}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="w-full max-w-24 mx-auto">
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full transition-all ${
+                                  item.stock_status === 'critical' ? 'bg-red-500' :
+                                  item.stock_status === 'low' ? 'bg-yellow-500' :
+                                  item.stock_status === 'overstock' ? 'bg-blue-500' :
+                                  'bg-green-500'
+                                }`}
+                                style={{
+                                  width: `${Math.min((item.current_stock / item.max_level) * 100, 100)}%`
+                                }}
+                              ></div>
+                            </div>
+                            <div className="text-xs text-center text-gray-500 mt-1">
+                              {Math.round((item.current_stock / item.max_level) * 100)}%
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900">{item.reorder_level.toLocaleString()}</div>
+                            <div className="text-xs text-gray-500">Max: {item.max_level.toLocaleString()}</div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="font-semibold text-gray-900">
+                            {formatCurrency(item.cost_value)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="font-semibold text-green-600">
+                            {formatCurrency(item.retail_value)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <MapPin className="w-3 h-3 text-gray-400" />
+                            <span className="text-sm text-gray-700">{item.location}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Calendar className="w-3 h-3 text-gray-400" />
+                            <span className={`text-sm font-medium ${
+                              item.days_of_supply <= 7 ? 'text-red-600' :
+                              item.days_of_supply <= 14 ? 'text-yellow-600' :
+                              'text-green-600'
+                            }`}>
+                              {item.days_of_supply}d
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {getStockStatusBadge(item.stock_status)}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="text-sm text-gray-500">
+                            {formatDateTime(item.last_updated).split(',')[0]}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              title="Adjust Stock"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   )

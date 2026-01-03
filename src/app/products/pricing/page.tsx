@@ -192,89 +192,144 @@ export default function PricingPage() {
           </CardContent>
         </Card>
 
-        {/* Pricing Schemes Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {isLoading ? (
-            [...Array(6)].map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <div className="animate-pulse">
-                    <div className="h-32 bg-muted rounded-md"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            filteredSchemes.map((scheme: PricingScheme) => (
-              <Card key={scheme.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                        {getAppliesToIcon(scheme.applies_to)}
+        {/* Pricing Schemes Table */}
+        <Card>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="p-6">
+                <div className="animate-pulse space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center space-x-4 py-3">
+                      <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/4 mt-2"></div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-lg">{scheme.scheme_name}</h3>
-                        <p className="text-sm text-muted-foreground">{scheme.applies_to}</p>
-                      </div>
+                      <div className="w-20 h-4 bg-gray-200 rounded"></div>
+                      <div className="w-24 h-4 bg-gray-200 rounded"></div>
+                      <div className="w-16 h-4 bg-gray-200 rounded"></div>
                     </div>
-                    {getStatusBadge(scheme.status)}
-                  </div>
-
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {scheme.description}
-                  </p>
-
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Markup</span>
-                      <span className="text-lg font-bold text-primary">{scheme.markup_percentage}%</span>
-                    </div>
-
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div>
-                          <p className="text-muted-foreground">Min Margin</p>
-                          <p className="font-semibold text-green-600">{scheme.min_margin}%</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Max Margin</p>
-                          <p className="font-semibold text-red-600">{scheme.max_margin}%</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Products</span>
-                      <div className="flex items-center gap-1">
-                        <Package className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">{scheme.products_count}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Created</span>
-                      <span className="text-xs font-medium">
-                        {formatDateTime(scheme.created_at).split(',')[0]}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Eye className="w-4 h-4 mr-2" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
+                  ))}
+                </div>
+              </div>
+            ) : filteredSchemes.length === 0 ? (
+              <div className="p-12 text-center">
+                <Tag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No pricing schemes found</h3>
+                <p className="text-gray-500 mb-4">
+                  {searchTerm || statusFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Get started by creating your first pricing scheme'}
+                </p>
+                <Button className="mofad-btn-primary">
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Scheme
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Scheme</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Applies To</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Description</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Markup</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Min Margin</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Max Margin</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Products</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Created</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredSchemes.map((scheme: PricingScheme) => (
+                      <tr key={scheme.id} className="hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                              {getAppliesToIcon(scheme.applies_to)}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{scheme.scheme_name}</div>
+                              <div className="text-sm text-gray-500">ID: {scheme.id}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-700">{scheme.applies_to}</span>
+                        </td>
+                        <td className="py-3 px-4 max-w-xs">
+                          <p className="text-sm text-gray-600 truncate" title={scheme.description}>
+                            {scheme.description}
+                          </p>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="font-bold text-primary text-lg">
+                            {scheme.markup_percentage}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="font-semibold text-green-600">
+                            {scheme.min_margin}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="font-semibold text-red-600">
+                            {scheme.max_margin}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Package className="w-4 h-4 text-gray-400" />
+                            <span className="font-medium text-gray-900">{scheme.products_count}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {getStatusBadge(scheme.status)}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="text-sm text-gray-500">
+                            {formatDateTime(scheme.created_at).split(',')[0]}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              title="Edit Scheme"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              title="Delete Scheme"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   )

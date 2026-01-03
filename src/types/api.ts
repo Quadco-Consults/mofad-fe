@@ -144,35 +144,47 @@ export interface Product {
   name: string
   code: string
   description?: string
-  category: 'fuel' | 'lubricant' | 'additive' | 'service' | 'equipment' | 'other'
+  category: 'fuel' | 'lubricant' | 'additive' | 'service' | 'equipment' | 'other' | 'engine_oil'
   subcategory?: string
   brand?: string
+  viscosity_grade?: string
+  api_grade?: string | null
+  sae_grade?: string | null
+  package_sizes?: any[]
+  bulk_size?: string | null
+  retail_size?: string | null
   unit_of_measure: 'liters' | 'gallons' | 'kilograms' | 'pieces' | 'meters' | 'hours'
-  density?: number
-  viscosity?: string
-  flash_point?: string
-  hazmat_class?: string
-  safety_notes?: string
+  density?: number | null
+  viscosity?: number | null
+  flash_point?: string | null
+  hazmat_class?: string | null
+  safety_notes?: string | null
   cost_price: number
-  direct_sales_price: number
-  retail_sales_price?: number
+  bulk_selling_price?: number
+  bulk_minimum_quantity?: number
+  retail_selling_price?: number
+  retail_markup_percentage?: number
+  direct_sales_price?: number
+  minimum_selling_price?: number | null
   tax_rate: number
   tax_inclusive: boolean
   track_inventory: boolean
   minimum_stock_level: number
-  maximum_stock_level?: number
-  reorder_point?: number
-  reorder_quantity?: number
-  image?: string
+  maximum_stock_level?: number | null
+  reorder_point?: number | null
+  reorder_quantity?: number | null
+  image?: string | null
+  specification_sheet?: string | null
+  safety_data_sheet?: string | null
   is_active: boolean
   is_sellable: boolean
   is_purchasable: boolean
   is_service: boolean
   requires_batch_tracking: boolean
-  shelf_life_days?: number
-  primary_supplier?: string
-  supplier_code?: string
-  supplier_notes?: string
+  shelf_life_days?: number | null
+  primary_supplier?: string | null
+  supplier_code?: string | null
+  supplier_notes?: string | null
   created_by?: number
   created_at: string
   updated_at: string

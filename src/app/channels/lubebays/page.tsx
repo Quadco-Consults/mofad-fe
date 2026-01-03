@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Search, MapPin, Wrench, Phone, TrendingUp, AlertTriangle } from 'lucide-react'
+import { Plus, Search, MapPin, Wrench, Phone, TrendingUp, AlertTriangle, Eye, Edit, Trash2, Star } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Card, CardContent } from '@/components/ui/Card'
 
 interface Lubebay {
   id: string
@@ -219,95 +220,150 @@ export default function LubebaysPage() {
         </select>
       </div>
 
-      {/* Lubebays Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredLubebays.map((lubebay) => (
-          <div key={lubebay.id} className="mofad-card">
-            {/* Header */}
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900">{lubebay.name}</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(lubebay.status)}`}>
-                    {lubebay.status.charAt(0).toUpperCase() + lubebay.status.slice(1)}
-                  </span>
-                </div>
-                <div className="flex items-center text-sm text-gray-600 mb-1">
-                  <MapPin className="h-4 w-4 mr-1" />
-                  {lubebay.location}, {lubebay.state}
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <Phone className="h-4 w-4 mr-1" />
-                  {lubebay.phone}
-                </div>
-              </div>
-
-              {lubebay.status === 'maintenance' && (
-                <AlertTriangle className="h-5 w-5 text-yellow-600" />
-              )}
-            </div>
-
-            {/* Manager Info */}
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">Manager</p>
-              <p className="font-medium text-gray-900">{lubebay.manager}</p>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="text-center">
-                <p className="text-lg font-bold text-primary-600">{lubebay.bays}</p>
-                <p className="text-xs text-gray-600">Service Bays</p>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-bold text-green-600">{formatCurrency(lubebay.monthlyRevenue)}</p>
-                <p className="text-xs text-gray-600">Monthly Revenue</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1">
-                  <span className="text-lg font-bold text-yellow-600">{lubebay.rating}</span>
-                  <span className="text-yellow-500">⭐</span>
-                </div>
-                <p className="text-xs text-gray-600">Rating</p>
-              </div>
-            </div>
-
-            {/* Services */}
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">Services Offered</p>
-              <div className="flex flex-wrap gap-1">
-                {lubebay.services.map((service, index) => (
-                  <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                    {service}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Last Inspection */}
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>Last Inspection:</span>
-              <span className="font-medium">{new Date(lubebay.lastInspection).toLocaleDateString()}</span>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
-              <Button variant="outline" className="flex-1">
-                View Details
-              </Button>
-              <Button variant="outline" className="flex-1">
-                Manage
+      {/* Lubebays Table */}
+      <Card>
+        <CardContent className="p-0">
+          {filteredLubebays.length === 0 ? (
+            <div className="p-12 text-center">
+              <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No lubebays found</h3>
+              <p className="text-gray-500 mb-4">
+                {searchTerm || statusFilter !== 'all'
+                  ? 'Try adjusting your search or filters'
+                  : 'Get started by adding your first lubebay'}
+              </p>
+              <Button className="mofad-btn-primary">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Lubebay
               </Button>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {filteredLubebays.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No lubebays found matching your criteria.</p>
-        </div>
-      )}
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Lubebay</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Location</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Manager</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Contact</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-900">Bays</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-900">Monthly Revenue</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-900">Rating</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Services</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-900">Last Inspection</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredLubebays.map((lubebay) => (
+                    <tr key={lubebay.id} className="hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <Wrench className="w-4 h-4 text-primary" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">{lubebay.name}</div>
+                            <div className="text-sm text-gray-500">{lubebay.id}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-3 h-3 text-gray-400" />
+                          <div>
+                            <div className="text-sm text-gray-900 max-w-[200px] truncate">{lubebay.location}</div>
+                            <div className="text-sm text-gray-500">{lubebay.state}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-sm font-medium text-gray-900">{lubebay.manager}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="w-3 h-3 text-gray-400" />
+                          <span className="text-gray-600">{lubebay.phone}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="font-bold text-primary">{lubebay.bays}</span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className="font-bold text-green-600">{formatCurrency(lubebay.monthlyRevenue)}</span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                          <span className="font-medium text-gray-900">{lubebay.rating}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {lubebay.services.slice(0, 2).map((service, index) => (
+                            <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                              {service}
+                            </span>
+                          ))}
+                          {lubebay.services.length > 2 && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                              +{lubebay.services.length - 2} more
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="text-sm text-gray-600">
+                          {new Date(lubebay.lastInspection).toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex items-center justify-center">
+                          {lubebay.status === 'maintenance' && (
+                            <AlertTriangle className="w-4 h-4 text-yellow-500 mr-2" />
+                          )}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(lubebay.status)}`}>
+                            {lubebay.status.charAt(0).toUpperCase() + lubebay.status.slice(1)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            title="Manage Lubebay"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            title="Delete Lubebay"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
