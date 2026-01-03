@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
-import { PRF, Warehouse, Product } from '@/types/api'
+import { PRF, Warehouse, Product, Customer } from '@/types/api'
 import {
   Plus,
   Search,
@@ -96,28 +96,39 @@ const getPriorityBadge = (priority: string) => {
   )
 }
 
+interface PRFItem {
+  id?: number
+  product: number
+  product_name?: string
+  product_code?: string
+  quantity: number
+  unit_price: number
+  total_amount: number
+  notes?: string
+}
+
 interface PRFFormData {
-  title: string
-  description: string
-  department: string
-  purpose: string
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  customer: number
+  customer_name?: string
   delivery_location: number
   expected_delivery_date: string
+  order_reference?: string
+  notes?: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  items: PRFItem[]
   estimated_total: number
-  budget_code: string
 }
 
 const initialFormData: PRFFormData = {
-  title: '',
-  description: '',
-  department: '',
-  purpose: '',
-  priority: 'medium',
+  customer: 0,
+  customer_name: '',
   delivery_location: 0,
   expected_delivery_date: '',
+  order_reference: '',
+  notes: '',
+  priority: 'medium',
+  items: [],
   estimated_total: 0,
-  budget_code: '',
 }
 
 export default function PRFPage() {
@@ -156,8 +167,22 @@ export default function PRFPage() {
     queryFn: () => apiClient.get<Warehouse[]>('/warehouses/'),
   })
 
+  // Fetch customers for customer selection
+  const { data: customersData } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => apiClient.get<Customer[]>('/customers/'),
+  })
+
+  // Fetch products for product selection
+  const { data: productsData } = useQuery({
+    queryKey: ['products'],
+    queryFn: () => apiClient.get<Product[]>('/products/'),
+  })
+
   const prfs = Array.isArray(prfData) ? prfData : []
   const warehouses = Array.isArray(warehousesData) ? warehousesData : []
+  const customers = Array.isArray(customersData) ? customersData : []
+  const products = Array.isArray(productsData) ? productsData : []
 
   // Create PRF mutation
   const createMutation = useMutation({
@@ -254,13 +279,101 @@ export default function PRFPage() {
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
-    if (!formData.title.trim()) errors.title = 'Title is required'
-    if (!formData.department.trim()) errors.department = 'Department is required'
-    if (!formData.purpose.trim()) errors.purpose = 'Purpose is required'
+    if (!formData.customer) errors.customer = 'Customer is required'
     if (!formData.delivery_location) errors.delivery_location = 'Delivery location is required'
     if (!formData.expected_delivery_date) errors.expected_delivery_date = 'Expected delivery date is required'
+    if (formData.items.length === 0) errors.items = 'At least one product item is required'
+
+    // Validate items
+    formData.items.forEach((item, index) => {
+      if (!item.product) errors[`items.${index}.product`] = 'Product is required'
+      if (item.quantity <= 0) errors[`items.${index}.quantity`] = 'Quantity must be greater than 0'
+    })
+
     setFormErrors(errors)
     return Object.keys(errors).length === 0
+  }
+
+  // Helper functions for managing PRF items
+  const addItem = () => {
+    setFormData({
+      ...formData,
+      items: [
+        ...formData.items,
+        {
+          product: 0,
+          quantity: 1,
+          unit_price: 0,
+          total_amount: 0,
+        }
+      ]
+    })
+  }
+
+  const removeItem = (index: number) => {
+    const newItems = formData.items.filter((_, i) => i !== index)
+    const newTotal = newItems.reduce((sum, item) => sum + item.total_amount, 0)
+    setFormData({
+      ...formData,
+      items: newItems,
+      estimated_total: newTotal
+    })
+  }
+
+  const updateItem = (index: number, field: keyof PRFItem, value: any) => {
+    const newItems = [...formData.items]
+    const item = { ...newItems[index] }
+
+    if (field === 'product') {
+      const selectedProduct = products.find(p => p.id === value)
+      if (selectedProduct) {
+        item.product = value
+        item.product_name = selectedProduct.name
+        item.product_code = selectedProduct.code
+        item.unit_price = selectedProduct.bulk_selling_price || 0 // Use direct sales price
+      }
+    } else if (field === 'quantity') {
+      item.quantity = value
+    } else {
+      item[field] = value
+    }
+
+    // Recalculate total amount for this item
+    item.total_amount = item.quantity * item.unit_price
+
+    newItems[index] = item
+
+    // Recalculate estimated total
+    const newTotal = newItems.reduce((sum, item) => sum + item.total_amount, 0)
+
+    setFormData({
+      ...formData,
+      items: newItems,
+      estimated_total: newTotal
+    })
+  }
+
+  const generateOrderReference = (customerCode: string): string => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const time = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0')
+
+    return `ORD-${customerCode}-${year}${month}${day}-${time}`
+  }
+
+  const selectCustomer = (customerId: number) => {
+    const selectedCustomer = customers.find(c => c.id === customerId)
+    if (selectedCustomer) {
+      const orderRef = generateOrderReference(selectedCustomer.customer_code || 'GEN')
+      setFormData({
+        ...formData,
+        customer: customerId,
+        customer_name: selectedCustomer.name || selectedCustomer.business_name || '',
+        order_reference: orderRef,
+      })
+    }
   }
 
   const handleAdd = () => {
@@ -275,16 +388,17 @@ export default function PRFPage() {
 
   const handleEdit = (prf: PRF) => {
     setSelectedPRF(prf)
+    // Note: Will need to update this based on actual PRF API structure
     setFormData({
-      title: prf.title,
-      description: prf.description || '',
-      department: prf.department,
-      purpose: prf.purpose,
-      priority: prf.priority,
+      customer: (prf as any).customer || 0,
+      customer_name: (prf as any).customer_name || '',
       delivery_location: prf.delivery_location,
       expected_delivery_date: prf.expected_delivery_date,
+      order_reference: (prf as any).order_reference || '',
+      notes: prf.description || '',
+      priority: prf.priority,
+      items: (prf as any).items || [],
       estimated_total: prf.estimated_total,
-      budget_code: prf.budget_code || '',
     })
     setFormErrors({})
     setShowEditModal(true)
@@ -513,7 +627,7 @@ export default function PRFPage() {
                     <tr className="border-b border-border">
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">PRF Number</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Title</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Department</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Customer</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Amount</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Priority</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
@@ -533,10 +647,10 @@ export default function PRFPage() {
                         <td className="py-3 px-4">
                           <div>
                             <p className="font-medium">{prf.title}</p>
-                            <p className="text-sm text-muted-foreground">{prf.purpose}</p>
+                            <p className="text-sm text-muted-foreground">{(prf as any).order_reference || 'Customer Order'}</p>
                           </div>
                         </td>
-                        <td className="py-3 px-4">{prf.department}</td>
+                        <td className="py-3 px-4">{(prf as any).customer_name || 'N/A'}</td>
                         <td className="py-3 px-4 font-medium">{formatCurrency(prf.estimated_total)}</td>
                         <td className="py-3 px-4">{getPriorityBadge(prf.priority)}</td>
                         <td className="py-3 px-4">{getStatusBadge(prf.status)}</td>
@@ -603,79 +717,173 @@ export default function PRFPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
-                <h2 className="text-xl font-semibold">Create New Purchase Requisition</h2>
+                <h2 className="text-xl font-semibold">Create Customer Order PRF</h2>
                 <Button variant="ghost" onClick={() => setShowAddModal(false)}>
                   <X className="w-4 h-4" />
                 </Button>
               </div>
               <div className="p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Title <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                        formErrors.title ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      placeholder="Enter PRF title"
-                    />
-                    {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Department <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                        formErrors.department ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      value={formData.department}
-                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    >
-                      <option value="">Select Department</option>
-                      <option value="Operations">Operations</option>
-                      <option value="Sales">Sales</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Procurement">Procurement</option>
-                      <option value="IT">IT</option>
-                      <option value="HR">HR</option>
-                    </select>
-                    {formErrors.department && <p className="text-red-500 text-xs mt-1">{formErrors.department}</p>}
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Purpose <span className="text-red-500">*</span>
+                    Customer <span className="text-red-500">*</span>
                   </label>
+                  <select
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                      formErrors.customer ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    value={formData.customer}
+                    onChange={(e) => selectCustomer(parseInt(e.target.value))}
+                  >
+                    <option value={0}>Select Customer</option>
+                    {customers.map((customer) => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.name || customer.business_name} ({customer.customer_code})
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.customer && <p className="text-red-500 text-xs mt-1">{formErrors.customer}</p>}
+                </div>
+
+                {formData.customer > 0 && (
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-800 mb-2">Customer Details</h4>
+                    <div className="text-sm text-blue-700">
+                      <p><strong>Name:</strong> {formData.customer_name}</p>
+                      {(() => {
+                        const customer = customers.find(c => c.id === formData.customer)
+                        return customer ? (
+                          <>
+                            <p><strong>Email:</strong> {customer.email}</p>
+                            <p><strong>Phone:</strong> {customer.phone}</p>
+                            <p><strong>Credit Limit:</strong> {formatCurrency(customer.credit_limit || 0)}</p>
+                          </>
+                        ) : null
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Order Reference</label>
                   <input
                     type="text"
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                      formErrors.purpose ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    value={formData.purpose}
-                    onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
-                    placeholder="Purpose of requisition"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 font-mono text-sm"
+                    value={formData.order_reference}
+                    readOnly
+                    placeholder="Auto-generated when customer is selected"
                   />
-                  {formErrors.purpose && <p className="text-red-500 text-xs mt-1">{formErrors.purpose}</p>}
+                  <p className="text-xs text-gray-500 mt-1">Automatically generated based on customer and timestamp</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                   <textarea
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    rows={3}
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Additional details and justification"
+                    rows={2}
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Additional notes about this order"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Product Items Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Product Items <span className="text-red-500">*</span>
+                    </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addItem}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Product
+                    </Button>
+                  </div>
+
+                  {formErrors.items && <p className="text-red-500 text-xs mb-2">{formErrors.items}</p>}
+
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {formData.items.map((item, index) => (
+                      <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Product</label>
+                            <select
+                              className={`w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-primary ${
+                                formErrors[`items.${index}.product`] ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                              value={item.product}
+                              onChange={(e) => updateItem(index, 'product', parseInt(e.target.value))}
+                            >
+                              <option value={0}>Select Product</option>
+                              {products.map((product) => (
+                                <option key={product.id} value={product.id}>
+                                  {product.name} - ₦{formatCurrency(product.bulk_selling_price || 0)}/L
+                                </option>
+                              ))}
+                            </select>
+                            {formErrors[`items.${index}.product`] && (
+                              <p className="text-red-500 text-xs mt-1">{formErrors[`items.${index}.product`]}</p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Qty</label>
+                            <input
+                              type="number"
+                              className={`w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-primary ${
+                                formErrors[`items.${index}.quantity`] ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                              value={item.quantity}
+                              onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
+                              min="1"
+                            />
+                            {formErrors[`items.${index}.quantity`] && (
+                              <p className="text-red-500 text-xs mt-1">{formErrors[`items.${index}.quantity`]}</p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Unit Price</label>
+                            <input
+                              type="text"
+                              className="w-full px-2 py-1 text-sm border border-gray-200 rounded bg-gray-50"
+                              value={formatCurrency(item.unit_price)}
+                              readOnly
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <div className="flex-1">
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Total</label>
+                              <div className="text-sm font-medium text-green-600 px-2 py-1 bg-green-50 rounded">
+                                {formatCurrency(item.total_amount)}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeItem(index)}
+                              className="text-red-500 hover:bg-red-50 ml-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {formData.items.length === 0 && (
+                    <div className="text-center py-6 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                      <p>No products added yet</p>
+                      <p className="text-sm">Click "Add Product" to get started</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Priority <span className="text-red-500">*</span>
@@ -717,9 +925,6 @@ export default function PRFPage() {
                       <p className="text-red-500 text-xs mt-1">{formErrors.delivery_location}</p>
                     )}
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Expected Delivery Date <span className="text-red-500">*</span>
@@ -736,30 +941,18 @@ export default function PRFPage() {
                       <p className="text-red-500 text-xs mt-1">{formErrors.expected_delivery_date}</p>
                     )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Total (₦)</label>
-                    <input
-                      type="number"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      value={formData.estimated_total}
-                      onChange={(e) =>
-                        setFormData({ ...formData, estimated_total: parseFloat(e.target.value) || 0 })
-                      }
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Budget Code</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    value={formData.budget_code}
-                    onChange={(e) => setFormData({ ...formData, budget_code: e.target.value })}
-                    placeholder="Enter budget code (optional)"
-                  />
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-medium text-green-800">Total Order Amount</span>
+                    <span className="text-2xl font-bold text-green-600">
+                      {formatCurrency(formData.estimated_total)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-600 mt-1">
+                    {formData.items.length} item(s) • Direct sales pricing applied
+                  </p>
                 </div>
               </div>
               <div className="flex justify-end gap-2 p-6 border-t sticky bottom-0 bg-white">
