@@ -128,9 +128,8 @@ class ApiClient {
     this.clearAuthToken()
 
     try {
-      // Use the Django JWT token endpoint
-      // Don't send auth header for login - it's a public endpoint
-      const url = `http://localhost:8000/api/token/`
+      // Use the custom MOFAD authentication endpoint
+      const url = `http://localhost:8000/api/v1/auth/auth/login`
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -154,12 +153,53 @@ class ApiClient {
 
       const jsonResponse = await response.json()
 
-      // JWT endpoint returns { access, refresh } directly
-      if (jsonResponse.access && jsonResponse.refresh) {
-        this.setAuthToken(jsonResponse.access)
+      // Custom auth endpoint returns wrapped response with {status, data, etc}
+      const loginResponse = jsonResponse.data || jsonResponse
 
-        if (typeof window !== 'undefined' && jsonResponse.refresh) {
-          localStorage.setItem('refresh_token', jsonResponse.refresh)
+      // Check if MFA is required
+      if (loginResponse.is_mfa_required) {
+        return {
+          user: {
+            id: 0,
+            name: '',
+            email: credentials.email,
+            email_verified_at: undefined,
+            created_at: '',
+            updated_at: '',
+            permissions: [],
+            roles: []
+          },
+          tokens: null,
+          is_mfa_required: true,
+          force_password_reset: loginResponse.force_password_reset || false
+        }
+      }
+
+      // Check if force password reset is required
+      if (loginResponse.force_password_reset) {
+        return {
+          user: {
+            id: 0,
+            name: '',
+            email: credentials.email,
+            email_verified_at: undefined,
+            created_at: '',
+            updated_at: '',
+            permissions: [],
+            roles: []
+          },
+          tokens: null,
+          is_mfa_required: false,
+          force_password_reset: true
+        }
+      }
+
+      // Login successful - has tokens
+      if (loginResponse.access_token) {
+        this.setAuthToken(loginResponse.access_token)
+
+        if (typeof window !== 'undefined' && loginResponse.refresh_token) {
+          localStorage.setItem('refresh_token', loginResponse.refresh_token)
         }
 
         // Get user data
@@ -168,30 +208,19 @@ class ApiClient {
         return {
           user,
           tokens: {
-            access_token: jsonResponse.access,
-            refresh_token: jsonResponse.refresh
+            access_token: loginResponse.access_token,
+            refresh_token: loginResponse.refresh_token
           },
           is_mfa_required: false,
           force_password_reset: false
         }
       }
 
-      // MFA required - return without tokens
-      return {
-        user: {
-          id: 0,
-          name: '',
-          email: credentials.email,
-          email_verified_at: undefined,
-          created_at: '',
-          updated_at: '',
-          permissions: [],
-          roles: []
-        },
-        tokens: null,
-        is_mfa_required: loginResponse.is_mfa_required,
-        force_password_reset: loginResponse.force_password_reset
-      }
+      // Fallback - login failed
+      throw {
+        message: 'Login failed - no tokens received',
+        status: 401
+      } as ApiError
     } catch (error) {
       if ((error as ApiError).status === 0) {
         throw error
@@ -298,7 +327,7 @@ class ApiClient {
       phone: string | null
       is_active: boolean
       role?: string
-    }>(`/users/${userId}/`)
+    }>(`/auth/users/${userId}`)
 
     return {
       id: response.id,

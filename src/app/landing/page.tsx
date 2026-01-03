@@ -17,89 +17,62 @@ import {
   Settings,
   FileText,
   Building2,
-  Car,
+  Leaf,
   Target,
-  Activity,
-  DollarSign,
-  Calendar,
-  Clock,
   Award,
   ChevronRight,
   Menu,
   X,
-  Play
+  Play,
+  Star,
+  Phone,
+  Mail,
+  MapPin
 } from 'lucide-react'
+
+// New Green Color Palette
+const colors = {
+  primary: '#22c55e', // Green-500
+  primaryDark: '#16a34a', // Green-600
+  primaryLight: '#86efac', // Green-300
+  accent: '#059669', // Emerald-600
+  accentLight: '#10b981', // Emerald-500
+  earth: '#92400e', // Amber-800
+  neutral: '#374151', // Gray-700
+  lightGray: '#f9fafb', // Gray-50
+  darkGray: '#1f2937' // Gray-800
+}
 
 // Statistics data
 const stats = [
-  { number: '50+', label: 'Distribution Centers', description: 'Nationwide coverage' },
-  { number: '10K+', label: 'Products Managed', description: 'Comprehensive inventory' },
-  { number: '99.9%', label: 'System Uptime', description: 'Reliable operations' }
+  { number: '15+', label: 'Distribution Centers', description: 'Nigeria & West Africa', icon: Building2 },
+  { number: '500+', label: 'Energy Solutions', description: 'Delivered Successfully', icon: Zap },
+  { number: '99.9%', label: 'Client Satisfaction', description: 'Proven Excellence', icon: Star },
+  { number: '10+', label: 'Years Experience', description: 'Industry Leadership', icon: Award }
 ]
 
-// Service offerings
+// Service offerings with better structure
 const services = [
   {
-    title: 'Inventory Management',
-    description: 'Real-time tracking and optimization of petroleum products across all locations.',
-    icon: Package,
-    color: 'from-blue-500 to-cyan-500',
-    features: ['Real-time tracking', 'Automated alerts', 'Predictive analytics']
+    title: 'Energy Infrastructure',
+    description: 'Complete energy solutions from planning to implementation, ensuring sustainable and efficient operations across Nigeria and West Africa.',
+    icon: Zap,
+    color: 'from-green-500 to-emerald-600',
+    features: ['Power Generation', 'Grid Management', 'Renewable Integration', 'Energy Efficiency']
   },
   {
-    title: 'Distribution Network',
-    description: 'Efficient supply chain management for substores and lubebay operations.',
-    icon: Truck,
-    color: 'from-emerald-500 to-teal-500',
-    features: ['Route optimization', 'Fleet management', 'Delivery tracking']
+    title: 'Enterprise Resource Planning',
+    description: 'Advanced ERP systems tailored for energy companies, streamlining operations and maximizing organizational efficiency.',
+    icon: Database,
+    color: 'from-emerald-500 to-green-600',
+    features: ['System Integration', 'Process Automation', 'Real-time Analytics', 'Custom Development']
   },
   {
-    title: 'Financial Integration',
-    description: 'SAGE-powered financial management with comprehensive reporting capabilities.',
-    icon: BarChart3,
-    color: 'from-amber-500 to-orange-500',
-    features: ['SAGE integration', 'Real-time reports', 'Automated billing']
-  },
-  {
-    title: 'Customer Portal',
-    description: 'Dedicated platform for customer management and service delivery.',
-    icon: Users,
-    color: 'from-purple-500 to-violet-500',
-    features: ['Self-service portal', 'Order tracking', '24/7 support']
-  }
-]
-
-// Feature capabilities
-const features = [
-  {
-    title: 'Real-Time Analytics',
-    description: 'Comprehensive dashboards with live data insights for informed decision-making.',
-    icon: TrendingUp
-  },
-  {
-    title: 'Automated Workflows',
-    description: 'Streamlined business processes with intelligent automation and approval flows.',
-    icon: Zap
-  },
-  {
-    title: 'SAGE Integration',
-    description: 'Seamless financial data synchronization with enterprise-grade ERP capabilities.',
-    icon: Database
-  },
-  {
-    title: 'Secure & Compliant',
-    description: 'Enterprise-level security with regulatory compliance and audit trails.',
-    icon: Shield
-  },
-  {
-    title: 'Mobile Optimized',
-    description: 'Full functionality across all devices with responsive design architecture.',
-    icon: Globe
-  },
-  {
-    title: 'Performance Tracking',
-    description: 'Advanced KPI monitoring with predictive analytics and trend analysis.',
-    icon: Target
+    title: 'Project Management',
+    description: 'End-to-end project management services ensuring timely delivery and quality execution of complex energy projects.',
+    icon: Settings,
+    color: 'from-green-600 to-emerald-700',
+    features: ['Project Planning', 'Risk Management', 'Quality Assurance', 'Stakeholder Coordination']
   }
 ]
 
@@ -109,49 +82,44 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-lg border-b border-gray-100 shadow-sm">
+      <nav className="sticky top-0 z-50 bg-white shadow-lg border-b-2 border-green-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo and Brand */}
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-r from-emerald-600 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Activity className="w-6 h-6 text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-orange-400 to-red-400 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                </div>
-              </div>
-              <div>
-                <h1 className="text-xl font-black text-gray-900">MOFAD</h1>
-                <p className="text-xs text-gray-600 font-semibold">Enterprise ERP</p>
-              </div>
+          <div className="flex items-center justify-between h-20">
+            {/* Logo */}
+            <div className="flex items-center">
+              <img
+                src="/modah_logo-removebg-preview.png"
+                alt="MOFAD Energy Solutions"
+                className="h-16 w-auto"
+              />
             </div>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
-              <Link href="#features" className="text-gray-700 hover:text-emerald-600 font-medium transition-colors">
-                Features
+              <Link href="#" className="text-gray-700 hover:text-green-600 font-semibold transition-colors text-lg">
+                Home
               </Link>
-              <Link href="#services" className="text-gray-700 hover:text-emerald-600 font-medium transition-colors">
+              <Link href="#about" className="text-gray-700 hover:text-green-600 font-semibold transition-colors text-lg">
+                About Us
+              </Link>
+              <Link href="#services" className="text-gray-700 hover:text-green-600 font-semibold transition-colors text-lg">
                 Services
               </Link>
-              <Link href="#about" className="text-gray-700 hover:text-emerald-600 font-medium transition-colors">
-                About
+              <Link href="#partners" className="text-gray-700 hover:text-green-600 font-semibold transition-colors text-lg">
+                Partners
               </Link>
-              <Link href="#contact" className="text-gray-700 hover:text-emerald-600 font-medium transition-colors">
-                Contact
-              </Link>
-              <div className="flex items-center space-x-3">
+
+              <div className="flex items-center space-x-4">
                 <Link
                   href="/auth/login"
-                  className="px-4 py-2 text-gray-700 hover:text-emerald-600 font-semibold transition-colors"
+                  className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2"
                 >
-                  Staff Login
+                  <Users className="w-5 h-5" />
+                  <span>Staff Portal</span>
                 </Link>
                 <Link
                   href="/dashboard"
-                  className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white font-semibold rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  className="px-6 py-3 bg-white border-2 border-green-600 text-green-600 font-bold rounded-lg hover:bg-green-600 hover:text-white transition-all duration-300 shadow-lg"
                 >
                   Dashboard
                 </Link>
@@ -162,7 +130,7 @@ export default function LandingPage() {
             <div className="md:hidden">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 text-gray-700 hover:text-emerald-600"
+                className="p-2 text-gray-700 hover:text-green-600"
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -172,33 +140,15 @@ export default function LandingPage() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-100">
+          <div className="md:hidden bg-white border-t border-green-200">
             <div className="px-4 py-4 space-y-3">
-              <Link href="#features" className="block py-2 text-gray-700 hover:text-emerald-600 font-medium">
-                Features
-              </Link>
-              <Link href="#services" className="block py-2 text-gray-700 hover:text-emerald-600 font-medium">
-                Services
-              </Link>
-              <Link href="#about" className="block py-2 text-gray-700 hover:text-emerald-600 font-medium">
-                About
-              </Link>
-              <Link href="#contact" className="block py-2 text-gray-700 hover:text-emerald-600 font-medium">
-                Contact
-              </Link>
-              <div className="pt-3 border-t border-gray-100 space-y-3">
-                <Link
-                  href="/auth/login"
-                  className="block py-2 text-gray-700 font-semibold"
-                >
-                  Staff Login
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className="block w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white font-semibold rounded-xl text-center"
-                >
-                  Access Dashboard
-                </Link>
+              <Link href="#" className="block py-3 text-gray-700 hover:text-green-600 font-semibold text-lg">Home</Link>
+              <Link href="#about" className="block py-3 text-gray-700 hover:text-green-600 font-semibold text-lg">About Us</Link>
+              <Link href="#services" className="block py-3 text-gray-700 hover:text-green-600 font-semibold text-lg">Services</Link>
+              <Link href="#partners" className="block py-3 text-gray-700 hover:text-green-600 font-semibold text-lg">Partners</Link>
+              <div className="pt-4 space-y-3">
+                <Link href="/auth/login" className="flex items-center justify-center w-full px-6 py-3 bg-green-600 text-white font-bold rounded-lg">Staff Portal</Link>
+                <Link href="/dashboard" className="block w-full px-6 py-3 border-2 border-green-600 text-green-600 font-bold rounded-lg text-center">Dashboard</Link>
               </div>
             </div>
           </div>
@@ -206,120 +156,82 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-emerald-600 via-green-600 to-teal-600 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 py-24 lg:py-32 overflow-hidden">
         {/* Background Pattern */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 opacity-30">
           <div className="absolute inset-0" style={{
-            backgroundImage: `
-              radial-gradient(circle at 25px 25px, rgba(255,255,255,0.1) 2px, transparent 0),
-              radial-gradient(circle at 75px 75px, rgba(255,255,255,0.05) 1px, transparent 0)
-            `,
-            backgroundSize: '100px 100px, 50px 50px'
+            backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='%23059669'%3e%3cpath d='m0 0 32 32 M32 0 0 32'/%3e%3c/svg%3e")`,
+            backgroundSize: '32px 32px'
           }}></div>
         </div>
 
-        {/* Floating Elements */}
-        <div className="absolute top-20 left-20 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-20 right-20 w-48 h-48 bg-orange-400/20 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-cyan-400/20 rounded-full blur-xl"></div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Content */}
             <div className="space-y-8">
               <div className="space-y-6">
-                <div className="flex items-center space-x-3 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 shadow-lg w-fit">
-                  <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse"></div>
-                  <span className="text-white/90 font-semibold text-sm">Enterprise ERP Solution</span>
+                <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                  <Leaf className="w-4 h-4 mr-2" />
+                  Leading Energy Solutions Provider
                 </div>
 
-                <h1 className="text-5xl lg:text-6xl font-black text-white leading-tight">
-                  Petroleum
-                  <span className="block">
-                    <span className="text-orange-300">Distribution</span>
-                  </span>
-                  <span className="block">Management System</span>
+                <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
+                  Powering Nigeria's <span className="text-green-600">Energy Future</span>
                 </h1>
 
-                <p className="text-xl text-white/90 font-medium leading-relaxed max-w-2xl">
-                  Streamline your petroleum operations with our comprehensive ERP solution.
-                  Manage inventory, distribution, financials, and customer relationships from a single, powerful platform.
+                <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
+                  MOFAD Energy Solutions Limited delivers comprehensive energy infrastructure,
+                  advanced ERP systems, and professional project management services across Nigeria and West Africa.
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   href="/dashboard"
-                  className="group flex items-center justify-center space-x-3 px-8 py-4 bg-white text-emerald-600 font-bold text-lg rounded-2xl hover:bg-gray-50 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
+                  className="group flex items-center justify-center px-8 py-4 bg-green-600 text-white font-bold text-lg rounded-lg hover:bg-green-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
                 >
-                  <span>Get Started</span>
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <span>Explore Solutions</span>
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Link>
 
-                <button className="group flex items-center justify-center space-x-3 px-8 py-4 bg-white/20 backdrop-blur-sm border border-white/30 text-white font-bold text-lg rounded-2xl hover:bg-white/30 transition-all duration-300">
-                  <Play className="w-5 h-5" />
-                  <span>Watch Demo</span>
-                </button>
+                <Link
+                  href="#about"
+                  className="flex items-center justify-center px-8 py-4 bg-white border-2 border-green-600 text-green-600 font-bold text-lg rounded-lg hover:bg-green-50 transition-all duration-300 shadow-lg"
+                >
+                  <Play className="w-5 h-5 mr-2" />
+                  <span>Learn More</span>
+                </Link>
               </div>
 
-              {/* Statistics */}
-              <div className="grid grid-cols-3 gap-8 pt-8 border-t border-white/20">
-                {stats.map((stat, index) => (
-                  <div key={index} className="text-center">
-                    <div className="text-3xl font-black text-white mb-1">{stat.number}</div>
-                    <div className="text-white/80 font-semibold text-sm mb-1">{stat.label}</div>
-                    <div className="text-white/60 text-xs">{stat.description}</div>
-                  </div>
-                ))}
+              {/* Quick Stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-8">
+                {stats.map((stat, index) => {
+                  const Icon = stat.icon
+                  return (
+                    <div key={index} className="text-center">
+                      <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center mx-auto mb-2">
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900">{stat.number}</div>
+                      <div className="text-sm text-gray-600 font-semibold">{stat.label}</div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
-            {/* Visual Element */}
+            {/* Hero Image */}
             <div className="relative">
-              <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
-                {/* Mock Dashboard Preview */}
-                <div className="space-y-6">
-                  {/* Header */}
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-white font-bold text-lg">Dashboard Preview</h3>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                      <span className="text-white/80 text-sm">Live</span>
-                    </div>
-                  </div>
-
-                  {/* Stats Cards */}
-                  <div className="grid grid-cols-2 gap-4">
-                    {[
-                      { label: 'Total Revenue', value: '₦245M', trend: '+12%' },
-                      { label: 'Active Orders', value: '1,247', trend: '+8%' },
-                      { label: 'Inventory Health', value: '94%', trend: '+3%' },
-                      { label: 'Customer Growth', value: '892', trend: '+15%' }
-                    ].map((item, index) => (
-                      <div key={index} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                        <div className="text-white/70 text-xs font-medium mb-1">{item.label}</div>
-                        <div className="text-white font-bold text-lg mb-1">{item.value}</div>
-                        <div className="text-green-300 text-xs font-semibold">{item.trend}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Chart Preview */}
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-white font-medium text-sm">Revenue Trend</span>
-                      <TrendingUp className="w-4 h-4 text-green-300" />
-                    </div>
-                    <div className="h-20 flex items-end space-x-2">
-                      {[40, 65, 45, 80, 60, 90, 75].map((height, index) => (
-                        <div
-                          key={index}
-                          className="flex-1 bg-gradient-to-t from-green-400 to-cyan-400 rounded-t"
-                          style={{ height: `${height}%` }}
-                        ></div>
-                      ))}
-                    </div>
-                  </div>
+              <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden">
+                <img
+                  src="/mofad 1.jpg"
+                  alt="MOFAD Energy Solutions Facility"
+                  className="w-full h-[500px] object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+                <div className="absolute bottom-0 left-0 right-0 p-8">
+                  <h3 className="text-2xl font-bold text-white mb-2">State-of-the-Art Facilities</h3>
+                  <p className="text-green-100">Leading energy infrastructure across Nigeria</p>
                 </div>
               </div>
             </div>
@@ -328,61 +240,52 @@ export default function LandingPage() {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="py-24 bg-gray-50">
+      <section id="services" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <div className="flex items-center justify-center space-x-3 mb-6">
-              <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-              <span className="text-emerald-600 font-bold text-sm uppercase tracking-wider">Our Services</span>
-              <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+            <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold mb-6">
+              <Settings className="w-4 h-4 mr-2" />
+              Our Expertise
             </div>
-            <h2 className="text-4xl font-black text-gray-900 mb-6">
-              Comprehensive ERP Solutions for
-              <span className="block text-emerald-600">Petroleum Distribution</span>
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+              Comprehensive <span className="text-green-600">Energy Solutions</span>
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Transform your business operations with our integrated platform designed specifically
-              for petroleum distribution companies and retail networks.
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              From infrastructure development to enterprise software, we deliver integrated solutions
+              that drive sustainable growth and operational excellence.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {services.map((service, index) => {
               const Icon = service.icon
               return (
-                <div key={index} className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 hover:scale-105 border border-gray-100 overflow-hidden">
-                  {/* Background Gradient */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${service.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
+                <div key={index} className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-green-200">
+                  <div className={`w-16 h-16 bg-gradient-to-r ${service.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className="w-8 h-8 text-white" />
+                  </div>
 
-                  <div className="relative">
-                    {/* Icon */}
-                    <div className={`w-16 h-16 bg-gradient-to-br ${service.color} rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                      <Icon className="w-8 h-8 text-white" />
-                    </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-green-600 transition-colors">
+                    {service.title}
+                  </h3>
 
-                    {/* Content */}
-                    <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-emerald-600 transition-colors">
-                      {service.title}
-                    </h3>
-                    <p className="text-gray-600 mb-6 leading-relaxed">
-                      {service.description}
-                    </p>
+                  <p className="text-gray-600 mb-6 leading-relaxed">
+                    {service.description}
+                  </p>
 
-                    {/* Features */}
-                    <ul className="space-y-2">
-                      {service.features.map((feature, featureIndex) => (
-                        <li key={featureIndex} className="flex items-center space-x-2">
-                          <CheckCircle className="w-4 h-4 text-emerald-500" />
-                          <span className="text-sm text-gray-600 font-medium">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  <ul className="space-y-3">
+                    {service.features.map((feature, featureIndex) => (
+                      <li key={featureIndex} className="flex items-center">
+                        <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                        <span className="text-gray-700 font-medium">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
 
-                    {/* Arrow */}
-                    <div className="mt-6 flex items-center text-emerald-600 font-semibold text-sm">
-                      <span>Learn more</span>
-                      <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                    </div>
+                  <div className="mt-6">
+                    <Link href="#" className="inline-flex items-center text-green-600 font-semibold hover:text-green-700">
+                      Learn More <ChevronRight className="w-4 h-4 ml-1" />
+                    </Link>
                   </div>
                 </div>
               )
@@ -391,76 +294,170 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-24 bg-white">
+      {/* About Section */}
+      <section id="about" className="py-24 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            {/* Content */}
+            <div className="space-y-8">
+              <div className="space-y-6">
+                <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                  <Target className="w-4 h-4 mr-2" />
+                  About MOFAD
+                </div>
+
+                <h2 className="text-4xl lg:text-5xl font-bold text-gray-900">
+                  Driving <span className="text-green-600">Sustainable Growth</span> Since 2010
+                </h2>
+
+                <p className="text-lg text-gray-600 leading-relaxed">
+                  MOFAD Energy Solutions Limited stands as Nigeria's premier provider of integrated energy solutions,
+                  combining cutting-edge technology with deep industry expertise to deliver transformational results
+                  for our clients across West Africa.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-xl shadow-md">
+                  <h4 className="text-lg font-bold text-gray-900 mb-2 flex items-center">
+                    <Target className="w-5 h-5 text-green-600 mr-2" />
+                    Our Mission
+                  </h4>
+                  <p className="text-gray-600">
+                    To provide innovative oil and natural gas solutions through best practices
+                    that drive sustainable business growth across Nigeria and West Africa.
+                  </p>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-md">
+                  <h4 className="text-lg font-bold text-gray-900 mb-2 flex items-center">
+                    <Award className="w-5 h-5 text-green-600 mr-2" />
+                    Our Vision
+                  </h4>
+                  <p className="text-gray-600">
+                    To be the leading independent energy company in Nigeria through innovation,
+                    operational excellence, and commitment to our stakeholders.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-start space-x-4">
+                  <CheckCircle className="w-6 h-6 text-green-500 mt-1 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-bold text-gray-900">Proven Track Record</h4>
+                    <p className="text-gray-600">Over 100% profit growth year-over-year with exceptional client satisfaction</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-4">
+                  <CheckCircle className="w-6 h-6 text-green-500 mt-1 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-bold text-gray-900">Strategic Partnerships</h4>
+                    <p className="text-gray-600">Strong relationships with industry leaders including NNPC, Shell, and Castrol</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-4">
+                  <CheckCircle className="w-6 h-6 text-green-500 mt-1 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-bold text-gray-900">Professional Excellence</h4>
+                    <p className="text-gray-600">Commitment to integrity, transparency, and the highest professional standards</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Team Image */}
+            <div className="relative">
+              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+                <img
+                  src="/mofad2.jpg"
+                  alt="MOFAD Energy Solutions Team"
+                  className="w-full h-[600px] object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-green-900/50 via-transparent to-transparent"></div>
+                <div className="absolute bottom-0 left-0 right-0 p-8">
+                  <h3 className="text-2xl font-bold text-white mb-2">Expert Team</h3>
+                  <p className="text-green-100">Dedicated professionals committed to excellence</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Partners Section */}
+      <section id="partners" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <div className="flex items-center justify-center space-x-3 mb-6">
-              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-              <span className="text-orange-600 font-bold text-sm uppercase tracking-wider">Platform Features</span>
-              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+            <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold mb-6">
+              <Users className="w-4 h-4 mr-2" />
+              Strategic Partnerships
             </div>
-            <h2 className="text-4xl font-black text-gray-900 mb-6">
-              Advanced Features for
-              <span className="block text-orange-500">Modern Operations</span>
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+              Trusted by <span className="text-green-600">Industry Leaders</span>
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Leverage cutting-edge technology to optimize your business processes,
-              improve efficiency, and drive sustainable growth.
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              We collaborate with the most respected names in energy, finance, and industry
+              to deliver exceptional value and innovation to our clients.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => {
-              const Icon = feature.icon
-              return (
-                <div key={index} className="group bg-gray-50 hover:bg-white rounded-2xl p-8 transition-all duration-300 hover:shadow-xl border border-gray-100 hover:border-orange-200">
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <Icon className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">{feature.title}</h3>
-                  <p className="text-gray-600 leading-relaxed">{feature.description}</p>
-                </div>
-              )
-            })}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 items-center">
+            {[
+              { name: 'Nigerian National Petroleum Company', image: '/Nigerian_National_Petroleum_Company_logo.svg.png' },
+              { name: 'Shell', image: '/shell-2020.png' },
+              { name: 'Castrol', image: '/castrol-logo-png_seeklogo-27069.png' },
+              { name: 'Eterna', image: '/eterna logo.png' },
+              { name: 'United Bank for Africa', image: '/uba logo.png' },
+            ].map((partner, index) => (
+              <div key={index} className="group bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-green-200 flex items-center justify-center h-28">
+                <img
+                  src={partner.image}
+                  alt={partner.name}
+                  className="max-w-full max-h-full object-contain opacity-60 group-hover:opacity-100 transition-opacity duration-300"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-16 text-center">
+            <p className="text-lg text-gray-600 mb-8">
+              Ready to join our network of successful partnerships?
+            </p>
+            <Link
+              href="#contact"
+              className="inline-flex items-center px-8 py-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+            >
+              <span>Partner With Us</span>
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Link>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-gradient-to-r from-gray-900 to-gray-800 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `
-              radial-gradient(circle at 25px 25px, rgba(255,255,255,0.2) 2px, transparent 0),
-              radial-gradient(circle at 75px 75px, rgba(255,255,255,0.1) 1px, transparent 0)
-            `,
-            backgroundSize: '100px 100px, 50px 50px'
-          }}></div>
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-black text-white mb-6">
-            Ready to Transform Your Operations?
+      <section className="py-24 bg-gradient-to-r from-green-600 to-emerald-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
+            Ready to Transform Your Energy Operations?
           </h2>
-          <p className="text-xl text-gray-300 mb-12 max-w-3xl mx-auto">
-            Join leading petroleum distribution companies who trust MOFAD ERP
-            to power their digital transformation and operational excellence.
+          <p className="text-xl text-green-100 mb-12 max-w-3xl mx-auto">
+            Partner with MOFAD Energy Solutions and experience the difference that professional
+            expertise and innovative technology can make for your business.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <Link
               href="/dashboard"
-              className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white font-bold text-lg rounded-2xl hover:from-emerald-700 hover:to-green-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
+              className="px-10 py-4 bg-white text-green-600 font-bold text-lg rounded-lg hover:bg-gray-100 transition-all duration-300 shadow-xl hover:shadow-2xl"
             >
-              Start Free Trial
+              Get Started Today
             </Link>
             <Link
               href="#contact"
-              className="px-8 py-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-bold text-lg rounded-2xl hover:bg-white/20 transition-all duration-300"
+              className="px-10 py-4 bg-transparent border-2 border-white text-white font-bold text-lg rounded-lg hover:bg-white hover:text-green-600 transition-all duration-300"
             >
-              Schedule Demo
+              Contact Our Team
             </Link>
           </div>
         </div>
@@ -469,61 +466,75 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
             {/* Brand */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-emerald-600 to-green-600 rounded-2xl flex items-center justify-center">
-                  <Activity className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-black">MOFAD</h3>
-                  <p className="text-sm text-gray-400">Enterprise ERP</p>
+            <div className="space-y-6">
+              <img
+                src="/modah_logo-removebg-preview.png"
+                alt="MOFAD Energy Solutions"
+                className="h-12 w-auto brightness-0 invert"
+              />
+              <p className="text-gray-300 leading-relaxed">
+                Leading energy solutions provider committed to sustainable growth
+                and operational excellence across Nigeria and West Africa.
+              </p>
+              <div className="flex space-x-4">
+                <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                  <Leaf className="w-5 h-5 text-white" />
                 </div>
               </div>
-              <p className="text-gray-400 leading-relaxed">
-                Comprehensive ERP solution for petroleum distribution and retail operations.
-              </p>
             </div>
 
-            {/* Product */}
+            {/* Services */}
             <div>
-              <h4 className="text-lg font-bold mb-4">Product</h4>
-              <ul className="space-y-2">
-                <li><Link href="#features" className="text-gray-400 hover:text-white transition-colors">Features</Link></li>
-                <li><Link href="#services" className="text-gray-400 hover:text-white transition-colors">Services</Link></li>
-                <li><Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors">Dashboard</Link></li>
-                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Pricing</Link></li>
+              <h3 className="text-xl font-bold mb-6">Services</h3>
+              <ul className="space-y-3">
+                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">Energy Infrastructure</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">ERP Solutions</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">Project Management</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">Consulting Services</Link></li>
               </ul>
             </div>
 
             {/* Company */}
             <div>
-              <h4 className="text-lg font-bold mb-4">Company</h4>
-              <ul className="space-y-2">
-                <li><Link href="#about" className="text-gray-400 hover:text-white transition-colors">About</Link></li>
-                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Careers</Link></li>
-                <li><Link href="#contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link></li>
-                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Support</Link></li>
+              <h3 className="text-xl font-bold mb-6">Company</h3>
+              <ul className="space-y-3">
+                <li><Link href="#about" className="text-gray-300 hover:text-green-400 transition-colors">About Us</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">Careers</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">News</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">Contact</Link></li>
               </ul>
             </div>
 
-            {/* Resources */}
+            {/* Contact */}
             <div>
-              <h4 className="text-lg font-bold mb-4">Resources</h4>
-              <ul className="space-y-2">
-                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Documentation</Link></li>
-                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">API Reference</Link></li>
-                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Blog</Link></li>
-                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Status</Link></li>
-              </ul>
+              <h3 className="text-xl font-bold mb-6">Contact</h3>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <MapPin className="w-5 h-5 text-green-400" />
+                  <span className="text-gray-300">Lagos, Nigeria</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Phone className="w-5 h-5 text-green-400" />
+                  <span className="text-gray-300">+234 XXX XXX XXXX</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Mail className="w-5 h-5 text-green-400" />
+                  <span className="text-gray-300">info@mofadenergysolutions.com</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="border-t border-gray-800 mt-12 pt-8 text-center">
-            <p className="text-gray-400">
-              © 2024 MOFAD Enterprise ERP. All rights reserved.
-            </p>
+          <div className="border-t border-gray-700 mt-12 pt-8">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <p className="text-gray-400">© 2024 MOFAD Energy Solutions Limited. All rights reserved.</p>
+              <div className="flex space-x-6 mt-4 md:mt-0">
+                <Link href="#" className="text-gray-400 hover:text-green-400 transition-colors">Privacy Policy</Link>
+                <Link href="#" className="text-gray-400 hover:text-green-400 transition-colors">Terms of Service</Link>
+              </div>
+            </div>
           </div>
         </div>
       </footer>

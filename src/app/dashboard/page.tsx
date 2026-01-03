@@ -108,18 +108,35 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="space-y-6">
+        {/* MOFAD Logo Header */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <img
+                src="/mofad-logo.svg"
+                alt="MOFAD Energy Solutions"
+                className="h-16 w-auto"
+              />
+              <div className="text-right">
+                <h2 className="text-lg font-semibold text-gray-900">Enterprise ERP</h2>
+                <p className="text-sm text-gray-500">Distribution Management System</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-500">Last updated</p>
+              <p className="text-sm font-medium text-gray-900">
+                {new Date().toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Page Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-gray-600 mt-1">
               Welcome back! Here&apos;s what&apos;s happening with your distribution network.
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500">Last updated</p>
-            <p className="text-sm font-medium text-gray-900">
-              {new Date().toLocaleString()}
             </p>
           </div>
         </div>

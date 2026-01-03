@@ -229,7 +229,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
             className={cn(
               "relative flex items-center w-full px-4 py-3 text-sm font-medium rounded-2xl transition-all duration-300",
               isActive ? "text-white" : "text-slate-700 hover:text-slate-900",
-              depth > 0 && "pl-6 text-xs"
+              depth > 0 && "pl-3 py-2.5 text-sm font-normal"
             )}
             onClick={(e) => hasChildren && e.preventDefault()}
           >
@@ -239,12 +239,12 @@ export function Sidebar({ collapsed }: SidebarProps) {
               isActive
                 ? "bg-white/20 text-white shadow-lg"
                 : "bg-transparent text-slate-600",
-              depth === 0 ? "w-10 h-10" : "w-8 h-8",
-              collapsed && depth === 0 ? "mr-0" : "mr-3"
+              depth === 0 ? "w-10 h-10" : "w-7 h-7",
+              collapsed && depth === 0 ? "mr-0" : depth > 0 ? "mr-2.5" : "mr-3"
             )}>
               <Icon className={cn(
                 "transition-all duration-300",
-                depth === 0 ? "w-5 h-5" : "w-4 h-4",
+                depth === 0 ? "w-5 h-5" : "w-3.5 h-3.5",
                 isActive && "animate-pulse"
               )} />
             </div>
@@ -266,7 +266,10 @@ export function Sidebar({ collapsed }: SidebarProps) {
 
                 <div className="flex items-center gap-2">
                   {item.badge && (
-                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center animate-pulse">
+                    <span className={cn(
+                      "bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center",
+                      depth > 0 ? "text-xs px-1.5 py-0.5 min-w-[18px]" : "animate-pulse"
+                    )}>
                       {item.badge}
                     </span>
                   )}
@@ -296,7 +299,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
         {hasChildren && isExpanded && !collapsed && (
           <div className="overflow-hidden">
             <div className="animate-in slide-in-from-top-2 duration-300 ease-out">
-              <div className="ml-3 border-l-2 border-slate-200/50 pl-4 py-2 space-y-1">
+              <div className="ml-6 border-l-2 border-slate-200/50 pl-6 py-3 space-y-3">
                 {item.children?.map((child) => renderNavItem(child, depth + 1))}
               </div>
             </div>
@@ -319,14 +322,26 @@ export function Sidebar({ collapsed }: SidebarProps) {
         {/* Logo Area */}
         <div className="flex items-center px-6 py-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-emerald-600 to-green-600 rounded-lg flex items-center justify-center">
-              <Activity className="w-6 h-6 text-white" />
-            </div>
-
             {!collapsed && (
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">MOFAD</h1>
-                <p className="text-xs text-gray-500">Enterprise ERP</p>
+              <div className="flex items-center">
+                <img
+                  src="/mofad-logo.svg"
+                  alt="MOFAD Energy Solutions"
+                  className="h-12 w-auto"
+                />
+                <div className="ml-3">
+                  <p className="text-xs text-gray-500 font-medium">Enterprise ERP</p>
+                </div>
+              </div>
+            )}
+
+            {collapsed && (
+              <div className="flex items-center justify-center">
+                <img
+                  src="/mofad-logo.svg"
+                  alt="MOFAD"
+                  className="h-8 w-auto"
+                />
               </div>
             )}
           </div>
