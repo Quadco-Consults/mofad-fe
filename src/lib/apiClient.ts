@@ -128,9 +128,9 @@ class ApiClient {
     this.clearAuthToken()
 
     try {
-      // Use the MOFAD auth endpoint (no trailing slash)
+      // Use the Django JWT token endpoint
       // Don't send auth header for login - it's a public endpoint
-      const url = `${this.baseURL}/auth/auth/login`
+      const url = `http://localhost:8000/api/token/`
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -154,15 +154,12 @@ class ApiClient {
 
       const jsonResponse = await response.json()
 
-      // Backend wraps responses in { status, message, data } format
-      const loginResponse: LoginResponse = jsonResponse.data || jsonResponse
+      // JWT endpoint returns { access, refresh } directly
+      if (jsonResponse.access && jsonResponse.refresh) {
+        this.setAuthToken(jsonResponse.access)
 
-      // For superusers, is_mfa_required is false and tokens are returned
-      if (!loginResponse.is_mfa_required && loginResponse.access_token) {
-        this.setAuthToken(loginResponse.access_token)
-
-        if (typeof window !== 'undefined' && loginResponse.refresh_token) {
-          localStorage.setItem('refresh_token', loginResponse.refresh_token)
+        if (typeof window !== 'undefined' && jsonResponse.refresh) {
+          localStorage.setItem('refresh_token', jsonResponse.refresh)
         }
 
         // Get user data
@@ -171,11 +168,11 @@ class ApiClient {
         return {
           user,
           tokens: {
-            access_token: loginResponse.access_token,
-            refresh_token: loginResponse.refresh_token || ''
+            access_token: jsonResponse.access,
+            refresh_token: jsonResponse.refresh
           },
           is_mfa_required: false,
-          force_password_reset: loginResponse.force_password_reset
+          force_password_reset: false
         }
       }
 
@@ -263,18 +260,18 @@ class ApiClient {
     }
 
     const response = await this.request<{
-      access_token: string
-      refresh_token?: string
-    }>('/auth/auth/tokens/refresh', {
+      access: string
+      refresh?: string
+    }>('/api/token/refresh/', {
       method: 'POST',
-      body: JSON.stringify({ refresh_token: refreshToken })
+      body: JSON.stringify({ refresh: refreshToken })
     })
 
-    if (response.access_token) {
-      this.setAuthToken(response.access_token)
+    if (response.access) {
+      this.setAuthToken(response.access)
 
-      if (response.refresh_token && typeof window !== 'undefined') {
-        localStorage.setItem('refresh_token', response.refresh_token)
+      if (response.refresh && typeof window !== 'undefined') {
+        localStorage.setItem('refresh_token', response.refresh)
       }
     }
 
@@ -282,28 +279,53 @@ class ApiClient {
   }
 
   // User methods
-  // Note: Using main router endpoint with trailing slash (not auth module)
+  // Note: Using main router endpoint with user ID from JWT token
   async getUser(): Promise<User> {
+    // Extract user ID from JWT token
+    const userId = this.getUserIdFromToken()
+    if (!userId) {
+      throw {
+        message: 'No user ID found in token',
+        status: 401
+      } as ApiError
+    }
+
     const response = await this.request<{
       id: number
       email: string
       first_name: string
       last_name: string
-      full_name: string
       phone: string | null
       is_active: boolean
       role?: string
-    }>('/users/me/')
+    }>(`/users/${userId}/`)
 
     return {
       id: response.id,
-      name: response.full_name || `${response.first_name} ${response.last_name}`.trim(),
+      name: `${response.first_name} ${response.last_name}`.trim(),
       email: response.email,
       email_verified_at: undefined,
       created_at: '',
       updated_at: '',
       permissions: [],
       roles: response.role ? [{ id: 0, name: response.role, guard_name: 'web' }] : [],
+    }
+  }
+
+  // Helper method to extract user ID from JWT token
+  private getUserIdFromToken(): string | null {
+    if (!this.authToken) return null
+
+    try {
+      // JWT tokens have 3 parts separated by dots
+      const parts = this.authToken.split('.')
+      if (parts.length !== 3) return null
+
+      // Decode the payload (second part)
+      const payload = JSON.parse(atob(parts[1]))
+      return payload.user_id || null
+    } catch (error) {
+      return null
     }
   }
 
