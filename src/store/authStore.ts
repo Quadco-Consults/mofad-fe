@@ -9,6 +9,12 @@ import { User, LoginForm } from '@/types'
 const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API !== 'false'
 const api = USE_REAL_API ? apiClient : mockApi
 
+// Debug logging to console
+console.log('🔧 Auth Store Configuration:')
+console.log('  NEXT_PUBLIC_USE_REAL_API:', process.env.NEXT_PUBLIC_USE_REAL_API)
+console.log('  USE_REAL_API:', USE_REAL_API)
+console.log('  API Client Selected:', USE_REAL_API ? 'Real API' : 'Mock API')
+
 interface AuthState {
   user: User | null
   isAuthenticated: boolean
@@ -66,6 +72,11 @@ export const useAuthStore = create<AuthState>()(
           // Login successful - user is authenticated
           const user = response.user
           if (user && user.id) {
+            // Store user data in localStorage for frontend-only authentication
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('auth_user', JSON.stringify(user))
+            }
+
             set({
               user,
               isAuthenticated: true,
@@ -102,10 +113,15 @@ export const useAuthStore = create<AuthState>()(
 
         set({ isLoading: true, error: null })
         try {
-          const response = await apiClient.verifyMFA(pendingEmail, totp)
+          const response = await api.verifyMFA(pendingEmail, totp)
           const user = response.user
 
           if (user && user.id) {
+            // Store user data in localStorage for frontend-only authentication
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('auth_user', JSON.stringify(user))
+            }
+
             set({
               user,
               isAuthenticated: true,
@@ -133,6 +149,13 @@ export const useAuthStore = create<AuthState>()(
         } catch (error) {
           console.error('Logout error:', error)
         } finally {
+          // Clear all auth data from localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token')
+            localStorage.removeItem('refresh_token')
+            localStorage.removeItem('auth_user')
+          }
+
           set({
             user: null,
             isAuthenticated: false,
@@ -146,9 +169,13 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuth: async () => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+        // Frontend-only authentication check using localStorage
+        if (typeof window === 'undefined') return
 
-        if (!token) {
+        const token = localStorage.getItem('auth_token')
+        const storedUser = localStorage.getItem('auth_user')
+
+        if (!token || !storedUser) {
           set({
             user: null,
             isAuthenticated: false,
@@ -160,10 +187,8 @@ export const useAuthStore = create<AuthState>()(
           return
         }
 
-        set({ isLoading: true })
         try {
-          const user = await api.getUser()
-
+          const user = JSON.parse(storedUser)
           set({
             user,
             isAuthenticated: true,
@@ -174,9 +199,10 @@ export const useAuthStore = create<AuthState>()(
             forcePasswordReset: false,
           })
         } catch (error) {
-          // Token is invalid or expired
+          // Invalid stored data
           localStorage.removeItem('auth_token')
           localStorage.removeItem('refresh_token')
+          localStorage.removeItem('auth_user')
           set({
             user: null,
             isAuthenticated: false,

@@ -25,13 +25,22 @@ export function formatDate(date: string | Date): string {
 }
 
 export function formatDateTime(date: string | Date): string {
+  if (!date) return 'N/A'
+
+  const dateObj = new Date(date)
+
+  // Check if the date is invalid
+  if (isNaN(dateObj.getTime())) {
+    return 'Invalid Date'
+  }
+
   return new Intl.DateTimeFormat('en-NG', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(date))
+  }).format(dateObj)
 }
 
 export function truncateText(text: string, maxLength: number): string {

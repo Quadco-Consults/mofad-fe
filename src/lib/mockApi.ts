@@ -54,6 +54,15 @@ class MockApiClient {
     is_mfa_required: boolean
     force_password_reset: boolean
   }> {
+    console.log('🔐 Mock API Login Attempt:', {
+      email: credentials.email,
+      password: '***' + credentials.password.slice(-3),
+      availableCredentials: MOCK_CREDENTIALS.map(c => ({
+        email: c.email,
+        password: '***' + c.password.slice(-3)
+      }))
+    })
+
     await delay(1500) // Simulate network delay
 
     const { email, password } = credentials
@@ -62,6 +71,12 @@ class MockApiClient {
     const isValidCredentials = MOCK_CREDENTIALS.some(
       cred => cred.email === email && cred.password === password
     )
+
+    console.log('🔐 Credentials Check:', {
+      email,
+      isValid: isValidCredentials,
+      matchingCredential: MOCK_CREDENTIALS.find(c => c.email === email)
+    })
 
     if (!isValidCredentials) {
       throw {
@@ -98,12 +113,58 @@ class MockApiClient {
     }
   }
 
+  // Mock MFA verification
+  async verifyMFA(email: string, totp: string): Promise<{
+    user: User
+    tokens: { access_token: string; refresh_token: string } | null
+    is_mfa_required: boolean
+    force_password_reset: boolean
+  }> {
+    await delay(1000) // Simulate network delay for MFA verification
+
+    // Simple MFA validation - accept any 6-digit code
+    if (!totp || totp.length !== 6 || !/^\d{6}$/.test(totp)) {
+      throw {
+        message: 'Invalid MFA code. Please enter a 6-digit code.',
+        status: 401,
+        errors: {
+          totp: ['Invalid MFA code format.']
+        }
+      } as ApiError
+    }
+
+    // Generate mock tokens
+    const token = btoa(`${email}:mfa:${Date.now()}:${Math.random()}`)
+    const refreshToken = btoa(`refresh:mfa:${email}:${Date.now()}:${Math.random()}`)
+
+    // Store in localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('auth_token', token)
+      localStorage.setItem('refresh_token', refreshToken)
+    }
+
+    return {
+      user: {
+        ...MOCK_USER,
+        email,
+        name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase())
+      },
+      tokens: {
+        access_token: token,
+        refresh_token: refreshToken
+      },
+      is_mfa_required: false,
+      force_password_reset: false
+    }
+  }
+
   // Mock logout
   async logout() {
     await delay(500)
 
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth_token')
+      localStorage.removeItem('refresh_token')
     }
 
     return { message: 'Successfully logged out' }

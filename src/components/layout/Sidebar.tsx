@@ -48,11 +48,6 @@ const navigation: NavItem[] = [
     color: 'from-emerald-600 to-green-600'
   },
   {
-    label: 'Notifications',
-    href: '/notifications',
-    icon: Bell,
-  },
-  {
     label: 'Orders',
     href: '/orders',
     icon: FileText,
@@ -159,6 +154,12 @@ const navigation: NavItem[] = [
       { label: 'Warehouses', href: '/settings/warehouses', icon: Warehouse },
       { label: 'States', href: '/settings/states', icon: Building2 },
     ],
+  },
+  {
+    label: 'Notifications',
+    href: '/notifications',
+    icon: Bell,
+    color: 'from-blue-500 to-indigo-500',
   },
 ]
 

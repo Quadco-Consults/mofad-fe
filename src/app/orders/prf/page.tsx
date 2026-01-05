@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -109,11 +110,11 @@ interface PRFItem {
 
 interface PRFFormData {
   prf_number?: string
-  description?: string
   customer: number
   customer_name?: string
-  delivery_location: number
-  expected_delivery_date: string
+  customer_location: number
+  customer_location_name?: string
+  order_date: string
   order_reference?: string
   notes?: string
   priority: 'low' | 'medium' | 'high' | 'urgent'
@@ -122,11 +123,11 @@ interface PRFFormData {
 }
 
 const initialFormData: PRFFormData = {
-  description: '',
   customer: 0,
   customer_name: '',
-  delivery_location: 0,
-  expected_delivery_date: '',
+  customer_location: 0,
+  customer_location_name: '',
+  order_date: new Date().toISOString().split('T')[0], // Current date
   order_reference: '',
   notes: '',
   priority: 'medium',
@@ -135,6 +136,7 @@ const initialFormData: PRFFormData = {
 }
 
 export default function PRFPage() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
@@ -143,7 +145,6 @@ export default function PRFPage() {
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [showViewModal, setShowViewModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve')
@@ -152,72 +153,105 @@ export default function PRFPage() {
   const [formData, setFormData] = useState<PRFFormData>(initialFormData)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
-  // Fetch PRFs (with fallback to mock data when backend is not available)
+  // Helper functions for localStorage management
+  const getMockPRFs = (): PRF[] => {
+    if (typeof window === 'undefined') return []
+
+    try {
+      const stored = localStorage.getItem('mofad_mock_prfs')
+      if (stored) {
+        return JSON.parse(stored)
+      }
+    } catch (error) {
+      console.error('Error reading PRFs from localStorage:', error)
+    }
+
+    // Default mock data if none stored
+    const defaultMockPRFs: PRF[] = [
+      {
+        id: 1,
+        prf_number: 'PRF-2024-001',
+        title: 'Office Supplies Purchase',
+        purpose: 'Monthly office supplies procurement',
+        description: 'Purchase of office stationery, printing paper, and consumables',
+        department: 'Operations',
+        status: 'submitted',
+        priority: 'medium',
+        estimated_total: 125000,
+        delivery_location: 1,
+        expected_delivery_date: '2024-01-15',
+        budget_code: 'OP-SUP-2024',
+        created_at: '2024-01-01T10:00:00Z',
+        updated_at: '2024-01-01T10:00:00Z'
+      },
+      {
+        id: 2,
+        prf_number: 'PRF-2024-002',
+        title: 'IT Equipment Procurement',
+        purpose: 'New laptops for development team',
+        description: 'Purchase of 5 laptops for expanding development team',
+        department: 'IT',
+        status: 'approved',
+        priority: 'high',
+        estimated_total: 750000,
+        delivery_location: 1,
+        expected_delivery_date: '2024-01-20',
+        budget_code: 'IT-EQP-2024',
+        created_at: '2024-01-02T09:30:00Z',
+        updated_at: '2024-01-02T09:30:00Z'
+      },
+      {
+        id: 3,
+        prf_number: 'PRF-2024-003',
+        title: 'Vehicle Maintenance',
+        purpose: 'Quarterly vehicle service',
+        description: 'Regular maintenance for company vehicles',
+        department: 'Operations',
+        status: 'draft',
+        priority: 'low',
+        estimated_total: 85000,
+        delivery_location: 2,
+        expected_delivery_date: '2024-01-25',
+        budget_code: 'VH-MNT-2024',
+        created_at: '2024-01-03T11:15:00Z',
+        updated_at: '2024-01-03T11:15:00Z'
+      }
+    ]
+
+    // Store default data
+    saveMockPRFs(defaultMockPRFs)
+    return defaultMockPRFs
+  }
+
+  const saveMockPRFs = (prfs: PRF[]) => {
+    if (typeof window === 'undefined') return
+
+    try {
+      localStorage.setItem('mofad_mock_prfs', JSON.stringify(prfs))
+    } catch (error) {
+      console.error('Error saving PRFs to localStorage:', error)
+    }
+  }
+
+  const getNextPRFId = (): number => {
+    const existingPRFs = getMockPRFs()
+    return existingPRFs.length > 0 ? Math.max(...existingPRFs.map(p => p.id)) + 1 : 1
+  }
+
+  // Check if we should use mock API
+  const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API !== 'false'
+
+  // Fetch PRFs (use mock data when backend is disabled)
   const { data: prfData, isLoading, error, refetch } = useQuery({
     queryKey: ['prfs', searchTerm, statusFilter, priorityFilter],
     queryFn: async () => {
-      try {
-        const params: Record<string, string> = {}
-        if (statusFilter !== 'all') params.status = statusFilter
-        if (priorityFilter !== 'all') params.priority = priorityFilter
-        if (searchTerm) params.search = searchTerm
-        return apiClient.get<PRF[]>('/prfs/', params)
-      } catch (error) {
-        // Return mock data when backend is not available
-        console.warn('PRF endpoint not available, using mock data')
-        const mockPRFs: PRF[] = [
-          {
-            id: 1,
-            prf_number: 'PRF-2024-001',
-            title: 'Office Supplies Purchase',
-            purpose: 'Monthly office supplies procurement',
-            description: 'Purchase of office stationery, printing paper, and consumables',
-            department: 'Operations',
-            status: 'submitted',
-            priority: 'medium',
-            estimated_total: 125000,
-            delivery_location: 1,
-            expected_delivery_date: '2024-01-15',
-            budget_code: 'OP-SUP-2024',
-            created_at: '2024-01-01T10:00:00Z',
-            updated_at: '2024-01-01T10:00:00Z'
-          },
-          {
-            id: 2,
-            prf_number: 'PRF-2024-002',
-            title: 'IT Equipment Procurement',
-            purpose: 'New laptops for development team',
-            description: 'Purchase of 5 laptops for expanding development team',
-            department: 'IT',
-            status: 'approved',
-            priority: 'high',
-            estimated_total: 750000,
-            delivery_location: 1,
-            expected_delivery_date: '2024-01-20',
-            budget_code: 'IT-EQP-2024',
-            created_at: '2024-01-02T09:30:00Z',
-            updated_at: '2024-01-02T09:30:00Z'
-          },
-          {
-            id: 3,
-            prf_number: 'PRF-2024-003',
-            title: 'Vehicle Maintenance',
-            purpose: 'Quarterly vehicle service',
-            description: 'Regular maintenance for company vehicles',
-            department: 'Operations',
-            status: 'draft',
-            priority: 'low',
-            estimated_total: 85000,
-            delivery_location: 2,
-            expected_delivery_date: '2024-01-25',
-            budget_code: 'VH-MNT-2024',
-            created_at: '2024-01-03T11:15:00Z',
-            updated_at: '2024-01-03T11:15:00Z'
-          }
-        ]
+      if (!USE_REAL_API) {
+        // Use localStorage mock data directly when mock mode is enabled
+        console.log('🔧 Using localStorage mock data (mock mode enabled)')
+        const storedPRFs = getMockPRFs()
 
-        // Apply filters to mock data
-        let filteredPRFs = mockPRFs
+        // Apply filters to stored data
+        let filteredPRFs = storedPRFs
         if (statusFilter !== 'all') {
           filteredPRFs = filteredPRFs.filter(prf => prf.status === statusFilter)
         }
@@ -228,8 +262,40 @@ export default function PRFPage() {
           const term = searchTerm.toLowerCase()
           filteredPRFs = filteredPRFs.filter(prf =>
             prf.prf_number.toLowerCase().includes(term) ||
-            prf.title.toLowerCase().includes(term) ||
-            prf.purpose.toLowerCase().includes(term)
+            prf.title?.toLowerCase().includes(term) ||
+            prf.purpose?.toLowerCase().includes(term)
+          )
+        }
+
+        return filteredPRFs
+      }
+
+      // Only try real API when explicitly enabled
+      try {
+        const params: Record<string, string> = {}
+        if (statusFilter !== 'all') params.status = statusFilter
+        if (priorityFilter !== 'all') params.priority = priorityFilter
+        if (searchTerm) params.search = searchTerm
+        return apiClient.get<PRF[]>('/prfs/', params)
+      } catch (error) {
+        // Fallback to mock data if real API fails
+        console.log('🔧 Real API failed, falling back to localStorage mock data')
+        const storedPRFs = getMockPRFs()
+
+        // Apply filters to stored data
+        let filteredPRFs = storedPRFs
+        if (statusFilter !== 'all') {
+          filteredPRFs = filteredPRFs.filter(prf => prf.status === statusFilter)
+        }
+        if (priorityFilter !== 'all') {
+          filteredPRFs = filteredPRFs.filter(prf => prf.priority === priorityFilter)
+        }
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase()
+          filteredPRFs = filteredPRFs.filter(prf =>
+            prf.prf_number.toLowerCase().includes(term) ||
+            prf.title?.toLowerCase().includes(term) ||
+            prf.purpose?.toLowerCase().includes(term)
           )
         }
 
@@ -242,15 +308,30 @@ export default function PRFPage() {
   const { data: warehousesData, isLoading: isWarehousesLoading, error: warehousesError } = useQuery({
     queryKey: ['warehouses'],
     queryFn: async () => {
-      // Always return mock warehouses data
-      console.log('Providing mock warehouses data for dropdowns')
-      const mockData = [
-        { id: 1, name: 'Main Warehouse - Lagos', location: 'Lagos', code: 'WH-LG-01' },
-        { id: 2, name: 'Abuja Distribution Center', location: 'Abuja', code: 'WH-AB-01' },
-        { id: 3, name: 'Port Harcourt Depot', location: 'Port Harcourt', code: 'WH-PH-01' }
-      ]
-      console.log('Using mock warehouses data:', mockData)
-      return mockData
+      if (!USE_REAL_API) {
+        // Use mock warehouses data directly when mock mode is enabled
+        console.log('🔧 Using mock warehouses data (mock mode enabled)')
+        const mockData = [
+          { id: 1, name: 'Main Warehouse - Lagos', location: 'Lagos', code: 'WH-LG-01' },
+          { id: 2, name: 'Abuja Distribution Center', location: 'Abuja', code: 'WH-AB-01' },
+          { id: 3, name: 'Port Harcourt Depot', location: 'Port Harcourt', code: 'WH-PH-01' }
+        ]
+        return mockData
+      }
+
+      // Only try real API when explicitly enabled
+      try {
+        return await apiClient.get<any[]>('/warehouses/')
+      } catch (error) {
+        // Fallback to mock data if real API fails
+        console.log('🔧 Real warehouse API failed, using mock data')
+        const mockData = [
+          { id: 1, name: 'Main Warehouse - Lagos', location: 'Lagos', code: 'WH-LG-01' },
+          { id: 2, name: 'Abuja Distribution Center', location: 'Abuja', code: 'WH-AB-01' },
+          { id: 3, name: 'Port Harcourt Depot', location: 'Port Harcourt', code: 'WH-PH-01' }
+        ]
+        return mockData
+      }
     },
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -260,39 +341,106 @@ export default function PRFPage() {
   const { data: customersData, isLoading: isCustomersLoading, error: customersError } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
-      // Always return mock customers data
-      console.log('Providing mock customers data for dropdowns')
-      const mockData = [
-        {
-          id: 1,
-          name: 'Total Nigeria Plc',
-          business_name: 'Total Nigeria Plc',
-          customer_code: 'TNP001',
-          email: 'orders@total.com.ng',
-          phone: '+234-1-2345678',
-          credit_limit: 5000000
-        },
-        {
-          id: 2,
-          name: 'Oando Marketing',
-          business_name: 'Oando Marketing Plc',
-          customer_code: 'OMP002',
-          email: 'procurement@oando.com',
-          phone: '+234-1-8765432',
-          credit_limit: 3000000
-        },
-        {
-          id: 3,
-          name: 'Mobil Oil Nigeria',
-          business_name: 'Mobil Oil Nigeria',
-          customer_code: 'MON003',
-          email: 'orders@mobil.com.ng',
-          phone: '+234-1-5556789',
-          credit_limit: 4500000
-        }
-      ]
-      console.log('Using mock customers data:', mockData)
-      return mockData
+      if (!USE_REAL_API) {
+        // Use mock customers data directly when mock mode is enabled
+        console.log('🔧 Using mock customers data (mock mode enabled)')
+        const mockData = [
+          {
+            id: 1,
+            name: 'Total Nigeria Plc',
+            business_name: 'Total Nigeria Plc',
+            customer_code: 'TNP001',
+            email: 'orders@total.com.ng',
+            phone: '+234-1-2345678',
+            credit_limit: 5000000,
+            locations: [
+              { id: 1, name: 'Total Head Office - Victoria Island, Lagos', address: 'Plot 991/992, Cadastral Zone A0, Central Business District, Lagos', primary: true },
+              { id: 2, name: 'Total Abuja Office', address: '23 Ebitu Ukiwe Street, Jabi, Abuja', primary: false },
+              { id: 3, name: 'Total Port Harcourt Branch', address: 'Plot 18, Trans Amadi Industrial Layout, Port Harcourt', primary: false }
+            ]
+          },
+          {
+            id: 2,
+            name: 'Oando Marketing',
+            business_name: 'Oando Marketing Plc',
+            customer_code: 'OMP002',
+            email: 'procurement@oando.com',
+            phone: '+234-1-8765432',
+            credit_limit: 3000000,
+            locations: [
+              { id: 4, name: 'Oando Towers - Lekki, Lagos', address: '2 Ajose Adeogun Street, Victoria Island, Lagos', primary: true },
+              { id: 5, name: 'Oando Kano Office', address: '12 Murtala Muhammad Way, Kano', primary: false }
+            ]
+          },
+          {
+            id: 3,
+            name: 'Mobil Oil Nigeria',
+            business_name: 'Mobil Oil Nigeria',
+            customer_code: 'MON003',
+            email: 'orders@mobil.com.ng',
+            phone: '+234-1-5556789',
+            credit_limit: 4500000,
+            locations: [
+              { id: 6, name: 'Mobil House - Lagos Island', address: '1 Lekki-Epe Expressway, Lagos', primary: true },
+              { id: 7, name: 'Mobil Warri Office', address: 'Petrolex House, Warri, Delta State', primary: false },
+              { id: 8, name: 'Mobil Kaduna Depot', address: 'KM 16, Kaduna-Abuja Expressway, Kaduna', primary: false }
+            ]
+          }
+        ]
+        return mockData
+      }
+
+      // Only try real API when explicitly enabled
+      try {
+        return await apiClient.get<any[]>('/customers/')
+      } catch (error) {
+        // Fallback to mock data if real API fails
+        console.log('🔧 Real customer API failed, using mock data')
+        const mockData = [
+          {
+            id: 1,
+            name: 'Total Nigeria Plc',
+            business_name: 'Total Nigeria Plc',
+            customer_code: 'TNP001',
+            email: 'orders@total.com.ng',
+            phone: '+234-1-2345678',
+            credit_limit: 5000000,
+            locations: [
+              { id: 1, name: 'Total Head Office - Victoria Island, Lagos', address: 'Plot 991/992, Cadastral Zone A0, Central Business District, Lagos', primary: true },
+              { id: 2, name: 'Total Abuja Office', address: '23 Ebitu Ukiwe Street, Jabi, Abuja', primary: false },
+              { id: 3, name: 'Total Port Harcourt Branch', address: 'Plot 18, Trans Amadi Industrial Layout, Port Harcourt', primary: false }
+            ]
+          },
+          {
+            id: 2,
+            name: 'Oando Marketing',
+            business_name: 'Oando Marketing Plc',
+            customer_code: 'OMP002',
+            email: 'procurement@oando.com',
+            phone: '+234-1-8765432',
+            credit_limit: 3000000,
+            locations: [
+              { id: 4, name: 'Oando Towers - Lekki, Lagos', address: '2 Ajose Adeogun Street, Victoria Island, Lagos', primary: true },
+              { id: 5, name: 'Oando Kano Office', address: '12 Murtala Muhammad Way, Kano', primary: false }
+            ]
+          },
+          {
+            id: 3,
+            name: 'Mobil Oil Nigeria',
+            business_name: 'Mobil Oil Nigeria',
+            customer_code: 'MON003',
+            email: 'orders@mobil.com.ng',
+            phone: '+234-1-5556789',
+            credit_limit: 4500000,
+            locations: [
+              { id: 6, name: 'Mobil House - Lagos Island', address: '1 Lekki-Epe Expressway, Lagos', primary: true },
+              { id: 7, name: 'Mobil Warri Office', address: 'Petrolex House, Warri, Delta State', primary: false },
+              { id: 8, name: 'Mobil Kaduna Depot', address: 'KM 16, Kaduna-Abuja Expressway, Kaduna', primary: false }
+            ]
+          }
+        ]
+        return mockData
+      }
     },
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -302,44 +450,88 @@ export default function PRFPage() {
   const { data: productsData, isLoading: isProductsLoading, error: productsError } = useQuery({
     queryKey: ['products'],
     queryFn: async () => {
-      // Always return mock products data
-      console.log('Providing mock products data for dropdowns')
-      const mockData = [
-        {
-          id: 1,
-          name: 'Premium Motor Spirit (PMS)',
-          code: 'PMS-001',
-          bulk_selling_price: 617,
-          retail_selling_price: 650,
-          category: 'Petroleum Products'
-        },
-        {
-          id: 2,
-          name: 'Automotive Gas Oil (Diesel)',
-          code: 'AGO-001',
-          bulk_selling_price: 1050,
-          retail_selling_price: 1100,
-          category: 'Petroleum Products'
-        },
-        {
-          id: 3,
-          name: 'Dual Purpose Kerosene (DPK)',
-          code: 'DPK-001',
-          bulk_selling_price: 850,
-          retail_selling_price: 900,
-          category: 'Petroleum Products'
-        },
-        {
-          id: 4,
-          name: 'Engine Oil SAE 20W-50',
-          code: 'ENG-001',
-          bulk_selling_price: 3500,
-          retail_selling_price: 3800,
-          category: 'Lubricants'
-        }
-      ]
-      console.log('Using mock products data:', mockData)
-      return mockData
+      if (!USE_REAL_API) {
+        // Use mock products data directly when mock mode is enabled
+        console.log('🔧 Using mock products data (mock mode enabled)')
+        const mockData = [
+          {
+            id: 1,
+            name: 'Premium Motor Spirit (PMS)',
+            code: 'PMS-001',
+            bulk_selling_price: 617,
+            retail_selling_price: 650,
+            category: 'Petroleum Products'
+          },
+          {
+            id: 2,
+            name: 'Automotive Gas Oil (Diesel)',
+            code: 'AGO-001',
+            bulk_selling_price: 1050,
+            retail_selling_price: 1100,
+            category: 'Petroleum Products'
+          },
+          {
+            id: 3,
+            name: 'Dual Purpose Kerosene (DPK)',
+            code: 'DPK-001',
+            bulk_selling_price: 850,
+            retail_selling_price: 900,
+            category: 'Petroleum Products'
+          },
+          {
+            id: 4,
+            name: 'Engine Oil SAE 20W-50',
+            code: 'ENG-001',
+            bulk_selling_price: 3500,
+            retail_selling_price: 3800,
+            category: 'Lubricants'
+          }
+        ]
+        return mockData
+      }
+
+      // Only try real API when explicitly enabled
+      try {
+        return await apiClient.get<any[]>('/products/')
+      } catch (error) {
+        // Fallback to mock data if real API fails
+        console.log('🔧 Real products API failed, using mock data')
+        const mockData = [
+          {
+            id: 1,
+            name: 'Premium Motor Spirit (PMS)',
+            code: 'PMS-001',
+            bulk_selling_price: 617,
+            retail_selling_price: 650,
+            category: 'Petroleum Products'
+          },
+          {
+            id: 2,
+            name: 'Automotive Gas Oil (Diesel)',
+            code: 'AGO-001',
+            bulk_selling_price: 1050,
+            retail_selling_price: 1100,
+            category: 'Petroleum Products'
+          },
+          {
+            id: 3,
+            name: 'Dual Purpose Kerosene (DPK)',
+            code: 'DPK-001',
+            bulk_selling_price: 850,
+            retail_selling_price: 900,
+            category: 'Petroleum Products'
+          },
+          {
+            id: 4,
+            name: 'Engine Oil SAE 20W-50',
+            code: 'ENG-001',
+            bulk_selling_price: 3500,
+            retail_selling_price: 3800,
+            category: 'Lubricants'
+          }
+        ]
+        return mockData
+      }
     },
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -363,9 +555,86 @@ export default function PRFPage() {
     productsError
   })
 
-  // Create PRF mutation
+  // Create PRF mutation (with localStorage fallback)
   const createMutation = useMutation({
-    mutationFn: (data: PRFFormData) => apiClient.post<PRF>('/prfs/', data),
+    mutationFn: async (data: PRFFormData) => {
+      if (!USE_REAL_API) {
+        // Use localStorage directly when mock mode is enabled
+        console.log('🔧 Creating PRF in localStorage (mock mode enabled)')
+
+        const existingPRFs = getMockPRFs()
+        const newId = getNextPRFId()
+        const now = new Date().toISOString()
+
+        const newPRF: PRF = {
+          id: newId,
+          prf_number: data.prf_number || generatePRFNumber(),
+          title: `Customer Order - ${data.customer_name || 'Unknown Customer'}`,
+          purpose: `Purchase requisition for customer order ${data.order_reference || ''}`,
+          description: data.notes || 'Customer purchase order',
+          department: 'Sales',
+          status: 'draft',
+          priority: data.priority,
+          estimated_total: data.estimated_total,
+          delivery_location: data.customer_location,
+          expected_delivery_date: data.order_date,
+          budget_code: '',
+          created_at: now,
+          updated_at: now,
+          // Additional fields for customer order
+          customer: data.customer,
+          customer_name: data.customer_name,
+          order_reference: data.order_reference,
+          notes: data.notes,
+          items: data.items
+        } as any
+
+        const updatedPRFs = [...existingPRFs, newPRF as PRF]
+        saveMockPRFs(updatedPRFs)
+
+        return newPRF as PRF
+      }
+
+      // Only try real API when explicitly enabled
+      try {
+        return await apiClient.post<PRF>('/prfs/', data)
+      } catch (error) {
+        // Fallback to localStorage when real API is not available
+        console.log('🔧 Creating PRF in localStorage (real API not available)')
+
+        const existingPRFs = getMockPRFs()
+        const newId = getNextPRFId()
+        const now = new Date().toISOString()
+
+        const newPRF: PRF = {
+          id: newId,
+          prf_number: data.prf_number || generatePRFNumber(),
+          title: `Customer Order - ${data.customer_name || 'Unknown Customer'}`,
+          purpose: `Purchase requisition for customer order ${data.order_reference || ''}`,
+          description: data.notes || 'Customer purchase order',
+          department: 'Sales',
+          status: 'draft',
+          priority: data.priority,
+          estimated_total: data.estimated_total,
+          delivery_location: data.customer_location,
+          expected_delivery_date: data.order_date,
+          budget_code: '',
+          created_at: now,
+          updated_at: now,
+          // Additional fields for customer order
+          customer: data.customer,
+          customer_name: data.customer_name,
+          order_reference: data.order_reference,
+          notes: data.notes,
+          items: data.items
+        } as any
+
+        const updatedPRFs = [...existingPRFs, newPRF as PRF]
+        saveMockPRFs(updatedPRFs)
+
+        return newPRF as PRF
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prfs'] })
       setShowAddModal(false)
@@ -378,10 +647,49 @@ export default function PRFPage() {
     },
   })
 
-  // Update PRF mutation
+  // Update PRF mutation (with localStorage fallback)
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<PRFFormData> }) =>
-      apiClient.patch<PRF>(`/prfs/${id}/`, data),
+    mutationFn: async ({ id, data }: { id: number; data: Partial<PRFFormData> }) => {
+      try {
+        return await apiClient.patch<PRF>(`/prfs/${id}/`, data)
+      } catch (error) {
+        // Fallback to localStorage when backend is not available
+        console.log('🔧 Updating PRF in localStorage (backend not available)')
+
+        const existingPRFs = getMockPRFs()
+        const prfIndex = existingPRFs.findIndex(p => p.id === id)
+
+        if (prfIndex === -1) {
+          throw new Error('PRF not found')
+        }
+
+        const updatedPRF: PRF = {
+          ...existingPRFs[prfIndex],
+          title: `Customer Order - ${data.customer_name || existingPRFs[prfIndex].title}`,
+          purpose: `Purchase requisition for customer order ${data.order_reference || ''}`,
+          description: data.notes || existingPRFs[prfIndex].description || '',
+          department: 'Sales',
+          priority: data.priority || existingPRFs[prfIndex].priority,
+          estimated_total: data.estimated_total || existingPRFs[prfIndex].estimated_total,
+          delivery_location: data.customer_location || existingPRFs[prfIndex].delivery_location,
+          expected_delivery_date: data.order_date || existingPRFs[prfIndex].expected_delivery_date,
+          budget_code: '',
+          updated_at: new Date().toISOString(),
+          // Update customer order fields
+          customer: data.customer || (existingPRFs[prfIndex] as any).customer,
+          customer_name: data.customer_name || (existingPRFs[prfIndex] as any).customer_name,
+          order_reference: data.order_reference || (existingPRFs[prfIndex] as any).order_reference,
+          notes: data.notes,
+          items: data.items || (existingPRFs[prfIndex] as any).items
+        }
+
+        const updatedPRFs = [...existingPRFs]
+        updatedPRFs[prfIndex] = updatedPRF
+        saveMockPRFs(updatedPRFs)
+
+        return updatedPRF
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prfs'] })
       setShowEditModal(false)
@@ -394,9 +702,22 @@ export default function PRFPage() {
     },
   })
 
-  // Delete PRF mutation
+  // Delete PRF mutation (with localStorage fallback)
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiClient.delete(`/prfs/${id}/`),
+    mutationFn: async (id: number) => {
+      try {
+        return await apiClient.delete(`/prfs/${id}/`)
+      } catch (error) {
+        // Fallback to localStorage when backend is not available
+        console.log('🔧 Deleting PRF in localStorage (backend not available)')
+
+        const existingPRFs = getMockPRFs()
+        const filteredPRFs = existingPRFs.filter(p => p.id !== id)
+        saveMockPRFs(filteredPRFs)
+
+        return { success: true }
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prfs'] })
       setShowDeleteModal(false)
@@ -408,9 +729,35 @@ export default function PRFPage() {
     },
   })
 
-  // Submit PRF mutation
+  // Submit PRF mutation (with localStorage fallback)
   const submitMutation = useMutation({
-    mutationFn: (id: number) => apiClient.post<PRF>(`/prfs/${id}/submit/`),
+    mutationFn: async (id: number) => {
+      try {
+        return await apiClient.post<PRF>(`/prfs/${id}/submit/`)
+      } catch (error) {
+        // Fallback to localStorage when backend is not available
+        console.log('🔧 Submitting PRF in localStorage (backend not available)')
+
+        const existingPRFs = getMockPRFs()
+        const prfIndex = existingPRFs.findIndex(p => p.id === id)
+
+        if (prfIndex === -1) {
+          throw new Error('PRF not found')
+        }
+
+        const updatedPRF: PRF = {
+          ...existingPRFs[prfIndex],
+          status: 'submitted',
+          updated_at: new Date().toISOString(),
+        }
+
+        const updatedPRFs = [...existingPRFs]
+        updatedPRFs[prfIndex] = updatedPRF
+        saveMockPRFs(updatedPRFs)
+
+        return updatedPRF
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prfs'] })
       addToast({ type: 'success', title: 'Submitted', message: 'PRF submitted for approval' })
@@ -420,9 +767,35 @@ export default function PRFPage() {
     },
   })
 
-  // Approve PRF mutation
+  // Approve PRF mutation (with localStorage fallback)
   const approveMutation = useMutation({
-    mutationFn: (id: number) => apiClient.post<PRF>(`/prfs/${id}/approve/`),
+    mutationFn: async (id: number) => {
+      try {
+        return await apiClient.post<PRF>(`/prfs/${id}/approve/`)
+      } catch (error) {
+        // Fallback to localStorage when backend is not available
+        console.log('🔧 Approving PRF in localStorage (backend not available)')
+
+        const existingPRFs = getMockPRFs()
+        const prfIndex = existingPRFs.findIndex(p => p.id === id)
+
+        if (prfIndex === -1) {
+          throw new Error('PRF not found')
+        }
+
+        const updatedPRF: PRF = {
+          ...existingPRFs[prfIndex],
+          status: 'approved',
+          updated_at: new Date().toISOString(),
+        }
+
+        const updatedPRFs = [...existingPRFs]
+        updatedPRFs[prfIndex] = updatedPRF
+        saveMockPRFs(updatedPRFs)
+
+        return updatedPRF
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prfs'] })
       setShowApprovalModal(false)
@@ -434,10 +807,36 @@ export default function PRFPage() {
     },
   })
 
-  // Reject PRF mutation
+  // Reject PRF mutation (with localStorage fallback)
   const rejectMutation = useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
-      apiClient.post<PRF>(`/prfs/${id}/reject/`, { reason }),
+    mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
+      try {
+        return await apiClient.post<PRF>(`/prfs/${id}/reject/`, { reason })
+      } catch (error) {
+        // Fallback to localStorage when backend is not available
+        console.log('🔧 Rejecting PRF in localStorage (backend not available)')
+
+        const existingPRFs = getMockPRFs()
+        const prfIndex = existingPRFs.findIndex(p => p.id === id)
+
+        if (prfIndex === -1) {
+          throw new Error('PRF not found')
+        }
+
+        const updatedPRF: PRF = {
+          ...existingPRFs[prfIndex],
+          status: 'rejected',
+          rejection_reason: reason,
+          updated_at: new Date().toISOString(),
+        }
+
+        const updatedPRFs = [...existingPRFs]
+        updatedPRFs[prfIndex] = updatedPRF
+        saveMockPRFs(updatedPRFs)
+
+        return updatedPRF
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prfs'] })
       setShowApprovalModal(false)
@@ -461,8 +860,7 @@ export default function PRFPage() {
 
     // Required fields validation
     if (!formData.customer) errors.customer = 'Customer is required'
-    if (!formData.delivery_location) errors.delivery_location = 'Delivery location is required'
-    if (!formData.expected_delivery_date) errors.expected_delivery_date = 'Expected delivery date is required'
+    if (!formData.customer_location) errors.customer_location = 'Customer location is required'
     if (formData.items.length === 0) errors.items = 'At least one product item is required'
 
     // Validate items
@@ -558,40 +956,46 @@ export default function PRFPage() {
     const selectedCustomer = customers.find(c => c.id === customerId)
     if (selectedCustomer) {
       const orderRef = generateOrderReference(selectedCustomer.customer_code || 'GEN')
+      // Auto-select the primary location if available
+      const primaryLocation = (selectedCustomer as any).locations?.find((loc: any) => loc.primary) || (selectedCustomer as any).locations?.[0]
       setFormData({
         ...formData,
         customer: customerId,
         customer_name: selectedCustomer.name || selectedCustomer.business_name || '',
         order_reference: orderRef,
+        customer_location: primaryLocation?.id || 0,
+        customer_location_name: primaryLocation?.name || ''
       })
     }
   }
 
   const handleAdd = () => {
     resetForm()
-    // Generate PRF number when opening the form
+    // Generate PRF number and set current date when opening the form
     setFormData({
       ...initialFormData,
-      prf_number: generatePRFNumber()
+      prf_number: generatePRFNumber(),
+      order_date: new Date().toISOString().split('T')[0] // Always set to today's date
     })
     setShowAddModal(true)
   }
 
   const handleView = (prf: PRF) => {
-    setSelectedPRF(prf)
-    setShowViewModal(true)
+    // Navigate to the dedicated PRF view page using Next.js router
+    router.push(`/orders/prf/${prf.id}`)
   }
 
   const handleEdit = (prf: PRF) => {
     setSelectedPRF(prf)
-    // Note: Will need to update this based on actual PRF API structure
+    // Load PRF data into the simplified form structure
     setFormData({
       customer: (prf as any).customer || 0,
       customer_name: (prf as any).customer_name || '',
-      delivery_location: prf.delivery_location,
-      expected_delivery_date: prf.expected_delivery_date,
+      customer_location: prf.delivery_location || 0,
+      customer_location_name: '',
+      order_date: prf.expected_delivery_date || new Date().toISOString().split('T')[0],
       order_reference: (prf as any).order_reference || '',
-      notes: prf.description || '',
+      notes: (prf as any).notes || prf.description || '',
       priority: prf.priority,
       items: (prf as any).items || [],
       estimated_total: prf.estimated_total,
@@ -927,76 +1331,6 @@ export default function PRFPage() {
                   <p className="text-xs text-blue-600 mt-1">This number is automatically generated</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Title <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                        formErrors.title ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      placeholder="Enter PRF title"
-                    />
-                    {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Department <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                        formErrors.department ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      value={formData.department}
-                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    >
-                      <option value="">Select Department</option>
-                      <option value="Operations">Operations</option>
-                      <option value="Sales">Sales</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Procurement">Procurement</option>
-                      <option value="IT">IT</option>
-                      <option value="HR">HR</option>
-                      <option value="Marketing">Marketing</option>
-                    </select>
-                    {formErrors.department && <p className="text-red-500 text-xs mt-1">{formErrors.department}</p>}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Purpose <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                      formErrors.purpose ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    value={formData.purpose}
-                    onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
-                    placeholder="Enter the purpose of this requisition"
-                  />
-                  {formErrors.purpose && <p className="text-red-500 text-xs mt-1">{formErrors.purpose}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    rows={3}
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Detailed description of the requisition"
-                  />
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Customer <span className="text-red-500">*</span>
@@ -1187,46 +1521,58 @@ export default function PRFPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Delivery Location <span className="text-red-500">*</span>
+                      Customer Location <span className="text-red-500">*</span>
                     </label>
                     <select
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                        formErrors.delivery_location ? 'border-red-500' : 'border-gray-300'
+                        formErrors.customer_location ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      value={formData.delivery_location}
+                      value={formData.customer_location}
                       onChange={(e) => {
                         const locationId = parseInt(e.target.value) || 0
-                        console.log('Location dropdown changed:', { value: e.target.value, locationId, warehouses })
-                        setFormData({ ...formData, delivery_location: locationId })
+                        const selectedCustomer = customers.find(c => c.id === formData.customer)
+                        const selectedLocation = (selectedCustomer as any)?.locations?.find((loc: any) => loc.id === locationId)
+                        console.log('Customer location changed:', { value: e.target.value, locationId, selectedLocation })
+                        setFormData({
+                          ...formData,
+                          customer_location: locationId,
+                          customer_location_name: selectedLocation?.name || ''
+                        })
                       }}
-                      disabled={isWarehousesLoading}
+                      disabled={!formData.customer || formData.customer === 0}
                     >
-                      <option value={0}>{isWarehousesLoading ? 'Loading locations...' : 'Select Location'}</option>
-                      {warehouses.map((warehouse) => (
-                        <option key={warehouse.id} value={warehouse.id}>
-                          {warehouse.name}
-                        </option>
-                      ))}
+                      <option value={0}>{!formData.customer ? 'Select Customer First' : 'Select Customer Location'}</option>
+                      {formData.customer > 0 && (() => {
+                        const selectedCustomer = customers.find(c => c.id === formData.customer)
+                        return (selectedCustomer as any)?.locations?.map((location: any) => (
+                          <option key={location.id} value={location.id}>
+                            {location.name}
+                          </option>
+                        )) || []
+                      })()}
                     </select>
-                    {formErrors.delivery_location && (
-                      <p className="text-red-500 text-xs mt-1">{formErrors.delivery_location}</p>
+                    {formErrors.customer_location && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.customer_location}</p>
                     )}
+                    {formData.customer_location > 0 && (() => {
+                      const selectedCustomer = customers.find(c => c.id === formData.customer)
+                      const selectedLocation = (selectedCustomer as any)?.locations?.find((loc: any) => loc.id === formData.customer_location)
+                      return selectedLocation ? (
+                        <p className="text-xs text-gray-500 mt-1">{selectedLocation.address}</p>
+                      ) : null
+                    })()}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Expected Delivery Date <span className="text-red-500">*</span>
+                      Order Date
                     </label>
                     <input
                       type="date"
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                        formErrors.expected_delivery_date ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      value={formData.expected_delivery_date}
-                      onChange={(e) => setFormData({ ...formData, expected_delivery_date: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600"
+                      value={formData.order_date}
+                      readOnly
                     />
-                    {formErrors.expected_delivery_date && (
-                      <p className="text-red-500 text-xs mt-1">{formErrors.expected_delivery_date}</p>
-                    )}
+                    <p className="text-xs text-gray-500 mt-1">Automatically set to today's date</p>
                   </div>
                 </div>
 
@@ -1332,31 +1678,42 @@ export default function PRFPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Location *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer Location *</label>
                     <select
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      value={formData.delivery_location}
-                      onChange={(e) =>
-                        setFormData({ ...formData, delivery_location: parseInt(e.target.value) || 0 })
-                      }
+                      value={formData.customer_location}
+                      onChange={(e) => {
+                        const locationId = parseInt(e.target.value) || 0
+                        const selectedCustomer = customers.find(c => c.id === formData.customer)
+                        const selectedLocation = (selectedCustomer as any)?.locations?.find((loc: any) => loc.id === locationId)
+                        setFormData({
+                          ...formData,
+                          customer_location: locationId,
+                          customer_location_name: selectedLocation?.name || ''
+                        })
+                      }}
+                      disabled={!formData.customer || formData.customer === 0}
                     >
-                      <option value={0}>Select Location</option>
-                      {warehouses.map((warehouse) => (
-                        <option key={warehouse.id} value={warehouse.id}>
-                          {warehouse.name}
-                        </option>
-                      ))}
+                      <option value={0}>{!formData.customer ? 'Select Customer First' : 'Select Customer Location'}</option>
+                      {formData.customer > 0 && (() => {
+                        const selectedCustomer = customers.find(c => c.id === formData.customer)
+                        return (selectedCustomer as any)?.locations?.map((location: any) => (
+                          <option key={location.id} value={location.id}>
+                            {location.name}
+                          </option>
+                        )) || []
+                      })()}
                     </select>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Expected Delivery Date</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Order Date</label>
                     <input
                       type="date"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      value={formData.expected_delivery_date}
-                      onChange={(e) => setFormData({ ...formData, expected_delivery_date: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600"
+                      value={formData.order_date}
+                      readOnly
                     />
                   </div>
                   <div>
@@ -1400,105 +1757,6 @@ export default function PRFPage() {
           </div>
         )}
 
-        {/* View PRF Modal */}
-        {showViewModal && selectedPRF && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold">PRF Details - {selectedPRF.prf_number}</h2>
-                <Button variant="ghost" onClick={() => setShowViewModal(false)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">PRF Number</label>
-                      <p className="text-gray-900 font-semibold font-mono">{selectedPRF.prf_number}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Title</label>
-                      <p className="text-gray-900 font-semibold">{selectedPRF.title}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Purpose</label>
-                      <p className="text-gray-900">{selectedPRF.purpose}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Department</label>
-                      <div className="flex items-center gap-2">
-                        <Building className="w-4 h-4 text-gray-500" />
-                        <p className="text-gray-900">{selectedPRF.department}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Status</label>
-                      {getStatusBadge(selectedPRF.status)}
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Priority</label>
-                      {getPriorityBadge(selectedPRF.priority)}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Estimated Total</label>
-                      <p className="text-primary font-bold text-lg">{formatCurrency(selectedPRF.estimated_total)}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Budget Code</label>
-                      <p className="text-gray-900">{selectedPRF.budget_code || 'Not specified'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Created Date</label>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-500" />
-                        <p className="text-gray-900">{formatDateTime(selectedPRF.created_at)}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Expected Delivery</label>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-500" />
-                        <p className="text-gray-900">{formatDateTime(selectedPRF.expected_delivery_date)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {selectedPRF.description && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500">Description</label>
-                    <p className="text-gray-900">{selectedPRF.description}</p>
-                  </div>
-                )}
-                {selectedPRF.rejection_reason && (
-                  <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                    <label className="block text-sm font-medium text-red-800">Rejection Reason</label>
-                    <p className="text-red-700">{selectedPRF.rejection_reason}</p>
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-end gap-2 p-6 border-t">
-                <Button variant="outline" onClick={() => setShowViewModal(false)}>
-                  Close
-                </Button>
-                {selectedPRF.status === 'draft' && (
-                  <Button
-                    className="mofad-btn-primary"
-                    onClick={() => {
-                      setShowViewModal(false)
-                      handleEdit(selectedPRF)
-                    }}
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit PRF
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Approval Modal */}
         {showApprovalModal && selectedPRF && (

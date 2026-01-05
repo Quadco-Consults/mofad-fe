@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { useToast } from '@/components/ui/Toast'
 import {
   ArrowLeft,
   Save,
@@ -29,641 +30,733 @@ import {
   Star,
   CreditCard,
   Truck,
+  Loader2,
+  Send,
 } from 'lucide-react'
 
-interface PROFormData {
-  title: string
-  supplier_id: string
-  description: string
-  payment_terms: string
-  expected_delivery: string
-  items: Array<{
-    id: string
-    supplier_product_id: string
-    product_name: string
-    product_code: string
-    quantity: number
-    unit_price: number
-    total: number
-  }>
-}
+// Mock suppliers data - similar to PRF customers
+const mockSuppliers = [
+  {
+    id: 1,
+    name: 'Eterna Plc',
+    code: 'ETERNA',
+    contact_person: 'John Adebayo',
+    email: 'procurement@eterna.com',
+    phone: '+234 800 123 4567',
+    address: 'Plot 15, Industrial Estate, Lagos',
+    payment_terms: '30 days net',
+    rating: 5,
+    category: 'Premium Supplier'
+  },
+  {
+    id: 2,
+    name: 'Ardova Plc',
+    code: 'ARDOVA',
+    contact_person: 'Sarah Ibrahim',
+    email: 'orders@ardova.com',
+    phone: '+234 800 234 5678',
+    address: 'Block 7, Energy Avenue, Abuja',
+    payment_terms: '45 days net',
+    rating: 4,
+    category: 'Major Supplier'
+  },
+  {
+    id: 3,
+    name: 'Xteer Nigeria Ltd',
+    code: 'XTEER',
+    contact_person: 'Ahmed Kano',
+    email: 'supply@xteer.ng',
+    phone: '+234 800 345 6789',
+    address: '22, Petroleum Road, Port Harcourt',
+    payment_terms: '21 days net',
+    rating: 4,
+    category: 'Authorized Dealer'
+  },
+  {
+    id: 4,
+    name: 'Total Energies Nigeria',
+    code: 'TOTAL',
+    contact_person: 'Michelle Dubois',
+    email: 'b2b@totalenergies.ng',
+    phone: '+234 800 456 7890',
+    address: '12, Victoria Island, Lagos',
+    payment_terms: '30 days net',
+    rating: 5,
+    category: 'International Supplier'
+  },
+  {
+    id: 5,
+    name: 'Mobil Oil Nigeria',
+    code: 'MOBIL',
+    contact_person: 'Robert Johnson',
+    email: 'sales@mobil.com.ng',
+    phone: '+234 800 567 8901',
+    address: '1, Lekki Express Way, Lagos',
+    payment_terms: '45 days net',
+    rating: 5,
+    category: 'Premium Supplier'
+  }
+]
+
+// Mock products for suppliers - energy/petroleum related
+const mockSupplierProducts = [
+  {
+    id: 1,
+    supplier_id: 1,
+    name: 'Premium Motor Oil (SAE 20W-50)',
+    code: 'PMO-20W50',
+    unit_price: 8500,
+    min_order_qty: 24,
+    unit: 'Liter',
+    description: 'High-quality motor oil for heavy-duty engines'
+  },
+  {
+    id: 2,
+    supplier_id: 1,
+    name: 'Hydraulic Fluid ISO 32',
+    code: 'HF-ISO32',
+    unit_price: 12000,
+    min_order_qty: 20,
+    unit: 'Liter',
+    description: 'Premium hydraulic fluid for industrial equipment'
+  },
+  {
+    id: 3,
+    supplier_id: 2,
+    name: 'Diesel Engine Oil (15W-40)',
+    code: 'DEO-15W40',
+    unit_price: 9200,
+    min_order_qty: 12,
+    unit: 'Liter',
+    description: 'Heavy-duty diesel engine oil'
+  },
+  {
+    id: 4,
+    supplier_id: 3,
+    name: 'Transmission Fluid ATF',
+    code: 'TF-ATF',
+    unit_price: 7800,
+    min_order_qty: 6,
+    unit: 'Liter',
+    description: 'Automatic transmission fluid'
+  },
+  {
+    id: 5,
+    supplier_id: 4,
+    name: 'Industrial Gear Oil 90',
+    code: 'IGO-90',
+    unit_price: 11500,
+    min_order_qty: 15,
+    unit: 'Liter',
+    description: 'Heavy-duty industrial gear oil'
+  }
+]
 
 interface PROItem {
-  id: string
-  supplier_product_id: string
+  id?: number
+  product_id?: number
   product_name: string
   product_code: string
-  quantity: number
   unit_price: number
-  total: number
+  quantity: number
+  total_amount: number
+  unit: string
+  notes?: string
 }
 
-interface Supplier {
-  id: number
-  name: string
-  email: string
-  phone: string
-  address: string
-  contact_person: string
-  contact_phone: string
-  payment_terms: string
-  credit_limit: number
-  current_balance: number
-  supplier_type: string
-  products_supplied: string[]
-  rating: number
-  status: string
+interface PROFormData {
+  pro_number?: string
+  supplier: number
+  supplier_name?: string
+  order_date: string
+  order_reference?: string
+  payment_terms?: string
+  notes?: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  items: PROItem[]
+  estimated_total: number
 }
 
-interface SupplierProduct {
-  id: number
-  supplier_id: number
-  supplier_name: string
-  product_name: string
-  product_code: string
-  category: string
-  unit_type: string
-  supplier_price: number
-  current_market_price: number
-  minimum_order_quantity: number
-  lead_time_days: number
-  availability_status: string
-  quality_grade: string
-  specifications: string
+// Helper functions for localStorage management
+const getMockPROs = (): any[] => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const stored = localStorage.getItem('mofad_mock_pros')
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (error) {
+    console.error('Error reading PROs from localStorage:', error)
+  }
+
+  return []
+}
+
+const saveMockPROs = (pros: any[]) => {
+  if (typeof window === 'undefined') return
+
+  try {
+    localStorage.setItem('mofad_mock_pros', JSON.stringify(pros))
+  } catch (error) {
+    console.error('Error saving PROs to localStorage:', error)
+  }
 }
 
 export default function CreatePROPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { showToast } = useToast()
+  const [isLoading, setIsLoading] = useState(false)
+  const [selectedSupplier, setSelectedSupplier] = useState<any>(null)
+  const [supplierProducts, setSupplierProducts] = useState<any[]>([])
+  const isSubmittingRef = useRef(false)
 
   const [formData, setFormData] = useState<PROFormData>({
-    title: '',
-    supplier_id: '',
-    description: '',
-    payment_terms: '',
-    expected_delivery: '',
+    supplier: 0,
+    order_date: new Date().toISOString().split('T')[0],
+    priority: 'medium',
     items: [],
+    estimated_total: 0,
   })
 
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null)
-  const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null)
-  const [showProductCatalog, setShowProductCatalog] = useState(false)
-  const [quantity, setQuantity] = useState(0)
-  const [productSearchTerm, setProductSearchTerm] = useState('')
+  useEffect(() => {
+    if (selectedSupplier) {
+      // Filter products for selected supplier
+      const products = mockSupplierProducts.filter(p => p.supplier_id === selectedSupplier.id)
+      setSupplierProducts(products)
 
-  // Fetch suppliers
-  const { data: suppliers, isLoading: suppliersLoading } = useQuery({
-    queryKey: ['suppliers'],
-    queryFn: () => mockApi.get('/suppliers'),
-  })
-
-  // Fetch supplier products when supplier is selected
-  const { data: supplierProducts, isLoading: productsLoading } = useQuery({
-    queryKey: ['supplier-products', selectedSupplier?.id],
-    queryFn: () => mockApi.get('/suppliers/products'),
-    enabled: !!selectedSupplier,
-  })
-
-  // Filter products by selected supplier and search term
-  const filteredProducts = supplierProducts?.filter(
-    (product: SupplierProduct) => {
-      const matchesSupplier = product.supplier_id === selectedSupplier?.id
-      const matchesSearch = (product.product_name || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-                           (product.product_code || '').toLowerCase().includes(productSearchTerm.toLowerCase())
-      return matchesSupplier && matchesSearch
+      setFormData(prev => ({
+        ...prev,
+        supplier: selectedSupplier.id,
+        supplier_name: selectedSupplier.name,
+        payment_terms: selectedSupplier.payment_terms,
+        order_reference: `PO-${selectedSupplier.code}-${Date.now().toString().slice(-6)}`
+      }))
     }
-  ) || []
+  }, [selectedSupplier])
 
-  const createPRO = useMutation({
-    mutationFn: (data: PROFormData) => mockApi.post('/orders/pro', data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pros'] })
+  // Calculate total whenever items change
+  useEffect(() => {
+    const total = formData.items.reduce((sum, item) => sum + item.total_amount, 0)
+    setFormData(prev => ({
+      ...prev,
+      estimated_total: total
+    }))
+  }, [formData.items])
+
+
+  const handleAddProduct = (product: any) => {
+    const newItem: PROItem = {
+      id: Date.now(),
+      product_id: product.id,
+      product_name: product.name,
+      product_code: product.code,
+      unit_price: product.unit_price,
+      quantity: product.min_order_qty,
+      total_amount: product.unit_price * product.min_order_qty,
+      unit: product.unit,
+      notes: ''
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, newItem]
+    }))
+
+    showToast('Product added to PRO', 'success')
+  }
+
+  const handleUpdateItem = (id: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.map(item => {
+        if (item.id === id) {
+          const updatedItem = { ...item, [field]: value }
+          if (field === 'quantity' || field === 'unit_price') {
+            updatedItem.total_amount = updatedItem.quantity * updatedItem.unit_price
+          }
+          return updatedItem
+        }
+        return item
+      })
+    }))
+  }
+
+  const handleRemoveItem = (id: number) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.filter(item => item.id !== id)
+    }))
+  }
+
+  const handleSubmit = useCallback(async (status: 'draft' | 'submitted') => {
+    console.log('handleSubmit called with status:', status)
+    console.log('isSubmittingRef.current:', isSubmittingRef.current)
+    console.log('isLoading:', isLoading)
+
+    // Prevent multiple submissions using ref for immediate check
+    if (isSubmittingRef.current || isLoading) {
+      console.log('Already processing, ignoring duplicate submission')
+      return
+    }
+
+    if (!selectedSupplier) {
+      console.log('No supplier selected, showing error toast')
+      showToast('Please select a supplier', 'error')
+      return
+    }
+
+    if (formData.items.length === 0) {
+      console.log('No items in form, showing error toast')
+      showToast('Please add at least one item', 'error')
+      return
+    }
+
+    console.log('Starting PRO creation...')
+    isSubmittingRef.current = true
+    setIsLoading(true)
+
+    try {
+      // Add a small delay to simulate processing time and ensure loading state is visible
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      const existingPROs = getMockPROs()
+      const newPRO = {
+        id: Date.now(),
+        pro_number: `PRO-${new Date().getFullYear()}-${String(existingPROs.length + 1).padStart(4, '0')}`,
+        supplier_id: formData.supplier,
+        supplier_name: formData.supplier_name,
+        order_date: formData.order_date,
+        order_reference: formData.order_reference,
+        payment_terms: formData.payment_terms,
+        notes: formData.notes,
+        priority: formData.priority,
+        items: formData.items,
+        estimated_total: formData.estimated_total,
+        status,
+        created_at: new Date().toISOString(),
+        created_by: 'Admin User',
+        supplier_details: selectedSupplier
+      }
+
+      const updatedPROs = [...existingPROs, newPRO]
+      saveMockPROs(updatedPROs)
+
+      console.log('PRO created successfully:', newPRO)
+
+      showToast(
+        status === 'draft' ? 'PRO saved as draft successfully!' : 'PRO submitted successfully!',
+        'success'
+      )
+
+      // Navigate back to PRO list
       router.push('/orders/pro')
-    },
-    onError: (error) => {
+
+    } catch (error) {
       console.error('Error creating PRO:', error)
-    },
-  })
-
-  const handleSupplierSelect = (supplier: Supplier) => {
-    setSelectedSupplier(supplier)
-    setFormData(prev => ({
-      ...prev,
-      supplier_id: supplier.id.toString(),
-      payment_terms: supplier.payment_terms,
-    }))
-    setShowProductCatalog(true)
-  }
-
-  const handleProductSelect = (product: SupplierProduct) => {
-    setSelectedProduct(product)
-    setQuantity(product?.minimum_order_quantity || 1)
-  }
-
-  const addProductToOrder = () => {
-    if (!selectedProduct || !quantity || quantity < (selectedProduct.minimum_order_quantity || 1)) {
-      alert(`Minimum order quantity is ${selectedProduct?.minimum_order_quantity || 1} ${selectedProduct?.unit_type || 'units'}`)
-      return
+      showToast('Failed to create PRO', 'error')
+    } finally {
+      isSubmittingRef.current = false
+      setIsLoading(false)
     }
+  }, [selectedSupplier, formData, isLoading, showToast, router])
 
-    const total = quantity * (selectedProduct.supplier_price || 0)
-    const item: PROItem = {
-      id: Date.now().toString(),
-      supplier_product_id: (selectedProduct.id || 0).toString(),
-      product_name: selectedProduct.product_name || 'Unknown Product',
-      product_code: selectedProduct.product_code || 'No Code',
-      quantity,
-      unit_price: selectedProduct.supplier_price || 0,
-      total,
-    }
+  // Memoize button disabled state for optimal performance
+  const isButtonDisabled = useMemo(() => {
+    return !selectedSupplier || formData.items.length === 0 || isLoading || isSubmittingRef.current
+  }, [selectedSupplier, formData.items.length, isLoading])
 
-    setFormData(prev => ({
-      ...prev,
-      items: [...prev.items, item],
-    }))
-
-    setSelectedProduct(null)
-    setQuantity(0)
-  }
-
-  const removeItem = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      items: prev.items.filter(item => item.id !== id),
-    }))
-  }
-
-  const getTotalAmount = () => {
-    return formData.items.reduce((sum, item) => sum + item.total, 0)
-  }
-
-  const getAvailabilityIcon = (status: string) => {
-    switch (status) {
-      case 'available':
-        return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'limited':
-        return <Clock className="w-4 h-4 text-yellow-500" />
-      case 'unavailable':
-        return <AlertTriangle className="w-4 h-4 text-red-500" />
-      default:
-        return <Clock className="w-4 h-4 text-gray-500" />
-    }
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!formData.title || !formData.supplier_id || formData.items.length === 0) {
-      alert('Please fill in all required fields and add at least one product.')
-      return
-    }
-
-    createPRO.mutate(formData)
-  }
-
-  const handleCancel = () => {
-    router.push('/orders/pro')
-  }
+  // Cache refresh timestamp: 2026-01-05-14:32:00
+  // Debug form state - only log when needed
+  // console.log('Form State Debug:', {
+  //   selectedSupplier,
+  //   formDataItems: formData.items,
+  //   itemsLength: formData.items.length,
+  //   isLoading,
+  //   buttonDisabled: isButtonDisabled
+  // })
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
+            <Button onClick={() => router.push('/orders/pro')} variant="outline">
+              <ArrowLeft className="w-4 h-4 mr-2" />
               Back to PROs
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Create New Purchase Order</h1>
-              <p className="text-muted-foreground">Select supplier and products for bulk purchase</p>
+              <h1 className="text-2xl font-bold text-gray-900">Create Purchase Request Order</h1>
+              <p className="text-gray-600">Create a new PRO for supplier purchases</p>
             </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Main Content */}
-            <div className="lg:col-span-3 space-y-6">
-              {/* Basic Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
-                    Basic Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      PRO Title *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.title}
-                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="Enter PRO title"
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Form */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Supplier Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="w-5 h-5" />
+                  Supplier Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Supplier *</label>
+                  <div className="relative">
+                    <Building className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <select
+                      value={formData.supplier || ''}
+                      onChange={(e) => {
+                        const supplierId = parseInt(e.target.value)
+                        const supplier = mockSuppliers.find(s => s.id === supplierId)
+                        setSelectedSupplier(supplier || null)
+
+                        // Update form data
+                        setFormData(prev => ({
+                          ...prev,
+                          supplier: supplierId || 0,
+                          supplier_name: supplier?.name || ''
+                        }))
+                      }}
+                      className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
                       required
-                    />
+                    >
+                      <option value="">Choose a supplier...</option>
+                      {mockSuppliers.map((supplier) => (
+                        <option key={supplier.id} value={supplier.id}>
+                          {supplier.name} - {supplier.category} ({supplier.rating}★)
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="Enter PRO description"
-                    />
+                {selectedSupplier && (
+                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                        <Building className="w-6 h-6 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900">{selectedSupplier.name}</h3>
+                        <p className="text-sm text-gray-600">{selectedSupplier.category}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 text-sm text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            <span>{selectedSupplier.contact_person}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            <span>{selectedSupplier.phone}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            <span>{selectedSupplier.email}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3 h-3 text-yellow-500" />
+                            <span>{selectedSupplier.rating}/5 Rating</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 text-sm text-gray-600">
+                          <strong>Payment Terms:</strong> {selectedSupplier.payment_terms}
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                )}
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Expected Delivery
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Order Date</label>
                     <div className="relative">
-                      <Calendar className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <input
                         type="date"
-                        value={formData.expected_delivery}
-                        onChange={(e) => setFormData(prev => ({ ...prev, expected_delivery: e.target.value }))}
-                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        value={formData.order_date}
+                        onChange={(e) => setFormData(prev => ({ ...prev, order_date: e.target.value }))}
+                        className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
                       />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
 
-              {/* Supplier Selection */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building className="w-5 h-5" />
-                    Supplier Selection
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!selectedSupplier ? (
-                    <div className="space-y-4">
-                      <p className="text-sm text-muted-foreground">Select a supplier to purchase from:</p>
-                      {suppliersLoading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {[...Array(4)].map((_, i) => (
-                            <div key={i} className="animate-pulse">
-                              <div className="h-32 bg-muted rounded-lg"></div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {suppliers?.map((supplier: Supplier) => (
-                            <div
-                              key={supplier.id}
-                              className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => handleSupplierSelect(supplier)}
-                            >
-                              <div className="flex items-start justify-between mb-3">
-                                <div>
-                                  <h3 className="font-semibold text-lg">{supplier.name}</h3>
-                                  <p className="text-sm text-muted-foreground">{supplier.supplier_type}</p>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                                  <span className="text-sm font-medium">{supplier.rating}</span>
-                                </div>
-                              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                    <select
+                      value={formData.priority}
+                      onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+                </div>
 
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <User className="w-4 h-4" />
-                                  {supplier.contact_person}
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Phone className="w-4 h-4" />
-                                  {supplier.phone}
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <CreditCard className="w-4 h-4" />
-                                  {supplier.payment_terms}
-                                </div>
-                              </div>
-
-                              <div className="mt-3 pt-3 border-t border-gray-100">
-                                <p className="text-xs text-muted-foreground">
-                                  Products: {supplier.products_supplied.join(', ')}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Building className="w-8 h-8 text-primary" />
-                          <div>
-                            <h3 className="font-semibold text-lg">{selectedSupplier.name}</h3>
-                            <p className="text-sm text-muted-foreground">{selectedSupplier.supplier_type}</p>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedSupplier(null)
-                            setFormData(prev => ({ ...prev, supplier_id: '', payment_terms: '' }))
-                            setShowProductCatalog(false)
-                          }}
-                        >
-                          Change Supplier
-                        </Button>
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Contact Person</p>
-                          <p className="font-medium">{selectedSupplier.contact_person}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Phone</p>
-                          <p className="font-medium">{selectedSupplier.phone}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Payment Terms</p>
-                          <p className="font-medium">{selectedSupplier.payment_terms}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Credit Balance</p>
-                          <p className="font-medium">₦{selectedSupplier.current_balance.toLocaleString()}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Product Catalog */}
-              {showProductCatalog && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="w-5 h-5" />
-                      Product Catalog - {selectedSupplier?.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="relative">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                {selectedSupplier && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Order Reference</label>
                       <input
                         type="text"
-                        placeholder="Search products..."
-                        value={productSearchTerm}
-                        onChange={(e) => setProductSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        value={formData.order_reference || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, order_reference: e.target.value }))}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                        placeholder="Auto-generated order reference"
                       />
                     </div>
 
-                    {productsLoading ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {[...Array(6)].map((_, i) => (
-                          <div key={i} className="animate-pulse">
-                            <div className="h-24 bg-muted rounded-lg"></div>
-                          </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
+                      <input
+                        type="text"
+                        value={formData.payment_terms || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                        placeholder="e.g., 30 days net"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <textarea
+                    value={formData.notes || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    rows={3}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                    placeholder="Additional notes about this order..."
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Product Items */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Product Items
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {selectedSupplier && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Add Product</label>
+                    <div className="relative">
+                      <Package className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <select
+                        onChange={(e) => {
+                          const productId = parseInt(e.target.value)
+                          const product = supplierProducts.find(p => p.id === productId)
+                          if (product) {
+                            handleAddProduct(product)
+                            // Reset select after adding
+                            e.target.value = ''
+                          }
+                        }}
+                        className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                        defaultValue=""
+                      >
+                        <option value="">Choose a product to add...</option>
+                        {supplierProducts.map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.name} ({product.code}) - {formatCurrency(product.unit_price)}/{product.unit}
+                          </option>
                         ))}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-                        {filteredProducts.map((product: SupplierProduct) => (
-                          <div
-                            key={product.id}
-                            className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                              selectedProduct?.id === product.id
-                                ? 'border-primary bg-primary/5'
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                            onClick={() => handleProductSelect(product)}
-                          >
-                            <div className="flex items-start justify-between mb-2">
+                      </select>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {supplierProducts.length} products available from {selectedSupplier.name}
+                    </p>
+                  </div>
+                )}
+
+                {!selectedSupplier ? (
+                  <div className="text-center py-8">
+                    <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No supplier selected</h3>
+                    <p className="text-gray-600">
+                      Select a supplier first to view available products
+                    </p>
+                  </div>
+                ) : formData.items.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No products added yet</h3>
+                    <p className="text-gray-600">
+                      Use the dropdown above to add products to your PRO
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {formData.items.map((item) => (
+                      <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-start gap-4">
                               <div className="flex-1">
-                                <h4 className="font-medium text-sm">{product.product_name || 'Unknown Product'}</h4>
-                                <p className="text-xs text-muted-foreground">{product.product_code || 'No Code'}</p>
+                                <h4 className="font-medium text-gray-900">{item.product_name}</h4>
+                                <p className="text-sm text-gray-600">Code: {item.product_code}</p>
+                                <p className="text-xs text-gray-500">Unit: {item.unit}</p>
                               </div>
-                              <div className="flex items-center gap-1">
-                                {getAvailabilityIcon(product.availability_status || 'unavailable')}
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div>
-                                <p className="text-muted-foreground">Price</p>
-                                <p className="font-medium">₦{(product.supplier_price || 0).toLocaleString()}/{product.unit_type || 'Unit'}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Min Order</p>
-                                <p className="font-medium">{product.minimum_order_quantity || 0} {product.unit_type || 'Unit'}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Lead Time</p>
-                                <p className="font-medium">{product.lead_time_days || 0} days</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Quality</p>
-                                <p className="font-medium">{product.quality_grade || 'Standard'}</p>
-                              </div>
-                            </div>
-
-                            {product.specifications && (
-                              <div className="mt-2 pt-2 border-t border-gray-100">
-                                <p className="text-xs text-muted-foreground">{product.specifications}</p>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Add Product Section */}
-                    {selectedProduct && (
-                      <div className="border-t pt-4">
-                        <h4 className="font-medium mb-3">Add to Order: {selectedProduct.product_name || 'Unknown Product'}</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Quantity ({selectedProduct.unit_type || 'units'})
-                            </label>
-                            <input
-                              type="number"
-                              min={selectedProduct.minimum_order_quantity || 1}
-                              value={quantity || ''}
-                              onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                              placeholder={`Min: ${selectedProduct.minimum_order_quantity || 1}`}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Unit Price
-                            </label>
-                            <input
-                              type="text"
-                              value={`₦${(selectedProduct.supplier_price || 0).toLocaleString()}`}
-                              disabled
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Total
-                            </label>
-                            <input
-                              type="text"
-                              value={`₦${(quantity * (selectedProduct.supplier_price || 0)).toLocaleString()}`}
-                              disabled
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                            />
-                          </div>
-                          <div>
-                            <Button
-                              type="button"
-                              onClick={addProductToOrder}
-                              className="w-full mofad-btn-primary"
-                              disabled={!quantity || quantity < (selectedProduct.minimum_order_quantity || 1)}
-                            >
-                              <Plus className="w-4 h-4 mr-2" />
-                              Add
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Order Items */}
-              {formData.items.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Order Items</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <table className="w-full">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {formData.items.map((item) => (
-                            <tr key={item.id}>
-                              <td className="px-4 py-2 text-sm">
+                              <div className="flex items-center gap-2">
                                 <div>
-                                  <p className="font-medium">{item.product_name}</p>
-                                  <p className="text-muted-foreground">{item.product_code}</p>
+                                  <label className="block text-xs text-gray-500">Qty</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.quantity}
+                                    onChange={(e) => handleUpdateItem(item.id!, 'quantity', parseInt(e.target.value) || 0)}
+                                    className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
+                                  />
                                 </div>
-                              </td>
-                              <td className="px-4 py-2 text-sm">{item.quantity}</td>
-                              <td className="px-4 py-2 text-sm">₦{item.unit_price.toLocaleString()}</td>
-                              <td className="px-4 py-2 text-sm font-medium">₦{item.total.toLocaleString()}</td>
-                              <td className="px-4 py-2">
+                                <div>
+                                  <label className="block text-xs text-gray-500">Unit Price</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={item.unit_price}
+                                    onChange={(e) => handleUpdateItem(item.id!, 'unit_price', parseFloat(e.target.value) || 0)}
+                                    className="w-28 rounded border border-gray-300 px-2 py-1 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-gray-500">Total</label>
+                                  <div className="w-28 px-2 py-1 text-sm font-medium bg-gray-50 rounded border">
+                                    {formatCurrency(item.total_amount)}
+                                  </div>
+                                </div>
                                 <Button
-                                  type="button"
-                                  variant="ghost"
+                                  onClick={() => handleRemoveItem(item.id!)}
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => removeItem(item.id)}
                                   className="text-red-600 hover:text-red-700"
                                 >
                                   <X className="w-4 h-4" />
                                 </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {/* Summary Sidebar */}
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5" />
-                    Order Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Items:</span>
-                      <span>{formData.items.length}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Supplier:</span>
-                      <span className="text-right">{selectedSupplier?.name || 'Not selected'}</span>
-                    </div>
-                    {formData.payment_terms && (
-                      <div className="flex justify-between text-sm">
-                        <span>Payment Terms:</span>
-                        <span>{formData.payment_terms}</span>
+                              </div>
+                            </div>
+                            <div className="mt-2">
+                              <input
+                                type="text"
+                                placeholder="Add notes for this item..."
+                                value={item.notes || ''}
+                                onChange={(e) => handleUpdateItem(item.id!, 'notes', e.target.value)}
+                                className="w-full text-sm rounded border border-gray-300 px-2 py-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    <div className="border-t pt-2">
-                      <div className="flex justify-between font-medium">
-                        <span>Total Amount:</span>
-                        <span className="text-primary">₦{getTotalAmount().toLocaleString()}</span>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button
-                    type="submit"
-                    className="w-full mofad-btn-primary"
-                    disabled={createPRO.isPending || !formData.title || !selectedSupplier || formData.items.length === 0}
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {createPRO.isPending ? 'Creating...' : 'Create PRO'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCancel}
-                    className="w-full"
-                  >
-                    Cancel
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </form>
+
+          {/* Summary Sidebar */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5" />
+                  Order Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Items:</span>
+                  <span className="font-medium">{formData.items.length}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Supplier:</span>
+                  <span className="font-medium">{selectedSupplier?.name || 'Not selected'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Payment Terms:</span>
+                  <span className="font-medium">{formData.payment_terms || 'N/A'}</span>
+                </div>
+                <hr />
+                <div className="flex justify-between items-center text-lg font-bold">
+                  <span>Total Amount:</span>
+                  <span className="text-green-600">{formatCurrency(formData.estimated_total)}</span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  Direct supplier pricing applied
+                </div>
+
+                <div className="space-y-2 pt-4">
+                  <Button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (!isLoading && !isSubmittingRef.current) {
+                        handleSubmit('draft')
+                      }
+                    }}
+                    disabled={isButtonDisabled}
+                    variant="outline"
+                    className="w-full"
+                    type="button"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save as Draft
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      console.log('Submit button clicked!')
+                      console.log('Button disabled?', isButtonDisabled)
+                      console.log('isLoading state:', isLoading)
+                      console.log('isSubmittingRef.current:', isSubmittingRef.current)
+                      if (!isLoading && !isSubmittingRef.current) {
+                        handleSubmit('submitted')
+                      }
+                    }}
+                    disabled={isButtonDisabled}
+                    className="w-full mofad-btn-primary"
+                    type="button"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Submit PRO
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
       </div>
     </AppLayout>
   )
