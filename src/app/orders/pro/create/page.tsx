@@ -206,7 +206,7 @@ const saveMockPROs = (pros: any[]) => {
 export default function CreatePROPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { showToast } = useToast()
+  const { addToast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null)
   const [supplierProducts, setSupplierProducts] = useState<any[]>([])
@@ -264,7 +264,10 @@ export default function CreatePROPage() {
       items: [...prev.items, newItem]
     }))
 
-    showToast('Product added to PRO', 'success')
+    addToast({
+      title: 'Product added to PRO',
+      type: 'success'
+    })
   }
 
   const handleUpdateItem = (id: number, field: string, value: any) => {
@@ -303,13 +306,19 @@ export default function CreatePROPage() {
 
     if (!selectedSupplier) {
       console.log('No supplier selected, showing error toast')
-      showToast('Please select a supplier', 'error')
+      addToast({
+        title: 'Please select a supplier',
+        type: 'error'
+      })
       return
     }
 
     if (formData.items.length === 0) {
       console.log('No items in form, showing error toast')
-      showToast('Please add at least one item', 'error')
+      addToast({
+        title: 'Please add at least one item',
+        type: 'error'
+      })
       return
     }
 
@@ -345,29 +354,33 @@ export default function CreatePROPage() {
 
       console.log('PRO created successfully:', newPRO)
 
-      showToast(
-        status === 'draft' ? 'PRO saved as draft successfully!' : 'PRO submitted successfully!',
-        'success'
-      )
+      addToast({
+        title: status === 'draft' ? 'PRO saved as draft successfully!' : 'PRO submitted successfully!',
+        type: 'success'
+      })
+
+      // Invalidate query cache to refresh PRO list
+      queryClient.invalidateQueries({ queryKey: ['pro-list'] })
 
       // Navigate back to PRO list
       router.push('/orders/pro')
 
     } catch (error) {
       console.error('Error creating PRO:', error)
-      showToast('Failed to create PRO', 'error')
+      addToast({
+        title: 'Failed to create PRO',
+        type: 'error'
+      })
     } finally {
       isSubmittingRef.current = false
       setIsLoading(false)
     }
-  }, [selectedSupplier, formData, isLoading, showToast, router])
+  }, [selectedSupplier, formData, isLoading, addToast, router])
 
-  // Memoize button disabled state for optimal performance
-  const isButtonDisabled = useMemo(() => {
-    return !selectedSupplier || formData.items.length === 0 || isLoading || isSubmittingRef.current
-  }, [selectedSupplier, formData.items.length, isLoading])
+  // Calculate button disabled state - using regular calculation to include ref
+  const isButtonDisabled = !selectedSupplier || formData.items.length === 0 || isLoading || isSubmittingRef.current
 
-  // Cache refresh timestamp: 2026-01-05-14:32:00
+  // Cache refresh timestamp: 2026-01-05-17:00:00 - Fixed toast API usage
   // Debug form state - only log when needed
   // console.log('Form State Debug:', {
   //   selectedSupplier,

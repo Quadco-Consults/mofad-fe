@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import apiClient from '@/lib/apiClient'
+import mockApi from '@/lib/mockApi'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { CustomerType } from '@/types/api'
@@ -32,33 +32,44 @@ import {
 interface CreateCustomerTypeForm {
   name: string
   description: string
+  pricing_scheme_id: number
 }
 
 interface EditCustomerTypeForm {
   name: string
   description: string
-  discount_rate: number
-  credit_limit: number
-  credit_days: number
+  discount_percentage: number
+  min_order_quantity: number
   payment_terms: string
-  requires_approval: boolean
+  commission_rate: number
+  status: string
+  pricing_scheme_id: number
+}
+
+interface PricingScheme {
+  id: number
+  name: string
+  description: string
+  base_discount: number
+  payment_terms: string
   is_active: boolean
 }
 
 const initialCreateForm: CreateCustomerTypeForm = {
   name: '',
   description: '',
+  pricing_scheme_id: 1,
 }
 
 const initialEditForm: EditCustomerTypeForm = {
   name: '',
   description: '',
-  discount_rate: 0,
-  credit_limit: 0,
-  credit_days: 30,
+  discount_percentage: 0,
+  min_order_quantity: 0,
   payment_terms: '',
-  requires_approval: false,
-  is_active: true,
+  commission_rate: 0,
+  status: 'active',
+  pricing_scheme_id: 1,
 }
 
 // Helper functions to parse API values (backend returns decimals as strings)
@@ -92,21 +103,72 @@ export default function CustomerTypesPage() {
   const { data: customerTypesData, isLoading, refetch } = useQuery({
     queryKey: ['customer-types', searchTerm, statusFilter],
     queryFn: async () => {
-      const params: Record<string, string> = {}
-      if (searchTerm) params.search = searchTerm
-      if (statusFilter !== 'all') params.is_active = statusFilter === 'active' ? 'true' : 'false'
-      return apiClient.get<{ paginator?: any; results?: CustomerType[] } | CustomerType[]>('/customer-types/', params)
+      const data = await mockApi.get<CustomerType[]>('/customer-types/')
+      let filtered = data || []
+
+      // Apply search filter
+      if (searchTerm) {
+        filtered = filtered.filter(type =>
+          type.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (type.description && type.description.toLowerCase().includes(searchTerm.toLowerCase()))
+        )
+      }
+
+      // Apply status filter
+      if (statusFilter === 'active') {
+        filtered = filtered.filter(type => type.status === 'active')
+      } else if (statusFilter === 'inactive') {
+        filtered = filtered.filter(type => type.status === 'inactive')
+      }
+
+      return filtered
     },
   })
 
-  // Handle both paginated response { results: [...] } and direct array response
-  const customerTypes: CustomerType[] = Array.isArray(customerTypesData)
-    ? customerTypesData
-    : (customerTypesData?.results || [])
+  // Handle array response from mockApi
+  const customerTypes: CustomerType[] = customerTypesData || []
+
+  // Fetch pricing schemes
+  const { data: pricingSchemesData } = useQuery({
+    queryKey: ['pricing-schemes'],
+    queryFn: async () => {
+      return await mockApi.get<PricingScheme[]>('/pricing-schemes/')
+    },
+  })
+
+  const pricingSchemes: PricingScheme[] = pricingSchemesData || []
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (data: CreateCustomerTypeForm) => apiClient.post<CustomerType>('/customer-types/', data),
+    mutationFn: async (data: CreateCustomerTypeForm) => {
+      // Find the selected pricing scheme
+      const selectedScheme = pricingSchemes.find(scheme => scheme.id === data.pricing_scheme_id) || pricingSchemes[0]
+
+      // Simulate creating a new customer type
+      const newType: CustomerType = {
+        id: Math.max(...customerTypes.map(t => t.id), 0) + 1,
+        name: data.name,
+        description: data.description,
+        pricing_scheme_id: data.pricing_scheme_id,
+        pricing_scheme_name: selectedScheme?.name || 'Cost Price',
+        discount_percentage: selectedScheme?.base_discount || 0,
+        min_order_quantity: 100,
+        payment_terms: selectedScheme?.payment_terms || 'NET 45',
+        commission_rate: 8.5,
+        customer_count: 0,
+        status: 'active',
+        is_active: true,
+        discount_rate: selectedScheme?.base_discount || 15,
+        credit_limit: 0,
+        credit_days: 30,
+        requires_approval: false,
+        customers_count: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      await mockApi.post('/customer-types/', newType)
+      return newType
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-types'] })
       setShowCreateModal(false)
@@ -125,8 +187,11 @@ export default function CustomerTypesPage() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<EditCustomerTypeForm> }) =>
-      apiClient.patch<CustomerType>(`/customer-types/${id}/`, data),
+    mutationFn: async ({ id, data }: { id: number; data: Partial<EditCustomerTypeForm> }) => {
+      const updatedType = { ...selectedType, ...data, updated_at: new Date().toISOString() }
+      await mockApi.patch(`/customer-types/${id}/`, updatedType)
+      return updatedType
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-types'] })
       setShowEditModal(false)
@@ -145,7 +210,10 @@ export default function CustomerTypesPage() {
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiClient.delete(`/customer-types/${id}/`),
+    mutationFn: async (id: number) => {
+      await mockApi.delete(`/customer-types/${id}/`)
+      return true
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-types'] })
       setShowDeleteModal(false)
@@ -160,7 +228,14 @@ export default function CustomerTypesPage() {
 
   // Activate/Deactivate mutations
   const activateMutation = useMutation({
-    mutationFn: (id: number) => apiClient.post(`/customer-types/${id}/activate/`),
+    mutationFn: async (id: number) => {
+      const type = customerTypes.find(t => t.id === id)
+      if (type) {
+        const updatedType = { ...type, status: 'active', is_active: true, updated_at: new Date().toISOString() }
+        await mockApi.patch(`/customer-types/${id}/`, updatedType)
+      }
+      return true
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-types'] })
       addToast({ type: 'success', title: 'Success', message: 'Customer type activated' })
@@ -171,7 +246,14 @@ export default function CustomerTypesPage() {
   })
 
   const deactivateMutation = useMutation({
-    mutationFn: (id: number) => apiClient.post(`/customer-types/${id}/deactivate/`),
+    mutationFn: async (id: number) => {
+      const type = customerTypes.find(t => t.id === id)
+      if (type) {
+        const updatedType = { ...type, status: 'inactive', is_active: false, updated_at: new Date().toISOString() }
+        await mockApi.patch(`/customer-types/${id}/`, updatedType)
+      }
+      return true
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-types'] })
       addToast({ type: 'success', title: 'Success', message: 'Customer type deactivated' })
@@ -193,12 +275,12 @@ export default function CustomerTypesPage() {
     setEditForm({
       name: type.name,
       description: type.description || '',
-      discount_rate: toNumber(type.discount_rate),
-      credit_limit: toNumber(type.credit_limit),
-      credit_days: toInt(type.credit_days, 30),
+      discount_percentage: type.discount_percentage || 0,
+      min_order_quantity: type.min_order_quantity || 0,
       payment_terms: type.payment_terms || '',
-      requires_approval: type.requires_approval || false,
-      is_active: type.is_active,
+      commission_rate: type.commission_rate || 0,
+      status: type.status,
+      pricing_scheme_id: type.pricing_scheme_id || 1,
     })
     setFormErrors({})
     setShowEditModal(true)
@@ -224,11 +306,11 @@ export default function CustomerTypesPage() {
   const validateEditForm = (): boolean => {
     const errors: Record<string, string> = {}
     if (!editForm.name.trim()) errors.name = 'Name is required'
-    if (editForm.discount_rate < 0 || editForm.discount_rate > 100) {
-      errors.discount_rate = 'Discount rate must be between 0 and 100'
+    if (editForm.discount_percentage < 0 || editForm.discount_percentage > 100) {
+      errors.discount_percentage = 'Discount percentage must be between 0 and 100'
     }
-    if (editForm.credit_limit < 0) errors.credit_limit = 'Credit limit cannot be negative'
-    if (editForm.credit_days < 0) errors.credit_days = 'Credit days cannot be negative'
+    if (editForm.min_order_quantity < 0) errors.min_order_quantity = 'Min order quantity cannot be negative'
+    if (editForm.commission_rate < 0) errors.commission_rate = 'Commission rate cannot be negative'
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -251,11 +333,11 @@ export default function CustomerTypesPage() {
 
   // Stats
   const totalTypes = customerTypes.length
-  const activeTypes = customerTypes.filter(t => t.is_active).length
-  const totalCustomers = customerTypes.reduce((sum, t) => sum + (t.customers_count || 0), 0)
+  const activeTypes = customerTypes.filter(t => t.status === 'active').length
+  const totalCustomers = customerTypes.reduce((sum, t) => sum + (t.customer_count || 0), 0)
 
-  const getStatusBadge = (isActive: boolean) => {
-    return isActive
+  const getStatusBadge = (status: string) => {
+    return status === 'active'
       ? 'bg-green-100 text-green-800'
       : 'bg-red-100 text-red-800'
   }
@@ -348,136 +430,161 @@ export default function CustomerTypesPage() {
           </CardContent>
         </Card>
 
-        {/* Customer Types Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {isLoading ? (
-            [...Array(4)].map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
-                  <div className="animate-pulse space-y-4">
-                    <div className="h-6 bg-gray-200 rounded w-1/2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="h-16 bg-gray-200 rounded"></div>
-                      <div className="h-16 bg-gray-200 rounded"></div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : customerTypes.length === 0 ? (
-            <div className="col-span-full">
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No customer types found</h3>
-                  <p className="text-gray-500 mb-4">
-                    {searchTerm || statusFilter !== 'all'
-                      ? 'Try adjusting your search or filters'
-                      : 'Get started by adding your first customer type'}
-                  </p>
-                  <Button className="mofad-btn-primary" onClick={handleCreate}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Customer Type
-                  </Button>
-                </CardContent>
-              </Card>
+        {/* Customer Types Table */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Customer Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Pricing Scheme
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Discount Rate
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Customers
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Payment Terms
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {isLoading ? (
+                    [...Array(5)].map((_, i) => (
+                      <tr key={i}>
+                        <td className="px-6 py-4">
+                          <div className="animate-pulse">
+                            <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                            <div className="h-3 bg-gray-200 rounded w-48"></div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="animate-pulse">
+                            <div className="h-4 bg-gray-200 rounded w-28"></div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="animate-pulse">
+                            <div className="h-4 bg-gray-200 rounded w-12"></div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="animate-pulse">
+                            <div className="h-4 bg-gray-200 rounded w-8"></div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="animate-pulse">
+                            <div className="h-4 bg-gray-200 rounded w-16"></div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="animate-pulse">
+                            <div className="h-6 bg-gray-200 rounded w-16"></div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="animate-pulse flex gap-2">
+                            <div className="h-8 bg-gray-200 rounded w-8"></div>
+                            <div className="h-8 bg-gray-200 rounded w-8"></div>
+                            <div className="h-8 bg-gray-200 rounded w-8"></div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : customerTypes.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No customer types found</h3>
+                        <p className="text-gray-500 mb-4">
+                          {searchTerm || statusFilter !== 'all'
+                            ? 'Try adjusting your search or filters'
+                            : 'Get started by adding your first customer type'}
+                        </p>
+                        <Button className="mofad-btn-primary" onClick={handleCreate}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Customer Type
+                        </Button>
+                      </td>
+                    </tr>
+                  ) : (
+                    customerTypes.map((type) => (
+                      <tr key={type.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{type.name}</div>
+                            <div className="text-sm text-gray-500">{type.description || 'No description'}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-medium text-blue-600">{type.pricing_scheme_name}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <Percent className="w-4 h-4 text-green-600 mr-1" />
+                            <span className="text-sm font-medium text-green-600">{type.discount_percentage}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-900">{type.customer_count || 0}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-900">{type.payment_terms}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(type.status)}`}>
+                            {type.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleView(type)}
+                              className="text-gray-600 hover:text-gray-900"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(type)}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(type)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-          ) : (
-            customerTypes.map((type) => (
-              <Card key={type.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{type.name}</h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(type.is_active)}`}>
-                          {type.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{type.description || 'No description'}</p>
-                    </div>
-
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => handleView(type)}>
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(type)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => handleDelete(type)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Key Metrics */}
-                  <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center gap-1 mb-1">
-                        <Percent className="w-4 h-4 text-green-600" />
-                        <span className="text-lg font-bold text-green-600">{toNumber(type.discount_rate)}%</span>
-                      </div>
-                      <p className="text-xs text-gray-600">Discount Rate</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-blue-600">{type.customers_count || 0}</p>
-                      <p className="text-xs text-gray-600">Customers</p>
-                    </div>
-                  </div>
-
-                  {/* Financial Details */}
-                  <div className="space-y-2 mb-4">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Credit Limit</span>
-                      <span className="font-medium">{formatCurrency(toNumber(type.credit_limit))}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Credit Days</span>
-                      <span className="font-medium">{toInt(type.credit_days)} days</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Requires Approval</span>
-                      <span className="font-medium">{type.requires_approval ? 'Yes' : 'No'}</span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-3 border-t">
-                    {type.is_active ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => deactivateMutation.mutate(type.id)}
-                        disabled={deactivateMutation.isPending}
-                      >
-                        <XCircle className="w-4 h-4 mr-2" />
-                        Deactivate
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => activateMutation.mutate(type.id)}
-                        disabled={activateMutation.isPending}
-                      >
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Activate
-                      </Button>
-                    )}
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(type)}>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Create Modal */}
         {showCreateModal && (
@@ -517,8 +624,25 @@ export default function CustomerTypesPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Pricing Scheme <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={createForm.pricing_scheme_id}
+                    onChange={(e) => setCreateForm({ ...createForm, pricing_scheme_id: parseInt(e.target.value) })}
+                  >
+                    {pricingSchemes.filter(scheme => scheme.is_active).map(scheme => (
+                      <option key={scheme.id} value={scheme.id}>
+                        {scheme.name} ({scheme.base_discount}% discount)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <p className="text-sm text-gray-500">
-                  You can add discount rates, credit limits, and other settings after creation by editing the customer type.
+                  The pricing scheme determines base discount rates and payment terms for this customer type.
                 </p>
               </div>
               <div className="flex justify-end gap-2 p-6 border-t">
@@ -574,8 +698,8 @@ export default function CustomerTypesPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                     <select
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      value={editForm.is_active ? 'active' : 'inactive'}
-                      onChange={(e) => setEditForm({ ...editForm, is_active: e.target.value === 'active' })}
+                      value={editForm.status}
+                      onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -593,83 +717,84 @@ export default function CustomerTypesPage() {
                   />
                 </div>
 
-                {/* Financial Settings */}
+                {/* Pricing Scheme */}
                 <div className="border-t pt-4 mt-4">
                   <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
                     <CreditCard className="w-4 h-4" />
-                    Financial Settings
+                    Pricing & Settings
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Discount Rate (%)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Pricing Scheme</label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={editForm.pricing_scheme_id}
+                        onChange={(e) => setEditForm({ ...editForm, pricing_scheme_id: parseInt(e.target.value) })}
+                      >
+                        {pricingSchemes.filter(scheme => scheme.is_active).map(scheme => (
+                          <option key={scheme.id} value={scheme.id}>
+                            {scheme.name} ({scheme.base_discount}% base discount)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Discount Percentage (%)</label>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                          formErrors.discount_rate ? 'border-red-500' : 'border-gray-300'
+                          formErrors.discount_percentage ? 'border-red-500' : 'border-gray-300'
                         }`}
-                        value={editForm.discount_rate}
-                        onChange={(e) => setEditForm({ ...editForm, discount_rate: parseFloat(e.target.value) || 0 })}
+                        value={editForm.discount_percentage}
+                        onChange={(e) => setEditForm({ ...editForm, discount_percentage: parseFloat(e.target.value) || 0 })}
                       />
-                      {formErrors.discount_rate && <p className="text-red-500 text-xs mt-1">{formErrors.discount_rate}</p>}
+                      {formErrors.discount_percentage && <p className="text-red-500 text-xs mt-1">{formErrors.discount_percentage}</p>}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Credit Limit (₦)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1000"
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                          formErrors.credit_limit ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                        value={editForm.credit_limit}
-                        onChange={(e) => setEditForm({ ...editForm, credit_limit: parseFloat(e.target.value) || 0 })}
-                      />
-                      {formErrors.credit_limit && <p className="text-red-500 text-xs mt-1">{formErrors.credit_limit}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Credit Days</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Min Order Quantity</label>
                       <input
                         type="number"
                         min="0"
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                          formErrors.credit_days ? 'border-red-500' : 'border-gray-300'
+                          formErrors.min_order_quantity ? 'border-red-500' : 'border-gray-300'
                         }`}
-                        value={editForm.credit_days}
-                        onChange={(e) => setEditForm({ ...editForm, credit_days: parseInt(e.target.value) || 0 })}
+                        value={editForm.min_order_quantity}
+                        onChange={(e) => setEditForm({ ...editForm, min_order_quantity: parseInt(e.target.value) || 0 })}
                       />
-                      {formErrors.credit_days && <p className="text-red-500 text-xs mt-1">{formErrors.credit_days}</p>}
+                      {formErrors.min_order_quantity && <p className="text-red-500 text-xs mt-1">{formErrors.min_order_quantity}</p>}
                     </div>
 
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Commission Rate (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                          formErrors.commission_rate ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        value={editForm.commission_rate}
+                        onChange={(e) => setEditForm({ ...editForm, commission_rate: parseFloat(e.target.value) || 0 })}
+                      />
+                      {formErrors.commission_rate && <p className="text-red-500 text-xs mt-1">{formErrors.commission_rate}</p>}
+                    </div>
+
+                    <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                         value={editForm.payment_terms}
                         onChange={(e) => setEditForm({ ...editForm, payment_terms: e.target.value })}
-                        placeholder="e.g., Net 30"
+                        placeholder="e.g., NET 30, Immediate, Letter of Credit"
                       />
                     </div>
                   </div>
-                </div>
-
-                {/* Approval Settings */}
-                <div className="border-t pt-4 mt-4">
-                  <h3 className="font-medium text-gray-900 mb-3">Approval Settings</h3>
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                      checked={editForm.requires_approval}
-                      onChange={(e) => setEditForm({ ...editForm, requires_approval: e.target.checked })}
-                    />
-                    <span className="text-sm text-gray-700">Requires approval for orders</span>
-                  </label>
                 </div>
               </div>
               <div className="flex justify-end gap-2 p-6 border-t sticky bottom-0 bg-white">
@@ -710,8 +835,8 @@ export default function CustomerTypesPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold">{selectedType.name}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(selectedType.is_active)}`}>
-                      {selectedType.is_active ? 'Active' : 'Inactive'}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(selectedType.status)}`}>
+                      {selectedType.status === 'active' ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                 </div>
@@ -726,19 +851,19 @@ export default function CustomerTypesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Discount Rate</label>
-                    <p className="text-lg font-semibold text-green-600">{toNumber(selectedType.discount_rate)}%</p>
+                    <p className="text-lg font-semibold text-green-600">{selectedType.discount_percentage}%</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Customers</label>
-                    <p className="text-lg font-semibold">{selectedType.customers_count || 0}</p>
+                    <p className="text-lg font-semibold">{selectedType.customer_count || 0}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Credit Limit</label>
-                    <p className="text-lg font-semibold">{formatCurrency(toNumber(selectedType.credit_limit))}</p>
+                    <label className="text-sm font-medium text-gray-500">Min Order Quantity</label>
+                    <p className="text-lg font-semibold">{selectedType.min_order_quantity?.toLocaleString() || 0}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Credit Days</label>
-                    <p className="text-lg font-semibold">{toInt(selectedType.credit_days)} days</p>
+                    <label className="text-sm font-medium text-gray-500">Commission Rate</label>
+                    <p className="text-lg font-semibold">{selectedType.commission_rate || 0}%</p>
                   </div>
                 </div>
 
@@ -750,8 +875,8 @@ export default function CustomerTypesPage() {
                 )}
 
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Requires Approval</label>
-                  <p className="text-gray-900">{selectedType.requires_approval ? 'Yes' : 'No'}</p>
+                  <label className="text-sm font-medium text-gray-500">Pricing Scheme</label>
+                  <p className="text-gray-900 text-blue-600">{selectedType.pricing_scheme_name}</p>
                 </div>
 
                 <div className="border-t pt-4 grid grid-cols-2 gap-4 text-sm">
@@ -803,9 +928,9 @@ export default function CustomerTypesPage() {
                 </div>
                 <p className="text-gray-700">
                   Are you sure you want to delete <strong>{selectedType.name}</strong>?
-                  {(selectedType.customers_count || 0) > 0 && (
+                  {(selectedType.customer_count || 0) > 0 && (
                     <span className="text-red-600 block mt-2">
-                      Warning: This customer type has {selectedType.customers_count} associated customers.
+                      Warning: This customer type has {selectedType.customer_count} associated customers.
                     </span>
                   )}
                 </p>

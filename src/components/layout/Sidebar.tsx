@@ -27,7 +27,8 @@ import {
   CreditCard,
   Sparkles,
   ArrowUpRight,
-  Activity
+  Activity,
+  Truck
 } from 'lucide-react'
 
 interface NavItem {
@@ -67,6 +68,17 @@ const navigation: NavItem[] = [
       { label: 'All Customers', href: '/customers', icon: Users },
       { label: 'Customer Types', href: '/customers/types', icon: Users },
       { label: 'Customer Transactions', href: '/customers/transactions', icon: DollarSign },
+    ],
+  },
+  {
+    label: 'Suppliers',
+    href: '/suppliers',
+    icon: Truck,
+    color: 'from-blue-500 to-indigo-500',
+    children: [
+      { label: 'All Suppliers', href: '/suppliers', icon: Truck },
+      { label: 'Supplier Products', href: '/suppliers/products', icon: Package },
+      { label: 'Supplier Transactions', href: '/suppliers/transactions', icon: DollarSign },
     ],
   },
   {
@@ -326,11 +338,12 @@ export function Sidebar({ collapsed }: SidebarProps) {
             {!collapsed && (
               <div className="flex items-center">
                 <img
-                  src="/mofad-logo.svg"
+                  src="/modah_logo-removebg-preview.png"
                   alt="MOFAD Energy Solutions"
                   className="h-12 w-auto"
                 />
                 <div className="ml-3">
+                  <h1 className="text-lg font-bold text-gray-900">MOFAD Energy Solutions</h1>
                   <p className="text-xs text-gray-500 font-medium">Enterprise ERP</p>
                 </div>
               </div>
@@ -339,7 +352,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
             {collapsed && (
               <div className="flex items-center justify-center">
                 <img
-                  src="/mofad-logo.svg"
+                  src="/modah_logo-removebg-preview.png"
                   alt="MOFAD"
                   className="h-8 w-auto"
                 />

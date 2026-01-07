@@ -5,7 +5,6 @@ import { useRouter, useParams } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/Button'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
-import { PRF } from '@/types/api'
 import {
   ArrowLeft,
   Download,
@@ -27,41 +26,41 @@ import {
   ThumbsDown
 } from 'lucide-react'
 
-// Helper functions for localStorage management (same as in main PRF page)
-const getMockPRFs = (): PRF[] => {
+// Helper functions for localStorage management
+const getMockPROs = (): any[] => {
   if (typeof window === 'undefined') return []
 
   try {
-    const stored = localStorage.getItem('mofad_mock_prfs')
+    const stored = localStorage.getItem('mofad_mock_pros')
     if (stored) {
       return JSON.parse(stored)
     }
   } catch (error) {
-    console.error('Error reading PRFs from localStorage:', error)
+    console.error('Error reading PROs from localStorage:', error)
   }
 
   return []
 }
 
-// Status badge component
+// Status badge component (matching PRF format)
 const getStatusBadge = (status: string) => {
   const colors: Record<string, string> = {
     draft: 'bg-gray-100 text-gray-800 border-gray-300',
+    sent: 'bg-yellow-100 text-yellow-800 border-yellow-300',
     submitted: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    confirmed: 'bg-green-100 text-green-800 border-green-300',
     approved: 'bg-green-100 text-green-800 border-green-300',
-    rejected: 'bg-red-100 text-red-800 border-red-300',
-    partially_fulfilled: 'bg-blue-100 text-blue-800 border-blue-300',
-    fulfilled: 'bg-green-200 text-green-900 border-green-400',
-    cancelled: 'bg-gray-200 text-gray-700 border-gray-400',
+    delivered: 'bg-green-200 text-green-900 border-green-400',
+    cancelled: 'bg-red-100 text-red-800 border-red-300',
   }
 
   const labels: Record<string, string> = {
     draft: 'DRAFT',
-    submitted: 'PENDING APPROVAL',
-    approved: 'APPROVED',
-    rejected: 'REJECTED',
-    partially_fulfilled: 'PARTIALLY FULFILLED',
-    fulfilled: 'FULFILLED',
+    sent: 'PENDING CONFIRMATION',
+    submitted: 'PENDING CONFIRMATION',
+    confirmed: 'CONFIRMED',
+    approved: 'CONFIRMED',
+    delivered: 'DELIVERED',
     cancelled: 'CANCELLED',
   }
 
@@ -72,24 +71,77 @@ const getStatusBadge = (status: string) => {
   )
 }
 
-export default function PRFViewPage() {
+// Default PROs for demo purposes
+const getDefaultPROs = () => [
+  {
+    id: 1,
+    pro_number: 'PRO-2024-001',
+    supplier_name: 'NNPC Retail Ltd',
+    supplier_details: {
+      name: 'NNPC Retail Ltd',
+      code: 'NNPC',
+      contact_person: 'John Adebayo',
+      email: 'procurement@nnpc.com',
+      phone: '+234 800 123 4567',
+      address: 'Plot 15, Industrial Estate, Lagos',
+      payment_terms: '30 days net',
+      rating: 5,
+      category: 'Premium Supplier'
+    },
+    estimated_total: 4500000,
+    status: 'confirmed',
+    created_by: 'John Doe',
+    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    order_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    priority: 'medium',
+    payment_terms: 'NET 30',
+    items: [
+      {
+        id: 1,
+        product_name: 'Premium Motor Spirit (PMS)',
+        product_code: 'PMS-001',
+        unit_price: 617,
+        quantity: 7000,
+        total_amount: 4319000,
+        unit: 'Liter',
+        notes: 'Bulk supply for retail'
+      }
+    ],
+    notes: 'Monthly supply contract for PMS'
+  }
+]
+
+export default function PRODetailPage() {
   const router = useRouter()
   const params = useParams()
+  const [pro, setPro] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const printRef = useRef<HTMLDivElement>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [prf, setPrf] = useState<PRF | null>(null)
-
-  const prfId = params?.id ? parseInt(params.id as string) : null
 
   useEffect(() => {
-    if (prfId) {
-      // Load PRF from localStorage
-      const mockPRFs = getMockPRFs()
-      const foundPRF = mockPRFs.find(p => p.id === prfId)
-      setPrf(foundPRF || null)
-      setIsLoading(false)
+    const fetchPRO = () => {
+      const id = parseInt(params.id as string)
+
+      // Get both stored and default PROs
+      const storedPROs = getMockPROs()
+      const defaultPROs = getDefaultPROs()
+      const allPROs = [...storedPROs, ...defaultPROs]
+
+      // Find the PRO by ID
+      const foundPRO = allPROs.find(p => p.id === id)
+
+      if (foundPRO) {
+        setPro(foundPRO)
+      } else {
+        console.error('PRO not found with ID:', id)
+      }
+      setLoading(false)
     }
-  }, [prfId])
+
+    if (params.id) {
+      fetchPRO()
+    }
+  }, [params.id])
 
   const handlePrint = () => {
     if (printRef.current) {
@@ -98,7 +150,7 @@ export default function PRFViewPage() {
         printWindow.document.write(`
           <html>
             <head>
-              <title>PRF ${prf?.prf_number}</title>
+              <title>PRO ${pro?.pro_number}</title>
               <style>
                 * { box-sizing: border-box; }
                 body {
@@ -269,7 +321,7 @@ export default function PRFViewPage() {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>PRF ${prf?.prf_number || 'Document'}</title>
+          <title>PRO ${pro?.pro_number || 'Document'}</title>
           <style>
             @page {
               size: A4;
@@ -391,79 +443,113 @@ export default function PRFViewPage() {
   }
 
   // Approval functions
-  const handleApprovePRF = () => {
-    if (!prf || !prfId) return
+  const handleApprovePRO = () => {
+    if (!pro) return
 
     try {
-      const stored = localStorage.getItem('mofad_mock_prfs')
+      const stored = localStorage.getItem('mofad_mock_pros')
       if (stored) {
-        const prfs = JSON.parse(stored)
-        const updatedPRFs = prfs.map((p: any) =>
-          p.id === prfId ? { ...p, status: 'approved' } : p
+        const pros = JSON.parse(stored)
+        const updatedPROs = pros.map((p: any) =>
+          p.id === pro.id ? { ...p, status: 'confirmed' } : p
         )
-        localStorage.setItem('mofad_mock_prfs', JSON.stringify(updatedPRFs))
+        localStorage.setItem('mofad_mock_pros', JSON.stringify(updatedPROs))
 
         // Update local state
-        setPrf({ ...prf, status: 'approved' })
+        setPro({ ...pro, status: 'confirmed' })
 
-        alert(`PRF ${prf.prf_number} has been approved successfully!`)
+        alert(`PRO ${pro.pro_number} has been approved successfully!`)
       }
     } catch (error) {
-      console.error('Error approving PRF:', error)
-      alert('Error approving PRF. Please try again.')
+      console.error('Error approving PRO:', error)
+      alert('Error approving PRO. Please try again.')
     }
   }
 
-  const handleRejectPRF = () => {
-    if (!prf || !prfId) return
+  const handleRejectPRO = () => {
+    if (!pro) return
 
     const reason = prompt('Please provide a reason for rejection (optional):')
 
     try {
-      const stored = localStorage.getItem('mofad_mock_prfs')
+      const stored = localStorage.getItem('mofad_mock_pros')
       if (stored) {
-        const prfs = JSON.parse(stored)
-        const updatedPRFs = prfs.map((p: any) =>
-          p.id === prfId ? {
+        const pros = JSON.parse(stored)
+        const updatedPROs = pros.map((p: any) =>
+          p.id === pro.id ? {
             ...p,
-            status: 'rejected',
+            status: 'cancelled',
             rejection_reason: reason || 'No reason provided'
           } : p
         )
-        localStorage.setItem('mofad_mock_prfs', JSON.stringify(updatedPRFs))
+        localStorage.setItem('mofad_mock_pros', JSON.stringify(updatedPROs))
 
         // Update local state
-        setPrf({ ...prf, status: 'rejected' })
+        setPro({ ...pro, status: 'cancelled' })
 
-        alert(`PRF ${prf.prf_number} has been rejected.`)
+        alert(`PRO ${pro.pro_number} has been rejected.`)
       }
     } catch (error) {
-      console.error('Error rejecting PRF:', error)
-      alert('Error rejecting PRF. Please try again.')
+      console.error('Error rejecting PRO:', error)
+      alert('Error rejecting PRO. Please try again.')
     }
   }
 
-  if (isLoading) {
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return <Clock className="w-5 h-5 text-gray-500" />
+      case 'submitted':
+      case 'sent':
+        return <AlertTriangle className="w-5 h-5 text-orange-500" />
+      case 'confirmed':
+        return <CheckCircle className="w-5 h-5 text-green-500" />
+      default:
+        return <XCircle className="w-5 h-5 text-red-500" />
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return 'text-gray-600 bg-gray-100'
+      case 'submitted':
+      case 'sent':
+        return 'text-orange-600 bg-orange-100'
+      case 'confirmed':
+        return 'text-green-600 bg-green-100'
+      default:
+        return 'text-red-600 bg-red-100'
+    }
+  }
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </AppLayout>
     )
   }
 
-  if (!prf) {
+  if (!pro) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center py-12">
-          <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">PRF Not Found</h2>
-          <p className="text-gray-600 mb-4">The requested Purchase Requisition Form could not be found.</p>
-          <Button onClick={() => router.push('/orders/prf')} variant="outline">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to PRFs
-          </Button>
+      <AppLayout>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center py-12">
+            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">PRO Not Found</h2>
+            <p className="text-gray-600 mb-4">
+              The Purchase Request Order you're looking for doesn't exist or has been removed.
+            </p>
+            <Button onClick={() => router.push('/orders/pro')} variant="outline">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to PRO List
+            </Button>
+          </div>
         </div>
-      </div>
+      </AppLayout>
     )
   }
 
@@ -473,13 +559,13 @@ export default function PRFViewPage() {
         {/* Action Bar */}
         <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200 no-print">
           <div className="flex items-center gap-4">
-            <Button onClick={() => router.push('/orders/prf')} variant="outline" className="flex items-center gap-2">
+            <Button onClick={() => router.push('/orders/pro')} variant="outline" className="flex items-center gap-2">
               <ArrowLeft className="w-4 h-4" />
-              Back to PRFs
+              Back to PROs
             </Button>
             <div className="border-l border-gray-300 pl-4">
-              <h1 className="text-xl font-semibold text-gray-900">PRF #{prf.prf_number}</h1>
-              <p className="text-gray-600 text-sm">Purchase Requisition Form Details</p>
+              <h1 className="text-xl font-semibold text-gray-900">PRO #{pro.pro_number}</h1>
+              <p className="text-gray-600 text-sm">Purchase Request Order Details</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -492,18 +578,18 @@ export default function PRFViewPage() {
               Download PDF
             </Button>
 
-            {/* Approval Buttons - Only show for submitted PRFs */}
-            {prf.status === 'submitted' && (
+            {/* Approval Buttons - Only show for submitted or draft PROs */}
+            {(pro.status === 'submitted' || pro.status === 'draft') && (
               <>
                 <Button
-                  onClick={handleApprovePRF}
+                  onClick={handleApprovePRO}
                   className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
                 >
                   <ThumbsUp className="w-4 h-4" />
                   Approve
                 </Button>
                 <Button
-                  onClick={handleRejectPRF}
+                  onClick={handleRejectPRO}
                   className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
                 >
                   <ThumbsDown className="w-4 h-4" />
@@ -514,7 +600,7 @@ export default function PRFViewPage() {
           </div>
         </div>
 
-        {/* PRF Document */}
+        {/* PRO Document */}
         <div ref={printRef} className="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-200 print:shadow-none print:rounded-none print:border-none print:max-w-none print:w-full print:h-auto print:m-0 print:p-0">
           {/* Professional Header */}
           <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #B8941F 50%, #1B4F3A 100%)' }}>
@@ -560,7 +646,7 @@ export default function PRFViewPage() {
                 <div className="text-right">
                   <div className="bg-white/20 backdrop-blur-sm px-6 py-3 rounded-xl border border-white/30">
                     <p className="text-xs text-white/80 mb-1">Document Reference</p>
-                    <p className="font-bold text-lg">PRF/{new Date().getFullYear()}/{String(prf?.id || '0001').padStart(4, '0')}</p>
+                    <p className="font-bold text-lg">PRO/{new Date().getFullYear()}/{String(pro?.id || '0001').padStart(4, '0')}</p>
                   </div>
                 </div>
               </div>
@@ -568,7 +654,7 @@ export default function PRFViewPage() {
               <div className="mt-8 pt-6 border-t border-white/20">
                 <div className="flex items-center gap-4">
                   <div className="w-1 h-8 bg-white/80 rounded-full"></div>
-                  <h2 className="text-3xl font-bold tracking-wide">PURCHASE REQUEST FORM</h2>
+                  <h2 className="text-3xl font-bold tracking-wide">PURCHASE ORDER FORM</h2>
                 </div>
               </div>
             </div>
@@ -576,49 +662,44 @@ export default function PRFViewPage() {
 
           {/* Document Content */}
           <div className="p-8">
-            {/* Request Information Section */}
+            {/* Order Information Section */}
             <div className="mb-8">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#E8F4F0' }}>
                   <FileText className="w-5 h-5 text-green-700" style={{ color: '#1B4F3A' }} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Request Information</h3>
+                <h3 className="text-xl font-bold text-gray-900">Order Information</h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Date of Request</label>
-                  <p className="text-base font-medium text-gray-900">{formatDateTime((prf as any).order_date || new Date().toISOString()).split(',')[0]}</p>
+                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Date of Order</label>
+                  <p className="text-base font-medium text-gray-900">{formatDateTime(pro.order_date || pro.created_at).split(',')[0]}</p>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Deliver To</label>
-                  <p className="text-base font-medium text-gray-900">{(prf as any).customer_location_name || 'MOFAD Headquarters'}</p>
+                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Supplier</label>
+                  <p className="text-base font-medium text-gray-900">{pro.supplier_name || pro.supplier_details?.name || 'Supplier'}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Customer</label>
-                  <p className="text-base font-medium text-gray-900">{(prf as any).customer_name || 'N/A'}</p>
-                  <p className="text-sm text-gray-600 mt-1">Order Ref: {(prf as any).order_reference || 'N/A'}</p>
+                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Created By</label>
+                  <p className="text-base font-medium text-gray-900">{pro.created_by || 'N/A'}</p>
+                  <p className="text-sm text-gray-600 mt-1">Order Ref: {pro.pro_number}</p>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Priority Level</label>
-                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                    prf.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                    prf.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                    prf.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {prf.priority?.toUpperCase()}
+                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Payment Terms</label>
+                  <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    {pro.payment_terms || 'NET 30'}
                   </span>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Status</label>
-                  {getStatusBadge(prf.status)}
+                  {getStatusBadge(pro.status)}
                 </div>
               </div>
             </div>
@@ -643,13 +724,13 @@ export default function PRFViewPage() {
                       <th className="px-6 py-4 text-left text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Description of Items/Services</th>
                       <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Code</th>
                       <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Qty</th>
-                      <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Category</th>
+                      <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Unit</th>
                       <th className="px-6 py-4 text-right text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Unit Cost</th>
                       <th className="px-6 py-4 text-right text-sm font-bold text-gray-800 uppercase tracking-wide">Total Cost</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {((prf as any).items || []).map((item: any, index: number) => (
+                    {(pro.items || []).map((item: any, index: number) => (
                       <tr key={index} className={`border-b border-gray-200 transition-colors ${
                         index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                       } hover:bg-blue-50/30`}>
@@ -672,7 +753,7 @@ export default function PRFViewPage() {
                         <td className="px-6 py-4 text-center font-bold text-lg text-gray-900 border-r border-gray-200">{item.quantity}</td>
                         <td className="px-6 py-4 text-center border-r border-gray-200">
                           <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                            Equipment
+                            {item.unit || 'Unit'}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right font-semibold text-gray-900 border-r border-gray-200">{formatCurrency(item.unit_price)}</td>
@@ -690,10 +771,10 @@ export default function PRFViewPage() {
                       </td>
                       <td className="px-6 py-5 text-right">
                         <div className="font-bold text-2xl" style={{ color: '#D4AF37' }}>
-                          {formatCurrency(prf.estimated_total)}
+                          {formatCurrency(pro.estimated_total)}
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
-                          {((prf as any).items || []).length} item(s)
+                          {(pro.items || []).length} item(s)
                         </div>
                       </td>
                     </tr>
@@ -715,9 +796,9 @@ export default function PRFViewPage() {
                 <div className="border border-gray-200 rounded-lg p-4">
                   <h4 className="font-semibold text-gray-900 mb-2">Requested By</h4>
                   <div className="space-y-1">
-                    <p className="text-sm text-gray-600">Name: Admin User</p>
-                    <p className="text-sm text-gray-600">Position: System Administrator</p>
-                    <p className="text-sm text-gray-600">Date: {formatDateTime(new Date().toISOString()).split(',')[0]}</p>
+                    <p className="text-sm text-gray-600">Name: {pro.created_by}</p>
+                    <p className="text-sm text-gray-600">Position: Procurement Officer</p>
+                    <p className="text-sm text-gray-600">Date: {formatDateTime(pro.created_at).split(',')[0]}</p>
                     <div className="mt-3 pt-2 border-t border-gray-200">
                       <p className="text-xs text-gray-500">Signature: ________________</p>
                     </div>
@@ -725,10 +806,10 @@ export default function PRFViewPage() {
                 </div>
 
                 <div className="border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Department Head</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">Supplier Confirmation</h4>
                   <div className="space-y-1">
                     <p className="text-sm text-gray-600">Name: ________________</p>
-                    <p className="text-sm text-gray-600">Position: Department Head</p>
+                    <p className="text-sm text-gray-600">Position: Supplier Representative</p>
                     <p className="text-sm text-gray-600">Date: ________________</p>
                     <div className="mt-3 pt-2 border-t border-gray-200">
                       <p className="text-xs text-gray-500">Signature: ________________</p>
@@ -753,7 +834,7 @@ export default function PRFViewPage() {
             {/* Footer */}
             <div className="border-t-2 border-gray-200 pt-6 text-center">
               <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
-                <p className="font-semibold">This is an official MOFAD Energy Solutions Purchase Request Form</p>
+                <p className="font-semibold">This is an official MOFAD Energy Solutions Purchase Order Form</p>
                 <p className="mt-1">Generated on {formatDateTime(new Date().toISOString())}</p>
                 <p className="mt-2 text-xs">© 2025 MOFAD Energy Solutions</p>
               </div>

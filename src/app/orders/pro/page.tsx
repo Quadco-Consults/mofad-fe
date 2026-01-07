@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -97,10 +97,29 @@ export default function PROPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [deliveryFilter, setDeliveryFilter] = useState('all')
 
-  const { data: proList, isLoading } = useQuery({
+  const { data: proList, isLoading, refetch } = useQuery({
     queryKey: ['pro-list'],
     queryFn: () => mockApi.get('/orders/pro'),
   })
+
+  // Add debug logging to see what data is being returned
+  console.log('PRO List Data from API:', proList)
+
+  // Debug localStorage content
+  // useEffect(() => {
+  //   if (typeof window !== 'undefined') {
+  //     const stored = localStorage.getItem('mofad_mock_pros')
+  //     console.log('Raw localStorage mofad_mock_pros:', stored)
+  //     if (stored) {
+  //       try {
+  //         const parsed = JSON.parse(stored)
+  //         console.log('Parsed localStorage PROs:', parsed)
+  //       } catch (e) {
+  //         console.error('Error parsing localStorage:', e)
+  //       }
+  //     }
+  //   }
+  // }, [])
 
   const pros = proList || []
 
@@ -125,13 +144,18 @@ export default function PROPage() {
             <h1 className="text-2xl font-bold text-foreground">Purchase Orders (PRO)</h1>
             <p className="text-muted-foreground">Manage purchase orders and supplier communications</p>
           </div>
-          <Button
-            className="mofad-btn-primary"
-            onClick={() => router.push('/orders/pro/create')}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New PRO
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => refetch()}>
+              Refresh
+            </Button>
+            <Button
+              className="mofad-btn-primary"
+              onClick={() => router.push('/orders/pro/create')}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New PRO
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -308,7 +332,11 @@ export default function PROPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => router.push(`/orders/pro/${pro.id}`)}
+                            >
                               <Eye className="w-4 h-4" />
                             </Button>
                             <Button variant="ghost" size="sm">

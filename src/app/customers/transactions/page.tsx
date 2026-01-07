@@ -1,9 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { Search, Filter, Download, Plus, Eye, Edit, Trash2, TrendingUp, CreditCard, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { AppLayout } from '@/components/layout/AppLayout'
+import mockApi from '@/lib/mockApi'
 
 interface CustomerTransaction {
   id: string
@@ -23,129 +26,28 @@ interface CustomerTransaction {
   location: string
 }
 
-const mockTransactions: CustomerTransaction[] = [
-  {
-    id: '1',
-    transactionId: 'TXN-CUST-001234',
-    customerId: 'CUST-001',
-    customerName: 'Conoil Petroleum Ltd',
-    customerType: 'Major Oil Marketing Companies',
-    date: '2024-12-16T10:30:00Z',
-    type: 'sale',
-    description: 'Bulk purchase of premium lubricants',
-    amount: 2500000,
-    balance: -1500000,
-    paymentMethod: 'Bank Transfer',
-    status: 'completed',
-    reference: 'REF-CON-001234',
-    salesRep: 'Adebayo Johnson',
-    location: 'Lagos Island'
-  },
-  {
-    id: '2',
-    transactionId: 'TXN-CUST-001235',
-    customerId: 'CUST-001',
-    customerName: 'Conoil Petroleum Ltd',
-    customerType: 'Major Oil Marketing Companies',
-    date: '2024-12-15T14:20:00Z',
-    type: 'payment',
-    description: 'Payment for previous invoice INV-001230',
-    amount: 1000000,
-    balance: -500000,
-    paymentMethod: 'Bank Transfer',
-    status: 'completed',
-    reference: 'PAY-CON-001235',
-    salesRep: 'Adebayo Johnson',
-    location: 'Lagos Island'
-  },
-  {
-    id: '3',
-    transactionId: 'TXN-CUST-001236',
-    customerId: 'CUST-015',
-    customerName: 'MRS Oil Nigeria Plc',
-    customerType: 'Major Oil Marketing Companies',
-    date: '2024-12-14T09:45:00Z',
-    type: 'sale',
-    description: 'Engine oil and additives purchase',
-    amount: 1800000,
-    balance: -1800000,
-    paymentMethod: 'Credit',
-    status: 'pending',
-    reference: 'REF-MRS-001236',
-    salesRep: 'Fatima Usman',
-    location: 'Abuja Central'
-  },
-  {
-    id: '4',
-    transactionId: 'TXN-CUST-001237',
-    customerId: 'CUST-023',
-    customerName: 'Oando Marketing Plc',
-    customerType: 'Major Oil Marketing Companies',
-    date: '2024-12-13T16:15:00Z',
-    type: 'credit',
-    description: 'Credit note for returned products',
-    amount: 250000,
-    balance: 250000,
-    paymentMethod: 'Credit Note',
-    status: 'completed',
-    reference: 'CN-OAN-001237',
-    salesRep: 'Emeka Okafor',
-    location: 'Port Harcourt'
-  },
-  {
-    id: '5',
-    transactionId: 'TXN-CUST-001238',
-    customerId: 'CUST-045',
-    customerName: 'Lagos State Transport Corp',
-    customerType: 'Government Agencies',
-    date: '2024-12-12T11:30:00Z',
-    type: 'sale',
-    description: 'Fleet maintenance lubricants',
-    amount: 890000,
-    balance: -890000,
-    paymentMethod: 'Government Voucher',
-    status: 'completed',
-    reference: 'REF-LSTC-001238',
-    salesRep: 'Kemi Adebola',
-    location: 'Lagos Island'
-  },
-  {
-    id: '6',
-    transactionId: 'TXN-CUST-001239',
-    customerId: 'CUST-067',
-    customerName: 'ABC Transport Ltd',
-    customerType: 'Fleet Operators',
-    date: '2024-12-11T13:45:00Z',
-    type: 'payment',
-    description: 'Partial payment for outstanding balance',
-    amount: 500000,
-    balance: -300000,
-    paymentMethod: 'Cash',
-    status: 'completed',
-    reference: 'PAY-ABC-001239',
-    salesRep: 'Ibrahim Musa',
-    location: 'Kano'
-  }
-]
-
 function CustomerTransactionsPage() {
-  const [transactions] = useState<CustomerTransaction[]>(mockTransactions)
+  const router = useRouter()
+  const { data: transactions = [], isLoading, error } = useQuery<CustomerTransaction[]>({
+    queryKey: ['customer-transactions'],
+    queryFn: () => mockApi.get('/customers/transactions/')
+  })
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>('all')
   const [showAddModal, setShowAddModal] = useState(false)
-  const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [selectedTransaction, setSelectedTransaction] = useState<CustomerTransaction | null>(null)
 
-  const transactionTypes = Array.from(new Set(transactions.map(t => t.type)))
-  const customerTypes = Array.from(new Set(transactions.map(t => t.customerType)))
+  const transactionTypes = Array.from(new Set(transactions.filter(t => t?.type).map(t => t.type)))
+  const customerTypes = Array.from(new Set(transactions.filter(t => t?.customerType).map(t => t.customerType)))
 
   const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = transaction.transactionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.description.toLowerCase().includes(searchTerm.toLowerCase())
+    if (!transaction) return false
+
+    const matchesSearch = (transaction.transactionId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (transaction.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (transaction.description || '').toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesType = typeFilter === 'all' || transaction.type === typeFilter
     const matchesStatus = statusFilter === 'all' || transaction.status === statusFilter
@@ -208,19 +110,18 @@ function CustomerTransactionsPage() {
   }
 
   // Calculate summary stats
-  const totalTransactions = transactions.length
-  const completedTransactions = transactions.filter(t => t.status === 'completed').length
-  const totalSales = transactions.filter(t => t.type === 'sale' && t.status === 'completed').reduce((sum, t) => sum + t.amount, 0)
-  const totalPayments = transactions.filter(t => t.type === 'payment' && t.status === 'completed').reduce((sum, t) => sum + t.amount, 0)
+  const totalTransactions = transactions?.length || 0
+  const completedTransactions = transactions.filter(t => t?.status === 'completed').length
+  const totalSales = transactions.filter(t => t?.type === 'sale' && t?.status === 'completed').reduce((sum, t) => sum + (t?.amount || 0), 0)
+  const totalPayments = transactions.filter(t => t?.type === 'payment' && t?.status === 'completed').reduce((sum, t) => sum + (t?.amount || 0), 0)
 
   const handleView = (transaction: CustomerTransaction) => {
-    setSelectedTransaction(transaction)
-    setShowViewModal(true)
+    router.push(`/customers/transactions/${transaction.id}`)
   }
 
   const handleEdit = (transaction: CustomerTransaction) => {
-    setSelectedTransaction(transaction)
-    setShowEditModal(true)
+    // TODO: Implement edit functionality
+    console.log('Edit transaction:', transaction.id)
   }
 
   const handleDelete = (transactionId: string) => {
@@ -228,6 +129,18 @@ function CustomerTransactionsPage() {
       // Handle delete logic here
       console.log('Deleting transaction:', transactionId)
     }
+  }
+
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="p-6">
+          <div className="text-center py-12">
+            <p className="text-red-500">Error loading customer transactions. Please try again.</p>
+          </div>
+        </div>
+      </AppLayout>
+    )
   }
 
   return (
@@ -358,115 +271,122 @@ function CustomerTransactionsPage() {
 
         {/* Transactions Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Transaction
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Balance
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-primary-600">{transaction.transactionId}</div>
-                      <div className="text-sm text-gray-500">{transaction.description}</div>
-                      <div className="text-xs text-gray-400">{transaction.reference}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{transaction.customerName}</div>
-                      <div className="text-sm text-gray-500">{transaction.customerType}</div>
-                      <div className="text-xs text-gray-400">{transaction.customerId}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(transaction.type)}`}>
-                          {getTypeIcon(transaction.type)}
-                          <span className="ml-1">{transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}</span>
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatDateTime(transaction.date)}</div>
-                      <div className="text-xs text-gray-500">by {transaction.salesRep}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className={`text-sm font-bold ${getAmountColor(transaction.type, transaction.amount)}`}>
-                        {transaction.type === 'payment' || transaction.type === 'credit' ? '+' : '-'}
-                        {formatCurrency(transaction.amount)}
-                      </div>
-                      <div className="text-xs text-gray-500">{transaction.paymentMethod}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className={`text-sm font-medium ${transaction.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(Math.abs(transaction.balance))}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {transaction.balance >= 0 ? 'Credit' : 'Outstanding'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(transaction.status)}`}>
-                        {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleView(transaction)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(transaction)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(transaction.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
+          {isLoading ? (
+            <div className="p-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              <p className="mt-2 text-gray-500">Loading customer transactions...</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Transaction
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Balance
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredTransactions.map((transaction) => (
+                    <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-primary-600">{transaction.transactionId}</div>
+                        <div className="text-sm text-gray-500">{transaction.description}</div>
+                        <div className="text-xs text-gray-400">{transaction.reference}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">{transaction.customerName}</div>
+                        <div className="text-sm text-gray-500">{transaction.customerType}</div>
+                        <div className="text-xs text-gray-400">{transaction.customerId}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(transaction.type)}`}>
+                            {getTypeIcon(transaction.type)}
+                            <span className="ml-1">{transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{formatDateTime(transaction.date)}</div>
+                        <div className="text-xs text-gray-500">by {transaction.salesRep}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm font-bold ${getAmountColor(transaction.type, transaction.amount)}`}>
+                          {transaction.type === 'payment' || transaction.type === 'credit' ? '+' : '-'}
+                          {formatCurrency(transaction.amount)}
+                        </div>
+                        <div className="text-xs text-gray-500">{transaction.paymentMethod}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm font-medium ${transaction.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(Math.abs(transaction.balance))}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {transaction.balance >= 0 ? 'Credit' : 'Outstanding'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(transaction.status)}`}>
+                          {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleView(transaction)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(transaction)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(transaction.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
-        {filteredTransactions.length === 0 && (
+        {!isLoading && filteredTransactions.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500">No transactions found matching your criteria.</p>
           </div>
@@ -525,56 +445,6 @@ function CustomerTransactionsPage() {
           </div>
         )}
 
-        {/* View Transaction Modal */}
-        {showViewModal && selectedTransaction && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
-              <h3 className="text-lg font-bold mb-4">Transaction Details</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Transaction ID</label>
-                    <p className="text-sm text-gray-900">{selectedTransaction.transactionId}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Reference</label>
-                    <p className="text-sm text-gray-900">{selectedTransaction.reference}</p>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Customer</label>
-                  <p className="text-sm text-gray-900">{selectedTransaction.customerName}</p>
-                  <p className="text-xs text-gray-500">{selectedTransaction.customerType}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Description</label>
-                  <p className="text-sm text-gray-900">{selectedTransaction.description}</p>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Amount</label>
-                    <p className="text-sm font-bold text-gray-900">{formatCurrency(selectedTransaction.amount)}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Balance</label>
-                    <p className={`text-sm font-bold ${selectedTransaction.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(Math.abs(selectedTransaction.balance))}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Status</label>
-                    <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(selectedTransaction.status)}`}>
-                      {selectedTransaction.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2 justify-end mt-6">
-                <Button variant="outline" onClick={() => setShowViewModal(false)}>Close</Button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </AppLayout>
   )

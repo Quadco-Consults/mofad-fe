@@ -113,12 +113,13 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <img
-                src="/mofad-logo.svg"
+                src="/modah_logo-removebg-preview.png"
                 alt="MOFAD Energy Solutions"
                 className="h-16 w-auto"
               />
               <div className="text-right">
-                <h2 className="text-lg font-semibold text-gray-900">Enterprise ERP</h2>
+                <h1 className="text-xl font-bold text-gray-900">MOFAD Energy Solutions</h1>
+                <h2 className="text-lg font-semibold text-gray-700">Enterprise ERP</h2>
                 <p className="text-sm text-gray-500">Distribution Management System</p>
               </div>
             </div>

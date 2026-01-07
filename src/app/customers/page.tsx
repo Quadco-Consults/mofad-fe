@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import apiClient from '@/lib/apiClient'
+import mockApi from '@/lib/mockApi'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { Customer, CustomerFormData, CustomerType, PaymentType, State } from '@/types/api'
@@ -72,6 +73,7 @@ const initialFormData: CustomerFormData = {
 }
 
 export default function CustomersPage() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
@@ -94,26 +96,26 @@ export default function CustomersPage() {
       if (statusFilter !== 'all') params.status = statusFilter
       if (typeFilter !== 'all') params.customer_type = typeFilter
       if (searchTerm) params.search = searchTerm
-      return apiClient.get<Customer[]>('/customers/', params)
+      return mockApi.get('/customers', params)
     },
   })
 
   // Fetch customer types for dropdown
   const { data: customerTypesData } = useQuery({
     queryKey: ['customer-types'],
-    queryFn: () => apiClient.get<CustomerType[]>('/customer-types/'),
+    queryFn: () => mockApi.get('/customer-types'),
   })
 
   // Fetch payment types for dropdown
   const { data: paymentTypesData } = useQuery({
     queryKey: ['payment-types'],
-    queryFn: () => apiClient.get<PaymentType[]>('/payment-types/'),
+    queryFn: () => mockApi.get('/payment-types'),
   })
 
   // Fetch states for dropdown
   const { data: statesData } = useQuery({
     queryKey: ['states'],
-    queryFn: () => apiClient.get<State[]>('/states/'),
+    queryFn: () => mockApi.get('/states'),
   })
 
   // Handle both array and paginated responses
@@ -130,7 +132,7 @@ export default function CustomersPage() {
 
   // Create customer mutation
   const createMutation = useMutation({
-    mutationFn: (data: CustomerFormData) => apiClient.post<Customer>('/customers/', data),
+    mutationFn: (data: CustomerFormData) => mockApi.post('/customers', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       setShowAddModal(false)
@@ -149,7 +151,7 @@ export default function CustomersPage() {
   // Update customer mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<CustomerFormData> }) =>
-      apiClient.patch<Customer>(`/customers/${id}/`, data),
+      mockApi.put(`/customers/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       setShowEditModal(false)
@@ -167,7 +169,7 @@ export default function CustomersPage() {
 
   // Delete customer mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiClient.delete(`/customers/${id}/`),
+    mutationFn: (id: number) => mockApi.delete(`/customers/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       setShowDeleteModal(false)
@@ -204,8 +206,7 @@ export default function CustomersPage() {
   }
 
   const handleView = (customer: Customer) => {
-    setSelectedCustomer(customer)
-    setShowViewModal(true)
+    router.push(`/customers/${customer.id}`)
   }
 
   const handleEdit = (customer: Customer) => {

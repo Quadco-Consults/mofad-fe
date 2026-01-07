@@ -6,8 +6,8 @@ import { Providers } from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'MOFAD - Distribution Management System',
-  description: 'Enterprise Distribution Management System for fuel and lubricant distribution',
+  title: 'MOFAD Energy Solutions - Enterprise ERP',
+  description: 'MOFAD Energy Solutions Enterprise ERP - Distribution Management System for fuel and lubricant distribution',
 }
 
 export default function RootLayout({

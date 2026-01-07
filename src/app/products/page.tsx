@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import apiClient from '@/lib/apiClient'
+import mockApi from '@/lib/mockApi'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { Product, ProductFormData } from '@/types/api'
@@ -34,33 +34,42 @@ import {
 
 const getCategoryIcon = (category: string) => {
   switch (category?.toLowerCase()) {
-    case 'fuel':
-      return <Fuel className="w-5 h-5 text-red-500" />
-    case 'lubricant':
-    case 'engine_oil':
+    case 'lubricants':
+    case 'engine_oils':
       return <Droplets className="w-5 h-5 text-blue-500" />
-    case 'additive':
-      return <Settings className="w-5 h-5 text-green-500" />
-    case 'service':
-      return <TrendingUp className="w-5 h-5 text-purple-500" />
-    case 'equipment':
+    case 'hydraulics':
+    case 'hydraulic_oils':
+      return <Settings className="w-5 h-5 text-purple-500" />
+    case 'transmission':
+    case 'transmission_fluids':
+      return <Power className="w-5 h-5 text-green-500" />
+    case 'specialty_products':
+    case 'marine':
       return <Package className="w-5 h-5 text-orange-500" />
-    default:
+    case 'service':
+      return <TrendingUp className="w-5 h-5 text-pink-500" />
+    case 'equipment':
       return <Package className="w-5 h-5 text-gray-500" />
+    default:
+      return <Droplets className="w-5 h-5 text-blue-500" />
   }
 }
 
 const getCategoryLabel = (category: string) => {
   const labels: Record<string, string> = {
-    'fuel': 'Fuel Products',
-    'lubricant': 'Lubricants',
-    'engine_oil': 'Engine Oils',
-    'additive': 'Additives',
+    'lubricants': 'Lubricants',
+    'engine_oils': 'Engine Oils',
+    'hydraulics': 'Hydraulic Oils',
+    'hydraulic_oils': 'Hydraulic Oils',
+    'transmission': 'Transmission Fluids',
+    'transmission_fluids': 'Transmission Fluids',
+    'specialty_products': 'Specialty Products',
+    'marine': 'Marine Products',
     'service': 'Services',
     'equipment': 'Equipment',
     'other': 'Other',
   }
-  return labels[category] || category
+  return labels[category] || category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
 const getStatusBadge = (isActive: boolean) => {
@@ -78,7 +87,7 @@ const getStatusBadge = (isActive: boolean) => {
 const initialFormData: ProductFormData = {
   name: '',
   description: '',
-  category: 'fuel',
+  category: 'lubricants',
   subcategory: '',
   brand: '',
   unit_of_measure: 'liters',
@@ -115,26 +124,47 @@ export default function ProductsPage() {
   // Fetch products
   const { data: productsData, isLoading, error, refetch } = useQuery({
     queryKey: ['products', searchTerm, categoryFilter, statusFilter],
-    queryFn: async () => {
-      const params: Record<string, string> = {}
-      if (categoryFilter !== 'all') params.category = categoryFilter
-      if (statusFilter !== 'all') params.is_active = statusFilter === 'active' ? 'true' : 'false'
-      if (searchTerm) params.search = searchTerm
-      return apiClient.get<Product[]>('/products/', params)
-    },
+    queryFn: () => mockApi.get('/products/'),
   })
 
-  // Fetch low stock products for stats
-  const { data: lowStockProducts } = useQuery({
-    queryKey: ['products-low-stock'],
-    queryFn: () => apiClient.get<Product[]>('/products/low-stock/'),
+  // Extract and filter products data
+  const allProducts = Array.isArray(productsData) ? productsData : []
+
+  // Calculate low stock from the same products data
+  const lowStockProducts = allProducts.filter((product: any) => {
+    // Consider products with current stock below reorder point as low stock
+    // For mock data, we'll simulate some low stock items
+    return product.minimum_stock_level > 0 && product.minimum_stock_level < 100
   })
 
-  const products = productsData?.results || []
+  // Apply filters
+  const products = allProducts.filter((product: any) => {
+    // Search filter
+    if (searchTerm) {
+      const searchMatch =
+        product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.primary_supplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.brand?.toLowerCase().includes(searchTerm.toLowerCase())
+      if (!searchMatch) return false
+    }
+
+    // Category filter
+    if (categoryFilter !== 'all' && product.category !== categoryFilter) return false
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      const isActive = product.is_active
+      if (statusFilter === 'active' && !isActive) return false
+      if (statusFilter === 'inactive' && isActive) return false
+    }
+
+    return true
+  })
 
   // Create product mutation
   const createMutation = useMutation({
-    mutationFn: (data: ProductFormData) => apiClient.post<Product>('/products/', data),
+    mutationFn: (data: ProductFormData) => mockApi.post('/products/', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setShowAddModal(false)
@@ -153,7 +183,7 @@ export default function ProductsPage() {
   // Update product mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<ProductFormData> }) =>
-      apiClient.patch<Product>(`/products/${id}/`, data),
+      mockApi.patch(`/products/${id}/`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setShowEditModal(false)
@@ -171,7 +201,7 @@ export default function ProductsPage() {
 
   // Delete product mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiClient.delete(`/products/${id}/`),
+    mutationFn: (id: number) => mockApi.delete(`/products/${id}/`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setShowDeleteModal(false)
@@ -186,7 +216,7 @@ export default function ProductsPage() {
 
   // Activate product mutation
   const activateMutation = useMutation({
-    mutationFn: (id: number) => apiClient.post<Product>(`/products/${id}/activate/`),
+    mutationFn: (id: number) => mockApi.post(`/products/${id}/activate/`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       addToast({ type: 'success', title: 'Success', message: 'Product activated successfully' })
@@ -198,7 +228,7 @@ export default function ProductsPage() {
 
   // Deactivate product mutation
   const deactivateMutation = useMutation({
-    mutationFn: (id: number) => apiClient.post<Product>(`/products/${id}/deactivate/`),
+    mutationFn: (id: number) => mockApi.post(`/products/${id}/deactivate/`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       addToast({ type: 'success', title: 'Success', message: 'Product deactivated successfully' })
@@ -304,10 +334,10 @@ export default function ProductsPage() {
   // Stats calculation
   const totalProducts = products.length
   const activeProducts = products.filter(p => p.is_active).length
-  const lowStockCount = lowStockProducts?.length || 0
+  const lowStockCount = lowStockProducts.length
   const categories = Array.from(new Set(products.map(p => p.category))).length
   const avgMargin = products.length > 0
-    ? products.reduce((sum, p) => sum + calculateProfitMargin(parseFloat(p.retail_selling_price) || parseFloat(p.direct_sales_price) || 0, parseFloat(p.cost_price)), 0) / products.length
+    ? products.reduce((sum, p) => sum + calculateProfitMargin(p.retail_selling_price || p.direct_sales_price || 0, p.cost_price), 0) / products.length
     : 0
 
   // Form Input component
@@ -468,10 +498,12 @@ export default function ProductsPage() {
                   onChange={(e) => setCategoryFilter(e.target.value)}
                 >
                   <option value="all">All Categories</option>
-                  <option value="fuel">Fuel Products</option>
-                  <option value="lubricant">Lubricants</option>
-                  <option value="engine_oil">Engine Oils</option>
-                  <option value="additive">Additives</option>
+                  <option value="lubricants">Lubricants</option>
+                  <option value="engine_oils">Engine Oils</option>
+                  <option value="hydraulics">Hydraulic Oils</option>
+                  <option value="transmission">Transmission Fluids</option>
+                  <option value="specialty_products">Specialty Products</option>
+                  <option value="marine">Marine Products</option>
                   <option value="service">Services</option>
                   <option value="equipment">Equipment</option>
                   <option value="other">Other</option>
@@ -585,19 +617,19 @@ export default function ProductsPage() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="font-medium text-gray-900">
-                            {formatCurrency(parseFloat(product.cost_price))}
+                            {formatCurrency(product.cost_price)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="font-bold text-primary">
-                            {formatCurrency(parseFloat(product.retail_selling_price) || parseFloat(product.direct_sales_price) || 0)}
+                            {formatCurrency(product.retail_selling_price || product.direct_sales_price || 0)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="font-bold text-green-600">
                             {calculateProfitMargin(
-                              parseFloat(product.retail_selling_price) || parseFloat(product.direct_sales_price) || 0,
-                              parseFloat(product.cost_price)
+                              product.retail_selling_price || product.direct_sales_price || 0,
+                              product.cost_price
                             ).toFixed(1)}%
                           </span>
                         </td>
@@ -695,9 +727,12 @@ export default function ProductsPage() {
                       value={formData.category}
                       onChange={(e) => setFormData({...formData, category: e.target.value as ProductFormData['category']})}
                     >
-                      <option value="fuel">Fuel Products</option>
-                      <option value="lubricant">Lubricants</option>
-                      <option value="additive">Additives</option>
+                      <option value="lubricants">Lubricants</option>
+                      <option value="engine_oils">Engine Oils</option>
+                      <option value="hydraulics">Hydraulic Oils</option>
+                      <option value="transmission">Transmission Fluids</option>
+                      <option value="specialty_products">Specialty Products</option>
+                      <option value="marine">Marine Products</option>
                       <option value="service">Services</option>
                       <option value="equipment">Equipment</option>
                       <option value="other">Other</option>
@@ -944,9 +979,12 @@ export default function ProductsPage() {
                       value={formData.category}
                       onChange={(e) => setFormData({...formData, category: e.target.value as ProductFormData['category']})}
                     >
-                      <option value="fuel">Fuel Products</option>
-                      <option value="lubricant">Lubricants</option>
-                      <option value="additive">Additives</option>
+                      <option value="lubricants">Lubricants</option>
+                      <option value="engine_oils">Engine Oils</option>
+                      <option value="hydraulics">Hydraulic Oils</option>
+                      <option value="transmission">Transmission Fluids</option>
+                      <option value="specialty_products">Specialty Products</option>
+                      <option value="marine">Marine Products</option>
                       <option value="service">Services</option>
                       <option value="equipment">Equipment</option>
                       <option value="other">Other</option>

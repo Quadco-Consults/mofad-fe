@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -47,12 +47,29 @@ interface Service {
 
 const getCategoryIcon = (category: string) => {
   switch (category.toLowerCase()) {
+    case 'oil change':
+      return <Wrench className="w-5 h-5 text-blue-500" />
+    case 'wheel services':
+      return <Car className="w-5 h-5 text-green-500" />
+    case 'brake services':
+      return <Shield className="w-5 h-5 text-red-500" />
+    case 'transmission':
+      return <Zap className="w-5 h-5 text-purple-500" />
+    case 'engine services':
+      return <SearchIcon className="w-5 h-5 text-orange-500" />
+    case 'electrical':
+      return <Zap className="w-5 h-5 text-yellow-500" />
+    case 'cooling system':
+      return <Thermometer className="w-5 h-5 text-cyan-500" />
+    case 'ac services':
+      return <Thermometer className="w-5 h-5 text-blue-400" />
+    case 'filter services':
+      return <Wrench className="w-5 h-5 text-gray-600" />
+    // Legacy categories
     case 'maintenance':
       return <Wrench className="w-5 h-5 text-blue-500" />
     case 'cleaning':
       return <Car className="w-5 h-5 text-green-500" />
-    case 'electrical':
-      return <Zap className="w-5 h-5 text-yellow-500" />
     case 'safety':
       return <Shield className="w-5 h-5 text-red-500" />
     case 'diagnostics':
@@ -98,6 +115,22 @@ export default function ServicesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [selectedService, setSelectedService] = useState<Service | null>(null)
+  const [formData, setFormData] = useState<Partial<Service>>({
+    service_name: '',
+    description: '',
+    duration_minutes: 30,
+    base_price: 0,
+    materials_cost: 0,
+    labor_cost: 0,
+    category: 'Maintenance',
+    status: 'active'
+  })
+
+  const queryClient = useQueryClient()
 
   const { data: servicesList, isLoading } = useQuery({
     queryKey: ['services-list'],
@@ -105,6 +138,90 @@ export default function ServicesPage() {
   })
 
   const services = servicesList || []
+
+  // Mutations
+  const createServiceMutation = useMutation({
+    mutationFn: (data: Partial<Service>) => mockApi.post('/services', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services-list'] })
+      setShowCreateModal(false)
+      resetForm()
+    }
+  })
+
+  const updateServiceMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number, data: Partial<Service> }) =>
+      mockApi.patch(`/services/${id}/`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services-list'] })
+      setShowEditModal(false)
+      resetForm()
+    }
+  })
+
+  const deleteServiceMutation = useMutation({
+    mutationFn: (id: number) => mockApi.delete(`/services/${id}/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services-list'] })
+      setShowDeleteModal(false)
+      setSelectedService(null)
+    }
+  })
+
+  // Helper functions
+  const resetForm = () => {
+    setFormData({
+      service_name: '',
+      description: '',
+      duration_minutes: 30,
+      base_price: 0,
+      materials_cost: 0,
+      labor_cost: 0,
+      category: 'Maintenance',
+      status: 'active'
+    })
+    setSelectedService(null)
+  }
+
+  const openCreateModal = () => {
+    resetForm()
+    setShowCreateModal(true)
+  }
+
+  const openEditModal = (service: Service) => {
+    setSelectedService(service)
+    setFormData({
+      service_name: service.service_name,
+      description: service.description,
+      duration_minutes: service.duration_minutes,
+      base_price: service.base_price,
+      materials_cost: service.materials_cost,
+      labor_cost: service.labor_cost,
+      category: service.category,
+      status: service.status
+    })
+    setShowEditModal(true)
+  }
+
+  const openDeleteModal = (service: Service) => {
+    setSelectedService(service)
+    setShowDeleteModal(true)
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (selectedService) {
+      updateServiceMutation.mutate({ id: selectedService.id, data: formData })
+    } else {
+      createServiceMutation.mutate(formData)
+    }
+  }
+
+  const handleDelete = () => {
+    if (selectedService) {
+      deleteServiceMutation.mutate(selectedService.id)
+    }
+  }
 
   // Filter services
   const filteredServices = services.filter((service: Service) => {
@@ -132,7 +249,7 @@ export default function ServicesPage() {
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
-            <Button className="mofad-btn-primary">
+            <Button className="mofad-btn-primary" onClick={openCreateModal}>
               <Plus className="w-4 h-4 mr-2" />
               Add Service
             </Button>
@@ -226,12 +343,15 @@ export default function ServicesPage() {
                   onChange={(e) => setCategoryFilter(e.target.value)}
                 >
                   <option value="all">All Categories</option>
-                  <option value="Maintenance">Maintenance</option>
-                  <option value="Cleaning">Cleaning</option>
+                  <option value="Oil Change">Oil Change</option>
+                  <option value="Wheel Services">Wheel Services</option>
+                  <option value="Brake Services">Brake Services</option>
+                  <option value="Transmission">Transmission</option>
+                  <option value="Engine Services">Engine Services</option>
                   <option value="Electrical">Electrical</option>
-                  <option value="Safety">Safety</option>
-                  <option value="Diagnostics">Diagnostics</option>
-                  <option value="HVAC">HVAC</option>
+                  <option value="Cooling System">Cooling System</option>
+                  <option value="AC Services">AC Services</option>
+                  <option value="Filter Services">Filter Services</option>
                 </select>
 
                 <select
@@ -281,7 +401,7 @@ export default function ServicesPage() {
                     ? 'Try adjusting your search or filters'
                     : 'Get started by adding your first service'}
                 </p>
-                <Button className="mofad-btn-primary">
+                <Button className="mofad-btn-primary" onClick={openCreateModal}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Service
                 </Button>
@@ -380,6 +500,7 @@ export default function ServicesPage() {
                               size="sm"
                               className="h-8 w-8 p-0"
                               title="Edit Service"
+                              onClick={() => openEditModal(service)}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -388,6 +509,7 @@ export default function ServicesPage() {
                               size="sm"
                               className="h-8 w-8 p-0"
                               title="Delete Service"
+                              onClick={() => openDeleteModal(service)}
                             >
                               <Trash2 className="w-4 h-4 text-red-500" />
                             </Button>
@@ -401,6 +523,180 @@ export default function ServicesPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Create/Edit Modal */}
+        {(showCreateModal || showEditModal) && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+              <h2 className="text-xl font-bold mb-4">
+                {selectedService ? 'Edit Service' : 'Create New Service'}
+              </h2>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Service Name *</label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.service_name}
+                      onChange={(e) => setFormData({ ...formData, service_name: e.target.value })}
+                      placeholder="Enter service name"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Category *</label>
+                    <select
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    >
+                      <option value="Maintenance">Maintenance</option>
+                      <option value="Cleaning">Cleaning</option>
+                      <option value="Electrical">Electrical</option>
+                      <option value="Safety">Safety</option>
+                      <option value="Diagnostics">Diagnostics</option>
+                      <option value="HVAC">HVAC</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description *</label>
+                  <textarea
+                    required
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Enter service description"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Duration (minutes) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.duration_minutes}
+                      onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Base Price (₦) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.base_price}
+                      onChange={(e) => setFormData({ ...formData, base_price: parseFloat(e.target.value) })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Materials Cost (₦)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.materials_cost}
+                      onChange={(e) => setFormData({ ...formData, materials_cost: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Labor Cost (₦)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.labor_cost}
+                      onChange={(e) => setFormData({ ...formData, labor_cost: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Status</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowCreateModal(false)
+                      setShowEditModal(false)
+                      resetForm()
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="mofad-btn-primary"
+                    disabled={createServiceMutation.isPending || updateServiceMutation.isPending}
+                  >
+                    {createServiceMutation.isPending || updateServiceMutation.isPending ? 'Saving...' :
+                     selectedService ? 'Update Service' : 'Create Service'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && selectedService && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <h2 className="text-xl font-bold mb-4 text-red-600">Delete Service</h2>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete <strong>{selectedService.service_name}</strong>?
+                This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setSelectedService(null)
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDelete}
+                  disabled={deleteServiceMutation.isPending}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {deleteServiceMutation.isPending ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   )
