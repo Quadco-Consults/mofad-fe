@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -110,6 +111,7 @@ interface SubstoreInventoryItem extends WarehouseInventory {
 export default function SubstoreInventoryPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
+  const router = useRouter()
 
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -491,7 +493,16 @@ export default function SubstoreInventoryPage() {
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" className="flex-1" onClick={() => handleView(item)}>
                         <Eye className="w-4 h-4 mr-2" />
-                        View
+                        Details
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => router.push(`/inventory/substore/${item.warehouse}`)}
+                      >
+                        <Building2 className="w-4 h-4 mr-2" />
+                        View Store
                       </Button>
                       <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTransfer(item)}>
                         <ArrowRightLeft className="w-4 h-4 mr-2" />
