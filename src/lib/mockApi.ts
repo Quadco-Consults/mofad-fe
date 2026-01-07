@@ -13,6 +13,13 @@ const MOCK_USER: User = {
     { id: 1, name: 'dashboard_access', guard_name: 'web' },
     { id: 2, name: 'view_customers', guard_name: 'web' },
     { id: 3, name: 'manage_orders', guard_name: 'web' },
+    { id: 4, name: 'review_prf', guard_name: 'web' },
+    { id: 5, name: 'approve_prf', guard_name: 'web' },
+    { id: 6, name: 'review_pro', guard_name: 'web' },
+    { id: 7, name: 'approve_pro', guard_name: 'web' },
+    { id: 8, name: 'manage_lubebays', guard_name: 'web' },
+    { id: 9, name: 'manage_car_wash', guard_name: 'web' },
+    { id: 10, name: 'view_reports', guard_name: 'web' },
   ],
   roles: [
     {
@@ -23,6 +30,13 @@ const MOCK_USER: User = {
         { id: 1, name: 'dashboard_access', guard_name: 'web' },
         { id: 2, name: 'view_customers', guard_name: 'web' },
         { id: 3, name: 'manage_orders', guard_name: 'web' },
+        { id: 4, name: 'review_prf', guard_name: 'web' },
+        { id: 5, name: 'approve_prf', guard_name: 'web' },
+        { id: 6, name: 'review_pro', guard_name: 'web' },
+        { id: 7, name: 'approve_pro', guard_name: 'web' },
+        { id: 8, name: 'manage_lubebays', guard_name: 'web' },
+        { id: 9, name: 'manage_car_wash', guard_name: 'web' },
+        { id: 10, name: 'view_reports', guard_name: 'web' },
       ],
     },
   ],
@@ -653,11 +667,11 @@ class MockApiClient {
     })
 
     const productPerformance = [
-      { product_name: 'PMS (Petrol)', quantity_sold: 15420, revenue: 12500000, profit: 2100000 },
-      { product_name: 'AGO (Diesel)', quantity_sold: 9800, revenue: 8900000, profit: 1560000 },
-      { product_name: 'DPK (Kerosene)', quantity_sold: 4200, revenue: 3200000, profit: 480000 },
-      { product_name: 'Lubricants', quantity_sold: 850, revenue: 1200000, profit: 340000 },
-      { product_name: 'Gas (LPG)', quantity_sold: 320, revenue: 450000, profit: 89000 }
+      { product_name: 'Engine Oil SAE 20W-50', quantity_sold: 15420, revenue: 12500000, profit: 2100000 },
+      { product_name: 'Engine Oil SAE 15W-40', quantity_sold: 9800, revenue: 8900000, profit: 1560000 },
+      { product_name: 'Transmission Fluid ATF', quantity_sold: 4200, revenue: 3200000, profit: 480000 },
+      { product_name: 'Hydraulic Oil ISO 46', quantity_sold: 850, revenue: 1200000, profit: 340000 },
+      { product_name: 'Oil Filters & Air Filters', quantity_sold: 320, revenue: 450000, profit: 89000 }
     ]
 
     const channelPerformance = {
@@ -685,8 +699,8 @@ class MockApiClient {
   // Mock data for all pages
   getMockPRFData() {
     return [
-      { id: 1, prf_number: 'PRF-2024-001', title: 'PMS Supply Request', description: 'Request for 50,000L Premium Motor Spirit', total_amount: 4500000, status: 'pending', priority: 'high', requested_by: 'Store Manager Lagos', department: 'Operations', created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), required_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), items_count: 1 },
-      { id: 2, prf_number: 'PRF-2024-002', title: 'AGO Bulk Purchase', description: 'Automotive Gas Oil for Substore Distribution', total_amount: 8900000, status: 'approved', priority: 'medium', requested_by: 'Procurement Officer', department: 'Procurement', created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), required_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), items_count: 2 },
+      { id: 1, prf_number: 'PRF-2024-001', title: 'Engine Oil SAE 20W-50 Supply Request', description: 'Request for 500 drums of Engine Oil SAE 20W-50', total_amount: 4500000, status: 'pending', priority: 'high', requested_by: 'Store Manager Lagos', department: 'Operations', created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), required_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), items_count: 1 },
+      { id: 2, prf_number: 'PRF-2024-002', title: 'Hydraulic Oil Bulk Purchase', description: 'Hydraulic Oil ISO 46 for Lubebay Distribution', total_amount: 8900000, status: 'approved', priority: 'medium', requested_by: 'Procurement Officer', department: 'Procurement', created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), required_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), items_count: 2 },
       { id: 3, prf_number: 'PRF-2024-003', title: 'Lubricants & Additives', description: 'Mixed lubricants for service centers', total_amount: 1200000, status: 'processing', priority: 'low', requested_by: 'Service Manager', department: 'Service', created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), required_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), items_count: 15 }
     ]
   }
@@ -710,8 +724,8 @@ class MockApiClient {
 
     // Default PROs for demo purposes
     const defaultPROs = [
-      { id: 1, pro_number: 'PRO-2024-001', title: 'PMS Supply Contract', supplier: 'NNPC Retail Ltd', total_amount: 4500000, status: 'confirmed', delivery_status: 'pending', created_by: 'John Doe', created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), expected_delivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), items_count: 1, payment_terms: 'NET 30' },
-      { id: 2, pro_number: 'PRO-2024-002', title: 'AGO Bulk Order', supplier: 'Depot Direct Ltd', total_amount: 8900000, status: 'sent', delivery_status: 'pending', created_by: 'Jane Smith', created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), expected_delivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), items_count: 2, payment_terms: 'NET 15' }
+      { id: 1, pro_number: 'PRO-2024-001', title: 'Engine Oil SAE 20W-50 Supply Contract', supplier: 'Eterna Oil Ltd', total_amount: 4500000, status: 'confirmed', delivery_status: 'pending', created_by: 'John Doe', created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), expected_delivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), items_count: 1, payment_terms: 'NET 30' },
+      { id: 2, pro_number: 'PRO-2024-002', title: 'Hydraulic Oil Bulk Order', supplier: 'Total Energies Nigeria Ltd', total_amount: 8900000, status: 'sent', delivery_status: 'pending', created_by: 'Jane Smith', created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), expected_delivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), items_count: 2, payment_terms: 'NET 15' }
     ]
 
     // Transform stored PROs to match the expected format for the table
@@ -935,10 +949,10 @@ class MockApiClient {
 
   getMockProductsData() {
     return [
-      { id: 1, name: 'Premium Motor Spirit (PMS)', code: 'PMS-001', category: 'fuel', unit_of_measure: 'liters', direct_sales_price: 617, cost_price: 580, minimum_stock_level: 10000, primary_supplier: 'NNPC Retail Ltd', is_active: true, is_sellable: true, is_purchasable: true, is_service: false, requires_batch_tracking: false, tax_rate: 7.5, tax_inclusive: false, track_inventory: true, created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), updated_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), retail_selling_price: 620 },
-      { id: 2, name: 'Automotive Gas Oil (AGO)', code: 'AGO-001', category: 'fuel', unit_of_measure: 'liters', direct_sales_price: 850, cost_price: 795, minimum_stock_level: 8000, primary_supplier: 'NNPC Retail Ltd', is_active: true, is_sellable: true, is_purchasable: true, is_service: false, requires_batch_tracking: false, tax_rate: 7.5, tax_inclusive: false, track_inventory: true, created_at: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), updated_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), retail_selling_price: 860 },
-      { id: 3, name: 'Dual Purpose Kerosene (DPK)', code: 'DPK-001', category: 'fuel', unit_of_measure: 'liters', direct_sales_price: 750, cost_price: 710, minimum_stock_level: 5000, primary_supplier: 'NNPC Retail Ltd', is_active: true, is_sellable: true, is_purchasable: true, is_service: false, requires_batch_tracking: false, tax_rate: 7.5, tax_inclusive: false, track_inventory: true, created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), updated_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), retail_selling_price: 760 },
-      { id: 4, name: 'Liquefied Petroleum Gas (LPG)', code: 'LPG-001', category: 'fuel', unit_of_measure: 'kilograms', direct_sales_price: 1200, cost_price: 1100, minimum_stock_level: 500, primary_supplier: 'Gas Plus Ltd', is_active: true, is_sellable: true, is_purchasable: true, is_service: false, requires_batch_tracking: false, tax_rate: 7.5, tax_inclusive: false, track_inventory: true, created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), updated_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), retail_selling_price: 1250 },
+      { id: 1, name: 'Oil Filter - Standard', code: 'OF-STD-001', category: 'filters', unit_of_measure: 'pieces', direct_sales_price: 3500, cost_price: 2800, minimum_stock_level: 200, primary_supplier: 'Bosch Nigeria Ltd', is_active: true, is_sellable: true, is_purchasable: true, is_service: false, requires_batch_tracking: true, tax_rate: 7.5, tax_inclusive: false, track_inventory: true, created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), updated_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), retail_selling_price: 3800 },
+      { id: 2, name: 'Air Filter - Heavy Duty', code: 'AF-HD-001', category: 'filters', unit_of_measure: 'pieces', direct_sales_price: 4200, cost_price: 3500, minimum_stock_level: 150, primary_supplier: 'Mann+Hummel Nigeria', is_active: true, is_sellable: true, is_purchasable: true, is_service: false, requires_batch_tracking: true, tax_rate: 7.5, tax_inclusive: false, track_inventory: true, created_at: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), updated_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), retail_selling_price: 4500 },
+      { id: 3, name: 'Fuel Filter - Diesel', code: 'FF-DSL-001', category: 'filters', unit_of_measure: 'pieces', direct_sales_price: 2800, cost_price: 2200, minimum_stock_level: 100, primary_supplier: 'Mahle Nigeria Ltd', is_active: true, is_sellable: true, is_purchasable: true, is_service: false, requires_batch_tracking: true, tax_rate: 7.5, tax_inclusive: false, track_inventory: true, created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), updated_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), retail_selling_price: 3200 },
+      { id: 4, name: 'Cabin Air Filter', code: 'CAF-001', category: 'filters', unit_of_measure: 'pieces', direct_sales_price: 3200, cost_price: 2600, minimum_stock_level: 120, primary_supplier: 'Fram Nigeria Ltd', is_active: true, is_sellable: true, is_purchasable: true, is_service: false, requires_batch_tracking: true, tax_rate: 7.5, tax_inclusive: false, track_inventory: true, created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), updated_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), retail_selling_price: 3600 },
       { id: 5, name: 'Engine Oil SAE 20W-50', code: 'EO-20W50', category: 'lubricant', unit_of_measure: 'liters', direct_sales_price: 4500, cost_price: 3200, minimum_stock_level: 100, primary_supplier: 'Total Energies Nigeria', is_active: true, is_sellable: true, is_purchasable: true, is_service: false, requires_batch_tracking: false, tax_rate: 7.5, tax_inclusive: false, track_inventory: true, viscosity_grade: '20W-50', brand: 'Total', created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), updated_at: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(), retail_selling_price: 4800 },
       { id: 6, name: 'Engine Oil SAE 10W-30', code: 'EO-10W30', category: 'lubricant', unit_of_measure: 'liters', direct_sales_price: 5200, cost_price: 3800, minimum_stock_level: 80, primary_supplier: 'Shell Nigeria', is_active: true, is_sellable: true, is_purchasable: true, is_service: false, requires_batch_tracking: false, tax_rate: 7.5, tax_inclusive: false, track_inventory: true, viscosity_grade: '10W-30', brand: 'Shell', created_at: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000).toISOString(), updated_at: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(), retail_selling_price: 5500 },
       { id: 7, name: 'Gear Oil SAE 80W-90', code: 'GO-80W90', category: 'lubricant', unit_of_measure: 'liters', direct_sales_price: 3800, cost_price: 2900, minimum_stock_level: 50, primary_supplier: 'Mobil Oil Nigeria', is_active: true, is_sellable: true, is_purchasable: true, is_service: false, requires_batch_tracking: false, tax_rate: 7.5, tax_inclusive: false, track_inventory: true, viscosity_grade: '80W-90', brand: 'Mobil', created_at: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(), updated_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), retail_selling_price: 4000 },
@@ -956,9 +970,9 @@ class MockApiClient {
   getMockPricingSchemesData() {
     return [
       { id: 1, scheme_name: 'Standard Retail', description: 'Default pricing for walk-in customers', markup_percentage: 15, min_margin: 8, max_margin: 25, applies_to: 'All Products', status: 'active', created_at: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString(), products_count: 156 },
-      { id: 2, scheme_name: 'Corporate Discount', description: 'Volume discount for corporate clients', markup_percentage: 8, min_margin: 5, max_margin: 15, applies_to: 'Fuel Products', status: 'active', created_at: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(), products_count: 45 },
+      { id: 2, scheme_name: 'Corporate Discount', description: 'Volume discount for corporate clients', markup_percentage: 8, min_margin: 5, max_margin: 15, applies_to: 'Lubricants & Filters', status: 'active', created_at: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(), products_count: 45 },
       { id: 3, scheme_name: 'Lubebay Wholesale', description: 'Wholesale rates for Lubebay locations', markup_percentage: 12, min_margin: 6, max_margin: 18, applies_to: 'Lubricants', status: 'active', created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), products_count: 28 },
-      { id: 4, scheme_name: 'Government Contract', description: 'Special pricing for government contracts', markup_percentage: 6, min_margin: 3, max_margin: 10, applies_to: 'Fuel Products', status: 'active', created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), products_count: 12 },
+      { id: 4, scheme_name: 'Government Contract', description: 'Special pricing for government contracts', markup_percentage: 6, min_margin: 3, max_margin: 10, applies_to: 'Service Contracts', status: 'active', created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), products_count: 12 },
       { id: 5, scheme_name: 'Loyalty Customer', description: 'Preferred pricing for loyalty program members', markup_percentage: 10, min_margin: 7, max_margin: 20, applies_to: 'All Products', status: 'inactive', created_at: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString(), products_count: 89 }
     ]
   }
@@ -1422,13 +1436,48 @@ class MockApiClient {
 
   getMockSubstoresData() {
     return [
-      { id: 1, name: 'Lagos Island Substore', code: 'SUB-LIS', location: 'Lagos Island, Lagos', state: 'Lagos', manager: 'John Adebayo', phone: '+234-801-234-5678', email: 'john.adebayo@mofadenergysolutions.com', status: 'active', opening_date: new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 15200000, commission_rate: 8.5, products_count: 12, last_transaction: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), rating: 4.8 },
-      { id: 2, name: 'Ikeja Substore', code: 'SUB-IKJ', location: 'Ikeja GRA, Lagos', state: 'Lagos', manager: 'Maria Okafor', phone: '+234-803-567-8901', email: 'maria.okafor@mofadenergysolutions.com', status: 'active', opening_date: new Date(Date.now() - 545 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 12800000, commission_rate: 8.0, products_count: 15, last_transaction: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), rating: 4.6 },
-      { id: 3, name: 'Abuja Central Substore', code: 'SUB-ABC', location: 'Central Business District, Abuja', state: 'FCT', manager: 'Ibrahim Musa', phone: '+234-805-123-4567', email: 'ibrahim.musa@mofadenergysolutions.com', status: 'active', opening_date: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 9800000, commission_rate: 7.5, products_count: 10, last_transaction: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), rating: 4.4 },
-      { id: 4, name: 'Kano Substore', code: 'SUB-KAN', location: 'Kano City, Kano', state: 'Kano', manager: 'Fatima Aliyu', phone: '+234-807-654-3210', email: 'fatima.aliyu@mofadenergysolutions.com', status: 'active', opening_date: new Date(Date.now() - 455 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 6700000, commission_rate: 7.0, products_count: 8, last_transaction: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), rating: 4.2 },
-      { id: 5, name: 'Port Harcourt Substore', code: 'SUB-PHC', location: 'Port Harcourt, Rivers', state: 'Rivers', manager: 'Grace Eze', phone: '+234-809-876-5432', email: 'grace.eze@mofadenergysolutions.com', status: 'active', opening_date: new Date(Date.now() - 280 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 8900000, commission_rate: 8.0, products_count: 11, last_transaction: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), rating: 4.7 },
-      { id: 6, name: 'Ilorin Substore', code: 'SUB-ILR', location: 'Ilorin, Kwara', state: 'Kwara', manager: 'Ahmed Lawal', phone: '+234-811-111-2222', email: 'ahmed.lawal@mofadenergysolutions.com', status: 'inactive', opening_date: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 3200000, commission_rate: 6.5, products_count: 6, last_transaction: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(), rating: 3.8 }
+      { id: 1, name: 'Lagos Island Lubebay', code: 'LUB-LIS', type: 'lubebay', location: 'Lagos Island, Lagos', state: 'Lagos', manager: 'John Adebayo', phone: '+234-801-234-5678', email: 'john.adebayo@mofadenergysolutions.com', status: 'active', opening_date: new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 15200000, commission_rate: 8.5, products_count: 12, last_transaction: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), rating: 4.8 },
+      { id: 2, name: 'Ikeja Filling Station', code: 'FS-IKJ', type: 'filling_station', location: 'Ikeja GRA, Lagos', state: 'Lagos', manager: 'Maria Okafor', phone: '+234-803-567-8901', email: 'maria.okafor@mofadenergysolutions.com', status: 'active', opening_date: new Date(Date.now() - 545 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 12800000, commission_rate: 8.0, products_count: 15, last_transaction: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), rating: 4.6 },
+      { id: 3, name: 'Abuja Central Lubebay', code: 'LUB-ABC', type: 'lubebay', location: 'Central Business District, Abuja', state: 'FCT', manager: 'Ibrahim Musa', phone: '+234-805-123-4567', email: 'ibrahim.musa@mofadenergysolutions.com', status: 'active', opening_date: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 9800000, commission_rate: 7.5, products_count: 10, last_transaction: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), rating: 4.4 },
+      { id: 4, name: 'Kano Filling Station', code: 'FS-KAN', type: 'filling_station', location: 'Kano City, Kano', state: 'Kano', manager: 'Fatima Aliyu', phone: '+234-807-654-3210', email: 'fatima.aliyu@mofadenergysolutions.com', status: 'active', opening_date: new Date(Date.now() - 455 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 6700000, commission_rate: 7.0, products_count: 8, last_transaction: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), rating: 4.2 },
+      { id: 5, name: 'Port Harcourt Lubebay', code: 'LUB-PHC', type: 'lubebay', location: 'Port Harcourt, Rivers', state: 'Rivers', manager: 'Grace Eze', phone: '+234-809-876-5432', email: 'grace.eze@mofadenergysolutions.com', status: 'active', opening_date: new Date(Date.now() - 280 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 8900000, commission_rate: 8.0, products_count: 11, last_transaction: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), rating: 4.7 },
+      { id: 6, name: 'Ilorin Filling Station', code: 'FS-ILR', type: 'filling_station', location: 'Ilorin, Kwara', state: 'Kwara', manager: 'Ahmed Lawal', phone: '+234-811-111-2222', email: 'ahmed.lawal@mofadenergysolutions.com', status: 'inactive', opening_date: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString(), monthly_sales: 3200000, commission_rate: 6.5, products_count: 6, last_transaction: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(), rating: 3.8 }
     ]
+  }
+
+  getMockLocationsData() {
+    return [
+      { id: 'main-warehouse', name: 'Main Warehouse', type: 'warehouse' },
+      { id: 'lagos-island', name: 'Lagos Island Substore', type: 'substore' },
+      { id: 'victoria-island', name: 'Victoria Island Substore', type: 'substore' },
+      { id: 'ikeja', name: 'Ikeja Substore', type: 'substore' },
+      { id: 'abuja-central', name: 'Abuja Central Substore', type: 'substore' },
+      { id: 'port-harcourt', name: 'Port Harcourt Substore', type: 'substore' },
+      { id: 'kano-central', name: 'Kano Central Substore', type: 'substore' }
+    ]
+  }
+
+  getMockProductsByLocation(location: string) {
+    // Return different products based on location
+    const commonProducts = [
+      { id: 1, name: 'Engine Oil SAE 20W-50 (1L)', code: 'EO-20W50-1L', unit: '1L Bottles', current_stock: 145 },
+      { id: 2, name: 'Engine Oil SAE 15W-40 (1L)', code: 'EO-15W40-1L', unit: '1L Bottles', current_stock: 120 },
+      { id: 3, name: 'Brake Fluid DOT-4 (500ml)', code: 'BF-DOT4-500ML', unit: '500ml Bottles', current_stock: 85 }
+    ]
+
+    const warehouseProducts = [
+      ...commonProducts,
+      { id: 4, name: 'Premium Motor Spirit (PMS)', code: 'PMS-001', unit: 'Litres', current_stock: 5000 },
+      { id: 5, name: 'Automotive Gas Oil (AGO)', code: 'AGO-001', unit: 'Litres', current_stock: 3000 },
+      { id: 6, name: 'Liquefied Petroleum Gas (LPG)', code: 'LPG-001', unit: 'Kg', current_stock: 1500 },
+      { id: 7, name: 'Liquefied Natural Gas (LNG)', code: 'LNG-001', unit: 'Kg', current_stock: 800 }
+    ]
+
+    if (location.toLowerCase().includes('warehouse')) {
+      return warehouseProducts
+    }
+
+    return commonProducts
   }
 
   getMockSubstoreTransactionsData() {
@@ -2713,13 +2762,81 @@ class MockApiClient {
       return this.getMockStockTransactionsData() as T
     }
     if (url.includes('inventory/transfers')) {
-      return this.getMockStockTransfersData() as T
+      // Check if requesting specific transfer (e.g., /inventory/transfers/1)
+      const transferIdMatch = url.match(/\/inventory\/transfers\/(\d+)$/)
+
+      if (transferIdMatch) {
+        // Get specific transfer by ID
+        const transferId = parseInt(transferIdMatch[1])
+        let transfers = []
+
+        try {
+          const storedTransfers = localStorage.getItem('mock_transfers_data')
+          if (storedTransfers) {
+            transfers = JSON.parse(storedTransfers)
+          } else {
+            transfers = this.getMockStockTransfersData()
+          }
+        } catch {
+          transfers = this.getMockStockTransfersData()
+        }
+
+        const transfer = transfers.find((t: any) => t.id === transferId)
+        if (transfer) {
+          return transfer as T
+        } else {
+          throw new Error('Transfer not found')
+        }
+      } else {
+        // Get all transfers
+        try {
+          const storedTransfers = localStorage.getItem('mock_transfers_data')
+          if (storedTransfers) {
+            return JSON.parse(storedTransfers) as T
+          }
+        } catch {
+          // Fall back to mock data if localStorage fails
+        }
+        return this.getMockStockTransfersData() as T
+      }
+    }
+    if (url.includes('/locations')) {
+      return this.getMockLocationsData() as T
+    }
+    if (url.includes('/inventory/products')) {
+      // Extract location from query parameters
+      const urlObj = new URL(url, 'http://localhost')
+      const location = urlObj.searchParams.get('location')
+
+      if (location) {
+        return this.getMockProductsByLocation(location) as T
+      }
+
+      // Return all products if no location specified
+      return this.getMockProductsByLocation('Main Warehouse') as T
     }
     if (url.includes('channels/substores/transactions')) {
       return this.getMockSubstoreTransactionsData() as T
     }
     if (url.includes('channels/substores')) {
-      return this.getMockSubstoresData() as T
+      // Check if requesting specific substore (e.g., /channels/substores/1)
+      const substoreIdMatch = url.match(/\/channels\/substores\/(\d+)$/)
+
+      if (substoreIdMatch) {
+        // Get specific substore by ID
+        const substoreId = parseInt(substoreIdMatch[1])
+        const substores = this.getMockSubstoresData()
+        const substore = substores.find((s: any) => s.id === substoreId)
+
+        if (substore) {
+          return substore as T
+        } else {
+          throw new Error('Substore not found')
+        }
+      } else {
+        // Get all substores
+        return this.getMockSubstoresData() as T
+      }
     }
     if (url.includes('channels/lubebays/services')) {
       return this.getMockLubebayServicesData() as T
@@ -2799,6 +2916,120 @@ class MockApiClient {
       localStorage.setItem('mock_products_data', JSON.stringify(products))
 
       return newProduct as T
+    }
+
+    // Handle stock transfer creation
+    if (url.includes('/inventory/transfers') && !url.includes('approve') && !url.includes('reject')) {
+      // Get current transfers from localStorage or use mock data
+      let transfers = []
+      try {
+        const storedTransfers = localStorage.getItem('mock_transfers_data')
+        if (storedTransfers) {
+          transfers = JSON.parse(storedTransfers)
+        } else {
+          transfers = this.getMockStockTransfersData()
+        }
+      } catch {
+        transfers = this.getMockStockTransfersData()
+      }
+
+      // Generate transfer number
+      const transferNumber = `TRF-${new Date().getFullYear()}-${String(transfers.length + 1).padStart(3, '0')}`
+
+      // Create new transfer with auto-generated ID
+      const newTransfer = {
+        id: Math.max(...transfers.map((t: any) => t.id), 0) + 1,
+        transfer_number: transferNumber,
+        source_location: data.source_location,
+        destination_location: data.destination_location,
+        // For simplicity, we'll use the first item for the main product info
+        product_name: data.items[0]?.product_name || 'Multiple Items',
+        product_code: data.items[0]?.product_code || 'MULTI',
+        quantity: data.items.reduce((sum: number, item: any) => sum + item.quantity, 0),
+        unit_type: data.items[0]?.unit_type || 'Units',
+        status: 'pending',
+        requested_by: 'Current User', // In real app, this would be from auth
+        approved_by: null,
+        created_date: new Date().toISOString(),
+        transfer_date: null,
+        received_date: null,
+        notes: data.notes || ''
+      }
+
+      // Add to transfers array
+      transfers.push(newTransfer)
+
+      // Save back to localStorage
+      localStorage.setItem('mock_transfers_data', JSON.stringify(transfers))
+
+      return newTransfer as T
+    }
+
+    // Handle transfer approval
+    if (url.includes('approve')) {
+      const transferId = parseInt(url.split('/')[3]) // Extract ID from URL
+      let transfers = []
+      try {
+        const storedTransfers = localStorage.getItem('mock_transfers_data')
+        if (storedTransfers) {
+          transfers = JSON.parse(storedTransfers)
+        } else {
+          transfers = this.getMockStockTransfersData()
+        }
+      } catch {
+        transfers = this.getMockStockTransfersData()
+      }
+
+      // Update transfer status
+      const updatedTransfers = transfers.map((transfer: any) => {
+        if (transfer.id === transferId) {
+          return {
+            ...transfer,
+            status: 'approved',
+            approved_by: 'Current User',
+            transfer_date: new Date().toISOString()
+          }
+        }
+        return transfer
+      })
+
+      // Save back to localStorage
+      localStorage.setItem('mock_transfers_data', JSON.stringify(updatedTransfers))
+
+      return { success: true } as T
+    }
+
+    // Handle transfer rejection
+    if (url.includes('reject')) {
+      const transferId = parseInt(url.split('/')[3]) // Extract ID from URL
+      let transfers = []
+      try {
+        const storedTransfers = localStorage.getItem('mock_transfers_data')
+        if (storedTransfers) {
+          transfers = JSON.parse(storedTransfers)
+        } else {
+          transfers = this.getMockStockTransfersData()
+        }
+      } catch {
+        transfers = this.getMockStockTransfersData()
+      }
+
+      // Update transfer status
+      const updatedTransfers = transfers.map((transfer: any) => {
+        if (transfer.id === transferId) {
+          return {
+            ...transfer,
+            status: 'rejected',
+            approved_by: 'Current User'
+          }
+        }
+        return transfer
+      })
+
+      // Save back to localStorage
+      localStorage.setItem('mock_transfers_data', JSON.stringify(updatedTransfers))
+
+      return { success: true } as T
     }
 
     return {} as T

@@ -1,9 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Search, MapPin, Wrench, Phone, TrendingUp, AlertTriangle, Eye, Edit, Trash2, Star } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
+import { Plus, Search, MapPin, Wrench, Phone, TrendingUp, AlertTriangle, Eye, Edit, Trash2, Star, X, Save, Loader2 } from 'lucide-react'
+import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
+import mockApi from '@/lib/mockApi'
+import { useToast } from '@/components/ui/Toast'
 
 interface Lubebay {
   id: string
@@ -20,85 +26,180 @@ interface Lubebay {
   rating: number
 }
 
-const mockLubebays: Lubebay[] = [
-  {
-    id: 'LB001',
-    name: 'Victoria Island Lubebay',
-    location: 'Plot 123, Ahmadu Bello Way, Victoria Island',
-    state: 'Lagos',
-    manager: 'Emeka Okafor',
-    phone: '+234 803 123 4567',
-    status: 'active',
-    bays: 6,
-    monthlyRevenue: 850000,
-    lastInspection: '2024-12-10',
-    services: ['Oil Change', 'Filter Replacement', 'Quick Service'],
-    rating: 4.8
-  },
-  {
-    id: 'LB002',
-    name: 'Ikeja Lubebay Center',
-    location: '45, Obafemi Awolowo Way, Ikeja',
-    state: 'Lagos',
-    manager: 'Funmi Adebayo',
-    phone: '+234 805 987 6543',
-    status: 'active',
-    bays: 4,
-    monthlyRevenue: 620000,
-    lastInspection: '2024-12-08',
-    services: ['Oil Change', 'Brake Service', 'Tire Service'],
-    rating: 4.6
-  },
-  {
-    id: 'LB003',
-    name: 'Abuja Central Lubebay',
-    location: 'Area 11, Garki, Abuja',
-    state: 'FCT',
-    manager: 'Ahmed Usman',
-    phone: '+234 807 456 7890',
-    status: 'maintenance',
-    bays: 5,
-    monthlyRevenue: 420000,
-    lastInspection: '2024-11-25',
-    services: ['Oil Change', 'AC Service', 'Engine Diagnostics'],
-    rating: 4.4
-  },
-  {
-    id: 'LB004',
-    name: 'Port Harcourt Lubebay',
-    location: 'Mile 3, Diobu, Port Harcourt',
-    state: 'Rivers',
-    manager: 'Grace Okoro',
-    phone: '+234 806 234 5678',
-    status: 'active',
-    bays: 3,
-    monthlyRevenue: 380000,
-    lastInspection: '2024-12-05',
-    services: ['Oil Change', 'Quick Service'],
-    rating: 4.5
-  },
-  {
-    id: 'LB005',
-    name: 'Kano Lubebay Station',
-    location: 'Sabon Gari, Kano',
-    state: 'Kano',
-    manager: 'Ibrahim Musa',
-    phone: '+234 808 345 6789',
-    status: 'inactive',
-    bays: 4,
-    monthlyRevenue: 0,
-    lastInspection: '2024-10-15',
-    services: ['Oil Change', 'Filter Replacement'],
-    rating: 4.2
-  }
-]
-
 export default function LubebaysPage() {
-  const [lubebays] = useState<Lubebay[]>(mockLubebays)
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
+
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'maintenance' | 'inactive'>('all')
 
-  const filteredLubebays = lubebays.filter(lubebay => {
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [selectedLubebay, setSelectedLubebay] = useState<any>(null)
+
+  // Form states
+  const [formData, setFormData] = useState({
+    name: '',
+    location: '',
+    state: '',
+    manager: '',
+    phone: '',
+    bays: 1,
+    services: [] as string[],
+    notes: ''
+  })
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Fetch lubebays
+  const { data: lubebaysData, isLoading, error, refetch } = useQuery({
+    queryKey: ['lubebays', searchTerm, statusFilter],
+    queryFn: async () => {
+      const params: Record<string, string> = {}
+      if (statusFilter !== 'all') params.status = statusFilter
+      if (searchTerm) params.search = searchTerm
+      return mockApi.get('/lubebays', params)
+    },
+  })
+
+  // Handle both array and paginated responses
+  const extractResults = (data: any) => {
+    if (Array.isArray(data)) return data
+    if (data?.results && Array.isArray(data.results)) return data.results
+    return []
+  }
+
+  const lubebays = extractResults(lubebaysData)
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return mockApi.post('/lubebays', data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lubebays'] })
+      addToast({ type: 'success', title: 'Success', message: 'Lubebay created successfully' })
+      setShowCreateModal(false)
+      resetForm()
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to create lubebay' })
+      if (error.errors) setFormErrors(error.errors)
+    }
+  })
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return mockApi.put(`/lubebays/${selectedLubebay.id}`, data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lubebays'] })
+      addToast({ type: 'success', title: 'Success', message: 'Lubebay updated successfully' })
+      setShowEditModal(false)
+      resetForm()
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to update lubebay' })
+      if (error.errors) setFormErrors(error.errors)
+    }
+  })
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return mockApi.delete(`/lubebays/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lubebays'] })
+      addToast({ type: 'success', title: 'Success', message: 'Lubebay deleted successfully' })
+      setShowDeleteModal(false)
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to delete lubebay' })
+    }
+  })
+
+  // Form validation
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+    if (!formData.name.trim()) errors.name = 'Lubebay name is required'
+    if (!formData.location.trim()) errors.location = 'Location is required'
+    if (!formData.state.trim()) errors.state = 'State is required'
+    if (!formData.manager.trim()) errors.manager = 'Manager name is required'
+    if (!formData.phone.trim()) errors.phone = 'Phone number is required'
+    if (formData.bays < 1) errors.bays = 'Number of bays must be at least 1'
+
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  // Form handlers
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      location: '',
+      state: '',
+      manager: '',
+      phone: '',
+      bays: 1,
+      services: [],
+      notes: ''
+    })
+    setFormErrors({})
+    setIsSubmitting(false)
+  }
+
+  const handleCreateClick = () => {
+    resetForm()
+    setShowCreateModal(true)
+  }
+
+  const handleEditClick = (lubebay: any) => {
+    setFormData({
+      name: lubebay.name || '',
+      location: lubebay.location || '',
+      state: lubebay.state || '',
+      manager: lubebay.manager || '',
+      phone: lubebay.phone || '',
+      bays: lubebay.bays || 1,
+      services: lubebay.services || [],
+      notes: lubebay.notes || ''
+    })
+    setSelectedLubebay(lubebay)
+    setFormErrors({})
+    setShowEditModal(true)
+  }
+
+  const handleDeleteClick = (lubebay: any) => {
+    setSelectedLubebay(lubebay)
+    setShowDeleteModal(true)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateForm()) return
+
+    setIsSubmitting(true)
+    try {
+      if (showCreateModal) {
+        await createMutation.mutateAsync(formData)
+      } else if (showEditModal) {
+        await updateMutation.mutateAsync(formData)
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleViewLubebay = (lubebayId: string) => {
+    router.push(`/channels/lubebays/${lubebayId}`)
+  }
+
+  const filteredLubebays = lubebays.filter((lubebay: any) => {
     const matchesSearch = lubebay.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lubebay.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lubebay.state.toLowerCase().includes(searchTerm.toLowerCase())
@@ -131,18 +232,19 @@ export default function LubebaysPage() {
   const averageRating = lubebays.reduce((sum, l) => sum + l.rating, 0) / lubebays.length
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Lubebay Network</h1>
-          <p className="text-gray-600">Manage MOFAD lubebay service centers</p>
+    <AppLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Lubebay Network</h1>
+            <p className="text-muted-foreground">Manage MOFAD lubebay service centers</p>
+          </div>
+          <Button className="mofad-btn-primary" onClick={handleCreateClick}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Lubebay
+          </Button>
         </div>
-        <Button className="mofad-btn-primary">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Lubebay
-        </Button>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -223,7 +325,23 @@ export default function LubebaysPage() {
       {/* Lubebays Table */}
       <Card>
         <CardContent className="p-0">
-          {filteredLubebays.length === 0 ? (
+          {isLoading ? (
+            <div className="p-6">
+              <div className="animate-pulse space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center space-x-4 py-3">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/4 mt-2"></div>
+                    </div>
+                    <div className="w-20 h-4 bg-gray-200 rounded"></div>
+                    <div className="w-24 h-4 bg-gray-200 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : filteredLubebays.length === 0 ? (
             <div className="p-12 text-center">
               <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No lubebays found</h3>
@@ -232,7 +350,7 @@ export default function LubebaysPage() {
                   ? 'Try adjusting your search or filters'
                   : 'Get started by adding your first lubebay'}
               </p>
-              <Button className="mofad-btn-primary">
+              <Button className="mofad-btn-primary" onClick={handleCreateClick}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Lubebay
               </Button>
@@ -334,7 +452,8 @@ export default function LubebaysPage() {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            title="View Details"
+                            title="View Dashboard"
+                            onClick={() => handleViewLubebay(lubebay.id)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -343,6 +462,7 @@ export default function LubebaysPage() {
                             size="sm"
                             className="h-8 w-8 p-0"
                             title="Manage Lubebay"
+                            onClick={() => handleEditClick(lubebay)}
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -351,6 +471,7 @@ export default function LubebaysPage() {
                             size="sm"
                             className="h-8 w-8 p-0"
                             title="Delete Lubebay"
+                            onClick={() => handleDeleteClick(lubebay)}
                           >
                             <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>
@@ -364,6 +485,291 @@ export default function LubebaysPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+
+        {/* Create/Edit Modal */}
+        {(showCreateModal || showEditModal) && createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  {showCreateModal ? 'Add New Lubebay' : 'Edit Lubebay'}
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowCreateModal(false)
+                    setShowEditModal(false)
+                    resetForm()
+                  }}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* Basic Information */}
+                <div className="space-y-4">
+                  <h3 className="text-md font-medium text-gray-900 border-b pb-2">Basic Information</h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Lubebay Name *
+                      </label>
+                      <input
+                        type="text"
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                          formErrors.name ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="Enter lubebay name"
+                      />
+                      {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        State *
+                      </label>
+                      <select
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                          formErrors.state ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                        value={formData.state}
+                        onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                      >
+                        <option value="">Select State</option>
+                        <option value="Lagos">Lagos</option>
+                        <option value="FCT">FCT (Abuja)</option>
+                        <option value="Rivers">Rivers</option>
+                        <option value="Kano">Kano</option>
+                        <option value="Kaduna">Kaduna</option>
+                        <option value="Ogun">Ogun</option>
+                        <option value="Katsina">Katsina</option>
+                        <option value="Bauchi">Bauchi</option>
+                        <option value="Jigawa">Jigawa</option>
+                        <option value="Benue">Benue</option>
+                      </select>
+                      {formErrors.state && <p className="text-red-500 text-xs mt-1">{formErrors.state}</p>}
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Location *
+                      </label>
+                      <input
+                        type="text"
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                          formErrors.location ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                        value={formData.location}
+                        onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                        placeholder="Enter full address"
+                      />
+                      {formErrors.location && <p className="text-red-500 text-xs mt-1">{formErrors.location}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Manager Name *
+                      </label>
+                      <input
+                        type="text"
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                          formErrors.manager ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                        value={formData.manager}
+                        onChange={(e) => setFormData(prev => ({ ...prev, manager: e.target.value }))}
+                        placeholder="Enter manager name"
+                      />
+                      {formErrors.manager && <p className="text-red-500 text-xs mt-1">{formErrors.manager}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Phone Number *
+                      </label>
+                      <input
+                        type="tel"
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                          formErrors.phone ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                        value={formData.phone}
+                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="+234 xxx xxx xxxx"
+                      />
+                      {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Number of Service Bays *
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                          formErrors.bays ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                        value={formData.bays}
+                        onChange={(e) => setFormData(prev => ({ ...prev, bays: parseInt(e.target.value) || 1 }))}
+                        placeholder="Number of service bays"
+                      />
+                      {formErrors.bays && <p className="text-red-500 text-xs mt-1">{formErrors.bays}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Services Information */}
+                <div className="space-y-4">
+                  <h3 className="text-md font-medium text-gray-900 border-b pb-2">Services Offered</h3>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {[
+                      'Oil Change',
+                      'Filter Replacement',
+                      'Brake Service',
+                      'Tire Service',
+                      'AC Service',
+                      'Engine Diagnostics',
+                      'Quick Service',
+                      'Transmission Service',
+                      'Cooling System',
+                    ].map((service) => (
+                      <label key={service} className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-primary focus:ring-primary"
+                          checked={formData.services.includes(service)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData(prev => ({
+                                ...prev,
+                                services: [...prev.services, service]
+                              }))
+                            } else {
+                              setFormData(prev => ({
+                                ...prev,
+                                services: prev.services.filter(s => s !== service)
+                              }))
+                            }
+                          }}
+                        />
+                        <span className="text-sm text-gray-700">{service}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Additional Notes
+                    </label>
+                    <textarea
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      rows={3}
+                      value={formData.notes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Additional notes about this lubebay..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowCreateModal(false)
+                      setShowEditModal(false)
+                      resetForm()
+                    }}
+                    className="flex-1"
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 mofad-btn-primary"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        {showCreateModal ? 'Creating...' : 'Updating...'}
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        {showCreateModal ? 'Create Lubebay' : 'Update Lubebay'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && selectedLubebay && createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full">
+              <div className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Delete Lubebay</h3>
+                    <p className="text-gray-500">This action cannot be undone.</p>
+                  </div>
+                </div>
+
+                <p className="text-gray-700 mb-6">
+                  Are you sure you want to delete <span className="font-semibold">{selectedLubebay.name}</span>?
+                  This will permanently remove the lubebay and all associated data.
+                </p>
+
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeleteModal(false)}
+                    className="flex-1"
+                    disabled={deleteMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => deleteMutation.mutate(selectedLubebay.id)}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    disabled={deleteMutation.isPending}
+                  >
+                    {deleteMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Lubebay
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      </div>
+    </AppLayout>
   )
 }
