@@ -45,34 +45,34 @@ const colors = {
 
 // Statistics data
 const stats = [
-  { number: '15+', label: 'Distribution Centers', description: 'Nigeria & West Africa', icon: Building2 },
-  { number: '500+', label: 'Energy Solutions', description: 'Delivered Successfully', icon: Zap },
-  { number: '99.9%', label: 'Client Satisfaction', description: 'Proven Excellence', icon: Star },
-  { number: '10+', label: 'Years Experience', description: 'Industry Leadership', icon: Award }
+  { number: '25+', label: 'Lube Bays', description: 'Across Nigeria', icon: Building2 },
+  { number: '1000+', label: 'Products Distributed', description: 'Lubricants & Filters', icon: Package },
+  { number: '98%', label: 'Customer Satisfaction', description: 'Quality Service', icon: Star },
+  { number: '15+', label: 'Years Experience', description: 'Lubricants Distribution', icon: Award }
 ]
 
 // Service offerings with better structure
 const services = [
   {
-    title: 'Energy Infrastructure',
-    description: 'Complete energy solutions from planning to implementation, ensuring sustainable and efficient operations across Nigeria and West Africa.',
-    icon: Zap,
-    color: 'from-green-500 to-emerald-600',
-    features: ['Power Generation', 'Grid Management', 'Renewable Integration', 'Energy Efficiency']
+    title: 'Lubricants Distribution',
+    description: 'Comprehensive distribution of premium lubricants, engine oils, and automotive fluids from leading brands like Shell, Eterna, and Castrol.',
+    icon: Truck,
+    color: 'from-blue-500 to-indigo-600',
+    features: ['Engine Oils SAE 20W-50/15W-40', 'Transmission Fluids', 'Brake & Hydraulic Fluids', 'Industrial Lubricants']
   },
   {
-    title: 'Enterprise Resource Planning',
-    description: 'Advanced ERP systems tailored for energy companies, streamlining operations and maximizing organizational efficiency.',
-    icon: Database,
-    color: 'from-emerald-500 to-green-600',
-    features: ['System Integration', 'Process Automation', 'Real-time Analytics', 'Custom Development']
-  },
-  {
-    title: 'Project Management',
-    description: 'End-to-end project management services ensuring timely delivery and quality execution of complex energy projects.',
+    title: 'Auto Service Centers',
+    description: 'Professional automotive service centers providing oil changes, filter replacements, car wash, and comprehensive vehicle maintenance.',
     icon: Settings,
-    color: 'from-green-600 to-emerald-700',
-    features: ['Project Planning', 'Risk Management', 'Quality Assurance', 'Stakeholder Coordination']
+    color: 'from-green-500 to-emerald-600',
+    features: ['Oil Change Services', 'Filter Replacements', 'Premium Car Wash', 'Vehicle Maintenance']
+  },
+  {
+    title: 'Filters & Parts',
+    description: 'High-quality automotive filters and parts distribution including oil filters, air filters, cabin filters from trusted manufacturers.',
+    icon: Package,
+    color: 'from-orange-500 to-red-600',
+    features: ['Oil Filters', 'Air Filters', 'Cabin Filters', 'Fuel Filters']
   }
 ]
 
@@ -170,18 +170,18 @@ export default function LandingPage() {
             {/* Content */}
             <div className="space-y-8">
               <div className="space-y-6">
-                <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
-                  <Leaf className="w-4 h-4 mr-2" />
-                  Leading Energy Solutions Provider
+                <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
+                  <Package className="w-4 h-4 mr-2" />
+                  Leading Lubricants Distributor
                 </div>
 
                 <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                  Powering Nigeria's <span className="text-green-600">Energy Future</span>
+                  Nigeria's Premier <span className="text-blue-600">Lubricants & Service</span> Provider
                 </h1>
 
                 <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
-                  MOFAD Energy Solutions Limited delivers comprehensive energy infrastructure,
-                  advanced ERP systems, and professional project management services across Nigeria and West Africa.
+                  MOFAD Energy Solutions Limited distributes premium lubricants, operates professional service centers,
+                  and provides comprehensive automotive maintenance solutions across Nigeria.
                 </p>
               </div>
 
@@ -230,8 +230,8 @@ export default function LandingPage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
                 <div className="absolute bottom-0 left-0 right-0 p-8">
-                  <h3 className="text-2xl font-bold text-white mb-2">State-of-the-Art Facilities</h3>
-                  <p className="text-green-100">Leading energy infrastructure across Nigeria</p>
+                  <h3 className="text-2xl font-bold text-white mb-2">Modern Distribution Centers</h3>
+                  <p className="text-blue-100">Lubricants storage and service facilities across Nigeria</p>
                 </div>
               </div>
             </div>
@@ -243,16 +243,16 @@ export default function LandingPage() {
       <section id="services" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold mb-6">
-              <Settings className="w-4 h-4 mr-2" />
-              Our Expertise
+            <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold mb-6">
+              <Truck className="w-4 h-4 mr-2" />
+              Our Services
             </div>
             <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-              Comprehensive <span className="text-green-600">Energy Solutions</span>
+              Complete <span className="text-blue-600">Lubricants & Automotive</span> Solutions
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              From infrastructure development to enterprise software, we deliver integrated solutions
-              that drive sustainable growth and operational excellence.
+              From premium lubricants distribution to professional automotive services, we provide
+              comprehensive solutions that keep Nigeria's vehicles running smoothly.
             </p>
           </div>
 
@@ -294,6 +294,106 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Service Center Showcase Section */}
+      <section className="py-24 bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold mb-6">
+              <Settings className="w-4 h-4 mr-2" />
+              Our Service Centers
+            </div>
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+              Professional <span className="text-blue-600">Lube Bays & Service</span> Centers
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Experience premium automotive care at our state-of-the-art service centers across Nigeria.
+              From quick oil changes to comprehensive car washes, we deliver quality service every time.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              {
+                title: "Express Oil Change",
+                description: "Quick 15-minute oil changes with premium lubricants",
+                icon: "⚡",
+                time: "15 mins",
+                price: "From ₦8,500"
+              },
+              {
+                title: "Premium Car Wash",
+                description: "Complete exterior and interior cleaning service",
+                icon: "🚗",
+                time: "30 mins",
+                price: "From ₦4,500"
+              },
+              {
+                title: "Filter Services",
+                description: "Oil, air, cabin and fuel filter replacements",
+                icon: "🔧",
+                time: "20 mins",
+                price: "From ₦2,800"
+              },
+              {
+                title: "Full Service",
+                description: "Comprehensive vehicle maintenance and inspection",
+                icon: "⚙️",
+                time: "60 mins",
+                price: "From ₦15,000"
+              }
+            ].map((service, index) => (
+              <div key={index} className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-blue-100 hover:border-blue-300">
+                <div className="text-center mb-4">
+                  <div className="text-4xl mb-3">{service.icon}</div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{service.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{service.description}</p>
+                </div>
+
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500">Duration:</span>
+                    <span className="font-semibold text-blue-600">{service.time}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm mt-2">
+                    <span className="text-gray-500">Price:</span>
+                    <span className="font-bold text-gray-900">{service.price}</span>
+                  </div>
+                </div>
+
+                <Link
+                  href="/dashboard"
+                  className="w-full mt-4 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors text-center block"
+                >
+                  Book Now
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-16 text-center">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">25+ Service Locations Across Nigeria</h3>
+            <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+              Visit any of our conveniently located lube bays in Lagos, Abuja, Kano, Port Harcourt,
+              and other major cities for fast, reliable automotive service.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="#contact"
+                className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-lg"
+              >
+                Find Nearest Location
+              </Link>
+              <Link
+                href="/dashboard"
+                className="px-8 py-3 bg-white border-2 border-blue-600 text-blue-600 font-bold rounded-lg hover:bg-blue-50 transition-all duration-300"
+              >
+                Schedule Service
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* About Section */}
       <section id="about" className="py-24 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -301,19 +401,19 @@ export default function LandingPage() {
             {/* Content */}
             <div className="space-y-8">
               <div className="space-y-6">
-                <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
                   <Target className="w-4 h-4 mr-2" />
                   About MOFAD
                 </div>
 
                 <h2 className="text-4xl lg:text-5xl font-bold text-gray-900">
-                  Driving <span className="text-green-600">Sustainable Growth</span> Since 2010
+                  Keeping Nigeria <span className="text-blue-600">Moving Smoothly</span> Since 2010
                 </h2>
 
                 <p className="text-lg text-gray-600 leading-relaxed">
-                  MOFAD Energy Solutions Limited stands as Nigeria's premier provider of integrated energy solutions,
-                  combining cutting-edge technology with deep industry expertise to deliver transformational results
-                  for our clients across West Africa.
+                  MOFAD Energy Solutions Limited is Nigeria's trusted distributor of premium lubricants and automotive products,
+                  operating professional service centers and lube bays that deliver exceptional quality and reliability
+                  to customers across the nation.
                 </p>
               </div>
 
@@ -324,43 +424,43 @@ export default function LandingPage() {
                     Our Mission
                   </h4>
                   <p className="text-gray-600">
-                    To provide innovative oil and natural gas solutions through best practices
-                    that drive sustainable business growth across Nigeria and West Africa.
+                    To provide premium lubricants and exceptional automotive services through best practices
+                    that keep Nigeria's vehicles and machinery running smoothly and efficiently.
                   </p>
                 </div>
 
                 <div className="bg-white p-6 rounded-xl shadow-md">
                   <h4 className="text-lg font-bold text-gray-900 mb-2 flex items-center">
-                    <Award className="w-5 h-5 text-green-600 mr-2" />
+                    <Award className="w-5 h-5 text-blue-600 mr-2" />
                     Our Vision
                   </h4>
                   <p className="text-gray-600">
-                    To be the leading independent energy company in Nigeria through innovation,
-                    operational excellence, and commitment to our stakeholders.
+                    To be Nigeria's most trusted lubricants distributor and service provider,
+                    setting industry standards for quality, reliability, and customer satisfaction.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-start space-x-4">
-                  <CheckCircle className="w-6 h-6 text-green-500 mt-1 flex-shrink-0" />
+                  <CheckCircle className="w-6 h-6 text-blue-500 mt-1 flex-shrink-0" />
                   <div>
                     <h4 className="font-bold text-gray-900">Proven Track Record</h4>
-                    <p className="text-gray-600">Over 100% profit growth year-over-year with exceptional client satisfaction</p>
+                    <p className="text-gray-600">15+ years distributing premium lubricants with 98% customer satisfaction rate</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-4">
-                  <CheckCircle className="w-6 h-6 text-green-500 mt-1 flex-shrink-0" />
+                  <CheckCircle className="w-6 h-6 text-blue-500 mt-1 flex-shrink-0" />
                   <div>
-                    <h4 className="font-bold text-gray-900">Strategic Partnerships</h4>
-                    <p className="text-gray-600">Strong relationships with industry leaders including NNPC, Shell, and Castrol</p>
+                    <h4 className="font-bold text-gray-900">Premium Brand Partners</h4>
+                    <p className="text-gray-600">Authorized distributor for Shell, Eterna, Castrol, and other leading lubricant brands</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-4">
-                  <CheckCircle className="w-6 h-6 text-green-500 mt-1 flex-shrink-0" />
+                  <CheckCircle className="w-6 h-6 text-blue-500 mt-1 flex-shrink-0" />
                   <div>
-                    <h4 className="font-bold text-gray-900">Professional Excellence</h4>
-                    <p className="text-gray-600">Commitment to integrity, transparency, and the highest professional standards</p>
+                    <h4 className="font-bold text-gray-900">Service Excellence</h4>
+                    <p className="text-gray-600">Professional lube bays and service centers delivering quality automotive maintenance</p>
                   </div>
                 </div>
               </div>
@@ -374,10 +474,10 @@ export default function LandingPage() {
                   alt="MOFAD Energy Solutions Team"
                   className="w-full h-[600px] object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-green-900/50 via-transparent to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-blue-900/50 via-transparent to-transparent"></div>
                 <div className="absolute bottom-0 left-0 right-0 p-8">
                   <h3 className="text-2xl font-bold text-white mb-2">Expert Team</h3>
-                  <p className="text-green-100">Dedicated professionals committed to excellence</p>
+                  <p className="text-blue-100">Automotive professionals dedicated to quality service</p>
                 </div>
               </div>
             </div>
@@ -389,16 +489,16 @@ export default function LandingPage() {
       <section id="partners" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold mb-6">
-              <Users className="w-4 h-4 mr-2" />
-              Strategic Partnerships
+            <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold mb-6">
+              <Package className="w-4 h-4 mr-2" />
+              Premium Brand Partners
             </div>
             <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-              Trusted by <span className="text-green-600">Industry Leaders</span>
+              Authorized Distributor for <span className="text-blue-600">Premium Brands</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We collaborate with the most respected names in energy, finance, and industry
-              to deliver exceptional value and innovation to our clients.
+              We proudly distribute products from the world's leading lubricant manufacturers,
+              ensuring our customers receive only the highest quality automotive fluids and parts.
             </p>
           </div>
 
@@ -436,28 +536,28 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-gradient-to-r from-green-600 to-emerald-600">
+      <section className="py-24 bg-gradient-to-r from-blue-600 to-indigo-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
-            Ready to Transform Your Energy Operations?
+            Ready to Keep Your Vehicles Running Smoothly?
           </h2>
-          <p className="text-xl text-green-100 mb-12 max-w-3xl mx-auto">
-            Partner with MOFAD Energy Solutions and experience the difference that professional
-            expertise and innovative technology can make for your business.
+          <p className="text-xl text-blue-100 mb-12 max-w-3xl mx-auto">
+            Trust MOFAD Energy Solutions for premium lubricants, professional service, and
+            automotive expertise that keeps your fleet performing at its best.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <Link
               href="/dashboard"
-              className="px-10 py-4 bg-white text-green-600 font-bold text-lg rounded-lg hover:bg-gray-100 transition-all duration-300 shadow-xl hover:shadow-2xl"
+              className="px-10 py-4 bg-white text-blue-600 font-bold text-lg rounded-lg hover:bg-gray-100 transition-all duration-300 shadow-xl hover:shadow-2xl"
             >
-              Get Started Today
+              Visit Our Service Center
             </Link>
             <Link
               href="#contact"
-              className="px-10 py-4 bg-transparent border-2 border-white text-white font-bold text-lg rounded-lg hover:bg-white hover:text-green-600 transition-all duration-300"
+              className="px-10 py-4 bg-transparent border-2 border-white text-white font-bold text-lg rounded-lg hover:bg-white hover:text-blue-600 transition-all duration-300"
             >
-              Contact Our Team
+              Get Quote Today
             </Link>
           </div>
         </div>
@@ -475,12 +575,12 @@ export default function LandingPage() {
                 className="h-12 w-auto brightness-0 invert"
               />
               <p className="text-gray-300 leading-relaxed">
-                Leading energy solutions provider committed to sustainable growth
-                and operational excellence across Nigeria and West Africa.
+                Nigeria's premier lubricants distributor and automotive service provider
+                committed to quality, reliability, and exceptional customer satisfaction.
               </p>
               <div className="flex space-x-4">
-                <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                  <Leaf className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-white" />
                 </div>
               </div>
             </div>
@@ -489,10 +589,10 @@ export default function LandingPage() {
             <div>
               <h3 className="text-xl font-bold mb-6">Services</h3>
               <ul className="space-y-3">
-                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">Energy Infrastructure</Link></li>
-                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">ERP Solutions</Link></li>
-                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">Project Management</Link></li>
-                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">Consulting Services</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-blue-400 transition-colors">Lubricants Distribution</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-blue-400 transition-colors">Oil Change Services</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-blue-400 transition-colors">Filter Replacement</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-blue-400 transition-colors">Car Wash & Detailing</Link></li>
               </ul>
             </div>
 
@@ -500,10 +600,10 @@ export default function LandingPage() {
             <div>
               <h3 className="text-xl font-bold mb-6">Company</h3>
               <ul className="space-y-3">
-                <li><Link href="#about" className="text-gray-300 hover:text-green-400 transition-colors">About Us</Link></li>
-                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">Careers</Link></li>
-                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">News</Link></li>
-                <li><Link href="#" className="text-gray-300 hover:text-green-400 transition-colors">Contact</Link></li>
+                <li><Link href="#about" className="text-gray-300 hover:text-blue-400 transition-colors">About Us</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-blue-400 transition-colors">Careers</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-blue-400 transition-colors">News</Link></li>
+                <li><Link href="#" className="text-gray-300 hover:text-blue-400 transition-colors">Contact</Link></li>
               </ul>
             </div>
 
