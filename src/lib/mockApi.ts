@@ -2,6 +2,7 @@
 import { LoginForm, User } from '../types'
 
 // Mock user data
+// Default user with Super Admin permissions for compatibility
 const MOCK_USER: User = {
   id: 1,
   name: 'John Doe',
@@ -9,46 +10,183 @@ const MOCK_USER: User = {
   email_verified_at: '2023-01-01T00:00:00.000Z',
   created_at: '2023-01-01T00:00:00.000Z',
   updated_at: '2023-01-01T00:00:00.000Z',
-  permissions: [
-    { id: 1, name: 'dashboard_access', guard_name: 'web' },
-    { id: 2, name: 'view_customers', guard_name: 'web' },
-    { id: 3, name: 'manage_orders', guard_name: 'web' },
-    { id: 4, name: 'review_prf', guard_name: 'web' },
-    { id: 5, name: 'approve_prf', guard_name: 'web' },
-    { id: 6, name: 'review_pro', guard_name: 'web' },
-    { id: 7, name: 'approve_pro', guard_name: 'web' },
-    { id: 8, name: 'manage_lubebays', guard_name: 'web' },
-    { id: 9, name: 'manage_car_wash', guard_name: 'web' },
-    { id: 10, name: 'view_reports', guard_name: 'web' },
-  ],
-  roles: [
-    {
-      id: 1,
-      name: 'Administrator',
-      guard_name: 'web',
-      permissions: [
-        { id: 1, name: 'dashboard_access', guard_name: 'web' },
-        { id: 2, name: 'view_customers', guard_name: 'web' },
-        { id: 3, name: 'manage_orders', guard_name: 'web' },
-        { id: 4, name: 'review_prf', guard_name: 'web' },
-        { id: 5, name: 'approve_prf', guard_name: 'web' },
-        { id: 6, name: 'review_pro', guard_name: 'web' },
-        { id: 7, name: 'approve_pro', guard_name: 'web' },
-        { id: 8, name: 'manage_lubebays', guard_name: 'web' },
-        { id: 9, name: 'manage_car_wash', guard_name: 'web' },
-        { id: 10, name: 'view_reports', guard_name: 'web' },
-      ],
-    },
-  ],
+  permissions: MOCK_ROLES.Super_Admin.permissions,
+  roles: [MOCK_ROLES.Super_Admin],
 }
 
-// Mock credentials for testing
+// Mock credentials for testing with MOFAD organizational roles
 const MOCK_CREDENTIALS = [
-  { email: 'admin@mofadenergysolutions.com', password: 'admin123' },
-  { email: 'john@mofadenergysolutions.com', password: 'password' },
-  { email: 'manager@mofadenergysolutions.com', password: 'manager123' },
-  { email: 'user@mofadenergysolutions.com', password: 'user123' },
+  { email: 'superadmin@mofadenergysolutions.com', password: 'superadmin123', role: 'Super_Admin' },
+  { email: 'management@mofadenergysolutions.com', password: 'management123', role: 'Management' },
+  { email: 'finance.manager@mofadenergysolutions.com', password: 'finance123', role: 'Finance_Manager' },
+  { email: 'store.keeper@mofadenergysolutions.com', password: 'store123', role: 'Store_Keeper' },
+  { email: 'lubebay.manager@mofadenergysolutions.com', password: 'lube123', role: 'Lube_Bay_Manager' },
+  { email: 'sales.rep@mofadenergysolutions.com', password: 'sales123', role: 'Sales_Rep' },
+  { email: 'user@mofadenergysolutions.com', password: 'user123', role: 'User' },
 ]
+
+// MOFAD Organizational Roles with Business-Specific Permissions
+const MOCK_ROLES = {
+  Super_Admin: {
+    id: 1,
+    name: 'Super Admin',
+    guard_name: 'web',
+    permissions: [
+      // Full System Access
+      { id: 1, name: 'dashboard_access', guard_name: 'web' },
+      { id: 2, name: 'view_customers', guard_name: 'web' },
+      { id: 3, name: 'manage_customers', guard_name: 'web' },
+      { id: 4, name: 'view_products', guard_name: 'web' },
+      { id: 5, name: 'manage_products', guard_name: 'web' },
+      { id: 6, name: 'view_inventory', guard_name: 'web' },
+      { id: 7, name: 'manage_inventory', guard_name: 'web' },
+      { id: 8, name: 'view_sales', guard_name: 'web' },
+      { id: 9, name: 'record_sales', guard_name: 'web' },
+      { id: 10, name: 'view_lodgements', guard_name: 'web' },
+      { id: 11, name: 'record_lodgements', guard_name: 'web' },
+      { id: 12, name: 'approve_lodgements', guard_name: 'web' },
+      { id: 13, name: 'view_prf', guard_name: 'web' },
+      { id: 14, name: 'create_prf', guard_name: 'web' },
+      { id: 15, name: 'review_prf', guard_name: 'web' },
+      { id: 16, name: 'approve_prf', guard_name: 'web' },
+      { id: 17, name: 'view_pro', guard_name: 'web' },
+      { id: 18, name: 'create_pro', guard_name: 'web' },
+      { id: 19, name: 'review_pro', guard_name: 'web' },
+      { id: 20, name: 'approve_pro', guard_name: 'web' },
+      { id: 21, name: 'receive_products', guard_name: 'web' },
+      { id: 22, name: 'issue_products', guard_name: 'web' },
+      { id: 23, name: 'stock_transfer', guard_name: 'web' },
+      { id: 24, name: 'manage_lubebays', guard_name: 'web' },
+      { id: 25, name: 'view_accounts', guard_name: 'web' },
+      { id: 26, name: 'manage_accounts', guard_name: 'web' },
+      { id: 27, name: 'view_reports', guard_name: 'web' },
+      { id: 28, name: 'generate_reports', guard_name: 'web' },
+      // Super Admin Only
+      { id: 29, name: 'manage_users', guard_name: 'web' },
+      { id: 30, name: 'manage_settings', guard_name: 'web' },
+      { id: 31, name: 'system_configuration', guard_name: 'web' },
+    ],
+  },
+  Management: {
+    id: 2,
+    name: 'Management',
+    guard_name: 'web',
+    permissions: [
+      // All business operations except user management and settings
+      { id: 1, name: 'dashboard_access', guard_name: 'web' },
+      { id: 2, name: 'view_customers', guard_name: 'web' },
+      { id: 3, name: 'manage_customers', guard_name: 'web' },
+      { id: 4, name: 'view_products', guard_name: 'web' },
+      { id: 5, name: 'manage_products', guard_name: 'web' },
+      { id: 6, name: 'view_inventory', guard_name: 'web' },
+      { id: 7, name: 'manage_inventory', guard_name: 'web' },
+      { id: 8, name: 'view_sales', guard_name: 'web' },
+      { id: 9, name: 'record_sales', guard_name: 'web' },
+      { id: 10, name: 'view_lodgements', guard_name: 'web' },
+      { id: 11, name: 'record_lodgements', guard_name: 'web' },
+      { id: 12, name: 'approve_lodgements', guard_name: 'web' },
+      { id: 13, name: 'view_prf', guard_name: 'web' },
+      { id: 14, name: 'create_prf', guard_name: 'web' },
+      { id: 15, name: 'review_prf', guard_name: 'web' },
+      { id: 16, name: 'approve_prf', guard_name: 'web' },
+      { id: 17, name: 'view_pro', guard_name: 'web' },
+      { id: 18, name: 'create_pro', guard_name: 'web' },
+      { id: 19, name: 'review_pro', guard_name: 'web' },
+      { id: 20, name: 'approve_pro', guard_name: 'web' },
+      { id: 21, name: 'receive_products', guard_name: 'web' },
+      { id: 22, name: 'issue_products', guard_name: 'web' },
+      { id: 23, name: 'stock_transfer', guard_name: 'web' },
+      { id: 24, name: 'manage_lubebays', guard_name: 'web' },
+      { id: 25, name: 'view_accounts', guard_name: 'web' },
+      { id: 26, name: 'manage_accounts', guard_name: 'web' },
+      { id: 27, name: 'view_reports', guard_name: 'web' },
+      { id: 28, name: 'generate_reports', guard_name: 'web' },
+    ],
+  },
+  Finance_Manager: {
+    id: 3,
+    name: 'Finance Manager',
+    guard_name: 'web',
+    permissions: [
+      { id: 1, name: 'dashboard_access', guard_name: 'web' },
+      { id: 2, name: 'view_customers', guard_name: 'web' },
+      { id: 8, name: 'view_sales', guard_name: 'web' },
+      { id: 10, name: 'view_lodgements', guard_name: 'web' },
+      { id: 12, name: 'approve_lodgements', guard_name: 'web' },
+      { id: 13, name: 'view_prf', guard_name: 'web' },
+      { id: 16, name: 'approve_prf', guard_name: 'web' },
+      { id: 17, name: 'view_pro', guard_name: 'web' },
+      { id: 20, name: 'approve_pro', guard_name: 'web' },
+      { id: 25, name: 'view_accounts', guard_name: 'web' },
+      { id: 26, name: 'manage_accounts', guard_name: 'web' },
+      { id: 27, name: 'view_reports', guard_name: 'web' },
+      { id: 28, name: 'generate_reports', guard_name: 'web' },
+    ],
+  },
+  Store_Keeper: {
+    id: 4,
+    name: 'Store Keeper',
+    guard_name: 'web',
+    permissions: [
+      { id: 1, name: 'dashboard_access', guard_name: 'web' },
+      { id: 4, name: 'view_products', guard_name: 'web' },
+      { id: 6, name: 'view_inventory', guard_name: 'web' },
+      { id: 7, name: 'manage_inventory', guard_name: 'web' },
+      { id: 13, name: 'view_prf', guard_name: 'web' },
+      { id: 17, name: 'view_pro', guard_name: 'web' },
+      { id: 21, name: 'receive_products', guard_name: 'web' },
+      { id: 22, name: 'issue_products', guard_name: 'web' },
+      { id: 23, name: 'stock_transfer', guard_name: 'web' },
+      { id: 27, name: 'view_reports', guard_name: 'web' },
+    ],
+  },
+  Lube_Bay_Manager: {
+    id: 5,
+    name: 'Lube Bay Manager',
+    guard_name: 'web',
+    permissions: [
+      { id: 1, name: 'dashboard_access', guard_name: 'web' },
+      { id: 2, name: 'view_customers', guard_name: 'web' },
+      { id: 8, name: 'view_sales', guard_name: 'web' },
+      { id: 9, name: 'record_sales', guard_name: 'web' },
+      { id: 10, name: 'view_lodgements', guard_name: 'web' },
+      { id: 11, name: 'record_lodgements', guard_name: 'web' },
+      { id: 24, name: 'manage_lubebays', guard_name: 'web' },
+      { id: 27, name: 'view_reports', guard_name: 'web' },
+    ],
+  },
+  Sales_Rep: {
+    id: 6,
+    name: 'Sales Representative',
+    guard_name: 'web',
+    permissions: [
+      { id: 1, name: 'dashboard_access', guard_name: 'web' },
+      { id: 2, name: 'view_customers', guard_name: 'web' },
+      { id: 3, name: 'manage_customers', guard_name: 'web' },
+      { id: 4, name: 'view_products', guard_name: 'web' },
+      { id: 8, name: 'view_sales', guard_name: 'web' },
+      { id: 9, name: 'record_sales', guard_name: 'web' },
+      { id: 10, name: 'view_lodgements', guard_name: 'web' },
+      { id: 11, name: 'record_lodgements', guard_name: 'web' },
+      { id: 13, name: 'view_prf', guard_name: 'web' },
+      { id: 14, name: 'create_prf', guard_name: 'web' },
+      { id: 27, name: 'view_reports', guard_name: 'web' },
+    ],
+  },
+  User: {
+    id: 7,
+    name: 'General User',
+    guard_name: 'web',
+    permissions: [
+      { id: 1, name: 'dashboard_access', guard_name: 'web' },
+      { id: 2, name: 'view_customers', guard_name: 'web' },
+      { id: 4, name: 'view_products', guard_name: 'web' },
+      { id: 6, name: 'view_inventory', guard_name: 'web' },
+      { id: 8, name: 'view_sales', guard_name: 'web' },
+      { id: 27, name: 'view_reports', guard_name: 'web' },
+    ],
+  },
+}
 
 // Simulate network delay
 const delay = (ms: number = 1000) => new Promise(resolve => setTimeout(resolve, ms))
@@ -112,11 +250,21 @@ class MockApiClient {
       localStorage.setItem('refresh_token', refreshToken)
     }
 
+    // Get user role from credentials
+    const userCredential = MOCK_CREDENTIALS.find(c => c.email === email && c.password === password)
+    const userRole = userCredential?.role || 'User'
+    const roleData = MOCK_ROLES[userRole as keyof typeof MOCK_ROLES]
+
     return {
       user: {
-        ...MOCK_USER,
+        id: 1,
         email, // Use the email from login
-        name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase())
+        name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        email_verified_at: '2023-01-01T00:00:00.000Z',
+        created_at: '2023-01-01T00:00:00.000Z',
+        updated_at: '2023-01-01T00:00:00.000Z',
+        permissions: roleData.permissions,
+        roles: [roleData],
       },
       tokens: {
         access_token: token,
@@ -1011,7 +1159,14 @@ class MockApiClient {
 
       // Filter Services
       { id: 17, service_name: 'Air Filter Replacement', description: 'Engine air filter replacement for improved performance', duration_minutes: 15, base_price: 2800, materials_cost: 1500, labor_cost: 1000, category: 'Filter Services', status: 'active', popularity_score: 68, bookings_this_month: 145, created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
-      { id: 18, service_name: 'Cabin Filter Replacement', description: 'Cabin air filter replacement for clean interior air', duration_minutes: 20, base_price: 3500, materials_cost: 2000, labor_cost: 1200, category: 'Filter Services', status: 'active', popularity_score: 64, bookings_this_month: 112, created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() }
+      { id: 18, service_name: 'Cabin Filter Replacement', description: 'Cabin air filter replacement for clean interior air', duration_minutes: 20, base_price: 3500, materials_cost: 2000, labor_cost: 1200, category: 'Filter Services', status: 'active', popularity_score: 64, bookings_this_month: 112, created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+
+      // Car Wash Services
+      { id: 19, service_name: 'Express Car Wash', description: 'Quick exterior wash with rinse, soap, and dry', duration_minutes: 15, base_price: 2500, materials_cost: 800, labor_cost: 1200, category: 'Car Wash', status: 'active', popularity_score: 92, bookings_this_month: 245, created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 20, service_name: 'Premium Car Wash', description: 'Full exterior wash with wax, tire shine, and interior vacuum', duration_minutes: 30, base_price: 4500, materials_cost: 1500, labor_cost: 2200, category: 'Car Wash', status: 'active', popularity_score: 89, bookings_this_month: 189, created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 21, service_name: 'Deluxe Car Wash & Detail', description: 'Complete interior and exterior detail with polish, leather treatment, and dashboard care', duration_minutes: 60, base_price: 8500, materials_cost: 3000, labor_cost: 4500, category: 'Car Wash', status: 'active', popularity_score: 85, bookings_this_month: 156, created_at: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 22, service_name: 'Undercarriage Wash', description: 'Specialized undercarriage cleaning to remove dirt, salt, and road grime', duration_minutes: 20, base_price: 3500, materials_cost: 1200, labor_cost: 1800, category: 'Car Wash', status: 'active', popularity_score: 76, bookings_this_month: 134, created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 23, service_name: 'Engine Bay Cleaning', description: 'Professional engine bay degreasing and cleaning service', duration_minutes: 45, base_price: 6000, materials_cost: 2500, labor_cost: 3000, category: 'Car Wash', status: 'active', popularity_score: 78, bookings_this_month: 98, created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString() }
     ]
   }
 
@@ -1482,12 +1637,12 @@ class MockApiClient {
 
   getMockSubstoreTransactionsData() {
     return [
-      { id: 1, substore: 'Lagos Island Substore', transaction_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), product_name: 'Premium Motor Spirit (PMS)', quantity: 2500, unit_price: 617, total_amount: 1542500, transaction_type: 'sale', customer_type: 'retail', payment_method: 'cash', reference: 'SST-2024-001', status: 'completed', commission_earned: 131213, manager: 'John Adebayo' },
-      { id: 2, substore: 'Ikeja Substore', transaction_date: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), product_name: 'Automotive Gas Oil (AGO)', quantity: 1800, unit_price: 850, total_amount: 1530000, transaction_type: 'sale', customer_type: 'wholesale', payment_method: 'bank_transfer', reference: 'SST-2024-002', status: 'completed', commission_earned: 122400, manager: 'Maria Okafor' },
-      { id: 3, substore: 'Abuja Central Substore', transaction_date: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), product_name: 'Dual Purpose Kerosene (DPK)', quantity: 1200, unit_price: 750, total_amount: 900000, transaction_type: 'sale', customer_type: 'retail', payment_method: 'pos', reference: 'SST-2024-003', status: 'completed', commission_earned: 67500, manager: 'Ibrahim Musa' },
+      { id: 1, substore: 'Lagos Island Substore', transaction_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), product_name: 'Engine Oil SAE 20W-50 (1L)', quantity: 125, unit_price: 4500, total_amount: 562500, transaction_type: 'sale', customer_type: 'retail', payment_method: 'cash', reference: 'SST-2024-001', status: 'completed', commission_earned: 45000, manager: 'John Adebayo' },
+      { id: 2, substore: 'Ikeja Substore', transaction_date: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), product_name: 'Oil Filter - Standard', quantity: 80, unit_price: 3500, total_amount: 280000, transaction_type: 'sale', customer_type: 'wholesale', payment_method: 'bank_transfer', reference: 'SST-2024-002', status: 'completed', commission_earned: 22400, manager: 'Maria Okafor' },
+      { id: 3, substore: 'Abuja Central Substore', transaction_date: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), product_name: 'Air Filter - Heavy Duty', quantity: 65, unit_price: 4200, total_amount: 273000, transaction_type: 'sale', customer_type: 'retail', payment_method: 'pos', reference: 'SST-2024-003', status: 'completed', commission_earned: 21840, manager: 'Ibrahim Musa' },
       { id: 4, substore: 'Port Harcourt Substore', transaction_date: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(), product_name: 'Engine Oil SAE 20W-50', quantity: 25, unit_price: 4500, total_amount: 112500, transaction_type: 'sale', customer_type: 'retail', payment_method: 'cash', reference: 'SST-2024-004', status: 'completed', commission_earned: 9000, manager: 'Grace Eze' },
-      { id: 5, substore: 'Kano Substore', transaction_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), product_name: 'Premium Motor Spirit (PMS)', quantity: 800, unit_price: 617, total_amount: 493600, transaction_type: 'sale', customer_type: 'retail', payment_method: 'cash', reference: 'SST-2024-005', status: 'completed', commission_earned: 34552, manager: 'Fatima Aliyu' },
-      { id: 6, substore: 'Lagos Island Substore', transaction_date: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(), product_name: 'Automotive Gas Oil (AGO)', quantity: 500, unit_price: 850, total_amount: 425000, transaction_type: 'return', customer_type: 'wholesale', payment_method: 'bank_transfer', reference: 'SST-2024-006', status: 'pending', commission_earned: -34000, manager: 'John Adebayo' }
+      { id: 5, substore: 'Kano Substore', transaction_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), product_name: 'Brake Fluid DOT-3', quantity: 45, unit_price: 2200, total_amount: 99000, transaction_type: 'sale', customer_type: 'retail', payment_method: 'cash', reference: 'SST-2024-005', status: 'completed', commission_earned: 7920, manager: 'Fatima Aliyu' },
+      { id: 6, substore: 'Lagos Island Substore', transaction_date: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(), product_name: 'Hydraulic Oil ISO 46', quantity: 15, unit_price: 15000, total_amount: 225000, transaction_type: 'return', customer_type: 'wholesale', payment_method: 'bank_transfer', reference: 'SST-2024-006', status: 'pending', commission_earned: -18000, manager: 'John Adebayo' }
     ]
   }
 
@@ -1526,7 +1681,7 @@ class MockApiClient {
         credit_limit: 100000000,
         current_balance: 12500000,
         supplier_type: 'Primary',
-        products_supplied: ['PMS (Petrol)', 'AGO (Diesel)', 'DPK (Kerosene)', 'LPG'],
+        products_supplied: ['Engine Oil SAE 20W-50', 'Engine Oil SAE 15W-40', 'Transmission Fluid', 'Hydraulic Oil'],
         rating: 4.8,
         status: 'active',
         last_order_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -1546,7 +1701,7 @@ class MockApiClient {
         credit_limit: 75000000,
         current_balance: 8900000,
         supplier_type: 'Premium',
-        products_supplied: ['PMS (Petrol)', 'AGO (Diesel)', 'DPK (Kerosene)', 'Engine Oil', 'Lubricants'],
+        products_supplied: ['Engine Oil SAE 10W-30', 'Engine Oil SAE 15W-40', 'Brake Fluid DOT-3', 'Gear Oil', 'Lubricants'],
         rating: 4.7,
         status: 'active',
         last_order_date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
@@ -1726,7 +1881,7 @@ class MockApiClient {
         credit_limit: 35000000,
         current_balance: 4300000,
         supplier_type: 'Standard',
-        products_supplied: ['PMS (Petrol)', 'AGO (Diesel)', 'DPK (Kerosene)', 'LPG'],
+        products_supplied: ['Engine Oil SAE 20W-50', 'Engine Oil SAE 15W-40', 'Transmission Fluid', 'Hydraulic Oil'],
         rating: 4.3,
         status: 'active',
         last_order_date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
@@ -2848,6 +3003,32 @@ class MockApiClient {
       return this.getMockSuppliersData() as T
     }
 
+    // Comprehensive Reporting System
+    if (url.includes('reports/sales')) {
+      return this.getMockSalesReportsData() as T
+    }
+    if (url.includes('reports/inventory')) {
+      return this.getMockInventoryReportsData() as T
+    }
+    if (url.includes('reports/financial')) {
+      return this.getMockFinancialReportsData() as T
+    }
+    if (url.includes('reports/operational')) {
+      return this.getMockOperationalReportsData() as T
+    }
+    if (url.includes('reports/customer')) {
+      return this.getMockCustomerReportsData() as T
+    }
+    if (url.includes('reports/user-activity')) {
+      return this.getMockUserActivityReportsData() as T
+    }
+    if (url.includes('reports/generate')) {
+      const urlObj = new URL(url, 'http://localhost')
+      const reportType = urlObj.searchParams.get('type')
+      const params = Object.fromEntries(urlObj.searchParams.entries())
+      return this.generateReport(reportType || 'sales', params) as T
+    }
+
     // Default empty response
     return {} as T
   }
@@ -3168,6 +3349,186 @@ class MockApiClient {
     }
 
     return {} as T
+  }
+
+  // Comprehensive Reporting System for MOFAD Business Operations
+  getMockSalesReportsData() {
+    return {
+      daily_sales: [
+        { date: '2024-01-01', total_sales: 850000, lubebay_sales: 320000, direct_sales: 530000, transactions: 45 },
+        { date: '2024-01-02', total_sales: 920000, lubebay_sales: 380000, direct_sales: 540000, transactions: 52 },
+        { date: '2024-01-03', total_sales: 750000, lubebay_sales: 290000, direct_sales: 460000, transactions: 38 },
+        { date: '2024-01-04', total_sales: 1200000, lubebay_sales: 450000, direct_sales: 750000, transactions: 67 },
+        { date: '2024-01-05', total_sales: 980000, lubebay_sales: 400000, direct_sales: 580000, transactions: 58 },
+      ],
+      monthly_summary: {
+        total_sales: 24500000,
+        lubebay_sales: 9800000,
+        direct_sales: 14700000,
+        total_transactions: 1247,
+        average_transaction_value: 19646,
+        top_selling_product: 'Engine Oil SAE 20W-50',
+        growth_percentage: 12.5
+      },
+      sales_by_rep: [
+        { rep_name: 'Ahmed Musa', total_sales: 5200000, transactions: 156, commission: 416000 },
+        { rep_name: 'Fatima Bello', total_sales: 4800000, transactions: 143, commission: 384000 },
+        { rep_name: 'John Adebayo', total_sales: 6200000, transactions: 189, commission: 496000 },
+        { rep_name: 'Maria Santos', total_sales: 4300000, transactions: 124, commission: 344000 },
+      ]
+    }
+  }
+
+  getMockInventoryReportsData() {
+    return {
+      stock_levels: [
+        { product_name: 'Engine Oil SAE 20W-50', current_stock: 450, reorder_level: 100, status: 'healthy', days_supply: 30 },
+        { product_name: 'Oil Filter - Standard', current_stock: 85, reorder_level: 120, status: 'low', days_supply: 8 },
+        { product_name: 'Air Filter - Heavy Duty', current_stock: 200, reorder_level: 150, status: 'healthy', days_supply: 22 },
+        { product_name: 'Brake Fluid DOT-3', current_stock: 45, reorder_level: 80, status: 'critical', days_supply: 5 },
+      ],
+      warehouse_utilization: [
+        { warehouse: 'Lagos Main', capacity: 150000, current: 85600, utilization: 57.1, status: 'optimal' },
+        { warehouse: 'Abuja Regional', capacity: 80000, current: 62400, utilization: 78.0, status: 'high' },
+        { warehouse: 'Kano Branch', capacity: 50000, current: 28900, utilization: 57.8, status: 'optimal' },
+      ],
+      stock_movements: [
+        { date: '2024-01-05', type: 'inbound', quantity: 500, product: 'Engine Oil SAE 15W-40', warehouse: 'Lagos Main' },
+        { date: '2024-01-05', type: 'outbound', quantity: 120, product: 'Oil Filter - Standard', warehouse: 'Lagos Main' },
+        { date: '2024-01-04', type: 'transfer', quantity: 200, product: 'Air Filter - Heavy Duty', from: 'Lagos Main', to: 'Abuja Regional' },
+      ]
+    }
+  }
+
+  getMockFinancialReportsData() {
+    return {
+      revenue_summary: {
+        total_revenue: 24500000,
+        cost_of_goods: 18200000,
+        gross_profit: 6300000,
+        gross_margin: 25.7,
+        operating_expenses: 3200000,
+        net_profit: 3100000,
+        net_margin: 12.7
+      },
+      lodgements: [
+        { date: '2024-01-05', amount: 850000, type: 'lubebay_sales', status: 'approved', approved_by: 'Finance Manager' },
+        { date: '2024-01-05', amount: 1200000, type: 'direct_sales', status: 'pending', lodged_by: 'Sales Rep Ahmed' },
+        { date: '2024-01-04', amount: 680000, type: 'car_wash', status: 'approved', approved_by: 'Finance Manager' },
+      ],
+      accounts_receivable: [
+        { customer: 'ABC Motors Limited', amount_due: 1250000, days_overdue: 0, status: 'current' },
+        { customer: 'Dangote Industries Plc', amount_due: 2800000, days_overdue: 15, status: 'overdue' },
+        { customer: 'XYZ Transport Services', amount_due: 450000, days_overdue: 45, status: 'critical' },
+      ],
+      payment_trends: [
+        { month: '2023-11', collections: 18200000, outstanding: 4500000, collection_rate: 80.2 },
+        { month: '2023-12', collections: 22100000, outstanding: 3200000, collection_rate: 87.4 },
+        { month: '2024-01', collections: 19800000, outstanding: 5100000, collection_rate: 79.5 },
+      ]
+    }
+  }
+
+  getMockOperationalReportsData() {
+    return {
+      prf_summary: {
+        total_prfs: 45,
+        pending_review: 8,
+        pending_approval: 5,
+        approved: 25,
+        rejected: 7,
+        average_approval_time: 2.3
+      },
+      pro_summary: {
+        total_pros: 32,
+        pending_review: 6,
+        pending_approval: 3,
+        confirmed: 18,
+        cancelled: 5,
+        average_processing_time: 1.8
+      },
+      lubebay_performance: [
+        { lubebay: 'Surulere Lubebay', services: 245, revenue: 1850000, rating: 4.6, utilization: 78 },
+        { lubebay: 'Ikeja Lubebay', services: 189, revenue: 1420000, rating: 4.4, utilization: 65 },
+        { lubebay: 'Abuja Central', services: 156, revenue: 1180000, rating: 4.7, utilization: 58 },
+      ],
+      supplier_performance: [
+        { supplier: 'Eterna Plc', orders: 12, on_time_delivery: 91.7, quality_rating: 4.5, total_value: 8500000 },
+        { supplier: 'Shell Nigeria', orders: 8, on_time_delivery: 87.5, quality_rating: 4.6, total_value: 5200000 },
+        { supplier: 'Total Energies', orders: 15, on_time_delivery: 93.3, quality_rating: 4.4, total_value: 9800000 },
+      ]
+    }
+  }
+
+  getMockCustomerReportsData() {
+    return {
+      top_customers: [
+        { customer: 'Dangote Industries Plc', total_purchases: 18500000, transactions: 45, avg_transaction: 411111 },
+        { customer: 'ABC Motors Limited', total_purchases: 12500000, transactions: 67, avg_transaction: 186567 },
+        { customer: 'XYZ Transport Services', total_purchases: 8900000, transactions: 123, avg_transaction: 72358 },
+        { customer: 'NNPC Retail Station', total_purchases: 6700000, transactions: 34, avg_transaction: 197059 },
+      ],
+      customer_segments: {
+        corporate: { count: 45, revenue: 35200000, percentage: 68.2 },
+        retail: { count: 156, revenue: 12800000, percentage: 24.8 },
+        government: { count: 8, revenue: 3600000, percentage: 7.0 }
+      },
+      customer_retention: {
+        new_customers: 23,
+        returning_customers: 186,
+        retention_rate: 89.0,
+        churn_rate: 11.0
+      },
+      geographic_distribution: [
+        { state: 'Lagos', customers: 89, revenue: 28500000, percentage: 55.2 },
+        { state: 'Abuja/FCT', customers: 45, revenue: 12300000, percentage: 23.8 },
+        { state: 'Kano', customers: 34, revenue: 7800000, percentage: 15.1 },
+        { state: 'Rivers', customers: 21, revenue: 3100000, percentage: 6.0 },
+      ]
+    }
+  }
+
+  getMockUserActivityReportsData() {
+    return {
+      login_activity: [
+        { user: 'John Adebayo (Management)', last_login: '2024-01-05 14:30', sessions_today: 3, total_actions: 45 },
+        { user: 'Ahmed Musa (Sales Rep)', last_login: '2024-01-05 16:22', sessions_today: 2, total_actions: 28 },
+        { user: 'Fatima Bello (Store Keeper)', last_login: '2024-01-05 09:15', sessions_today: 4, total_actions: 67 },
+        { user: 'Finance Manager', last_login: '2024-01-05 11:45', sessions_today: 2, total_actions: 23 },
+      ],
+      permission_usage: [
+        { permission: 'record_sales', usage_count: 245, users: ['Sales Rep', 'Lube Bay Manager'] },
+        { permission: 'approve_prf', usage_count: 67, users: ['Management', 'Finance Manager'] },
+        { permission: 'stock_transfer', usage_count: 34, users: ['Store Keeper', 'Management'] },
+      ],
+      audit_trail: [
+        { timestamp: '2024-01-05 16:30', user: 'Sales Rep Ahmed', action: 'Created PRF-2024-045', resource: 'PRF' },
+        { timestamp: '2024-01-05 15:45', user: 'Finance Manager', action: 'Approved lodgement LDG-2024-123', resource: 'Lodgement' },
+        { timestamp: '2024-01-05 14:20', user: 'Store Keeper Fatima', action: 'Transferred 200 units Engine Oil', resource: 'Inventory' },
+      ]
+    }
+  }
+
+  // Report Generation Endpoints
+  async generateReport(reportType: string, params?: any): Promise<any> {
+    await delay(2000) // Simulate report generation time
+
+    switch (reportType) {
+      case 'sales':
+        return this.getMockSalesReportsData()
+      case 'inventory':
+        return this.getMockInventoryReportsData()
+      case 'financial':
+        return this.getMockFinancialReportsData()
+      case 'operational':
+        return this.getMockOperationalReportsData()
+      case 'customer':
+        return this.getMockCustomerReportsData()
+      case 'user_activity':
+        return this.getMockUserActivityReportsData()
+      default:
+        throw new Error(`Report type '${reportType}' not supported`)
+    }
   }
 }
 
