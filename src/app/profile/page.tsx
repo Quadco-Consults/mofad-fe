@@ -30,6 +30,9 @@ import {
   RotateCw
 } from 'lucide-react'
 
+// Force dynamic rendering to avoid static generation issues
+export const dynamic = 'force-dynamic'
+
 interface ProfileFormData {
   firstName: string
   lastName: string

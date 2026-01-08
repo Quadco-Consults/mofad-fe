@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { useToast } from '@/hooks/useToast'
+import { useToast } from '@/components/ui/Toast'
 import mockApi from '@/lib/mockApi'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import {
@@ -872,7 +872,7 @@ export default function SubstoresPage() {
             <div className="p-6">
               <h3 className="text-lg font-semibold mb-2">Delete Substore</h3>
               <p className="text-gray-600 mb-4">
-                Are you sure you want to delete "{selectedSubstore?.name}"? This action cannot be undone.
+                Are you sure you want to delete &quot;{selectedSubstore?.name}&quot;? This action cannot be undone.
               </p>
               <div className="flex justify-end gap-3">
                 <Button

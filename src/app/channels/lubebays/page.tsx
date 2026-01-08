@@ -227,9 +227,9 @@ export default function LubebaysPage() {
   }
 
   const totalLubebays = lubebays.length
-  const activeLubebays = lubebays.filter(l => l.status === 'active').length
-  const totalRevenue = lubebays.reduce((sum, l) => sum + l.monthlyRevenue, 0)
-  const averageRating = lubebays.reduce((sum, l) => sum + l.rating, 0) / lubebays.length
+  const activeLubebays = lubebays.filter((l: Lubebay) => l.status === 'active').length
+  const totalRevenue = lubebays.reduce((sum: number, l: Lubebay) => sum + l.monthlyRevenue, 0)
+  const averageRating = lubebays.reduce((sum: number, l: Lubebay) => sum + l.rating, 0) / lubebays.length
 
   return (
     <AppLayout>
@@ -374,7 +374,7 @@ export default function LubebaysPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredLubebays.map((lubebay) => (
+                  {filteredLubebays.map((lubebay: Lubebay) => (
                     <tr key={lubebay.id} className="hover:bg-gray-50">
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
