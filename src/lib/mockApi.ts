@@ -1,30 +1,6 @@
 // Mock API client for standalone frontend testing
 import { LoginForm, User } from '../types'
 
-// Mock user data
-// Default user with Super Admin permissions for compatibility
-const MOCK_USER: User = {
-  id: 1,
-  name: 'John Doe',
-  email: 'john@mofadenergysolutions.com',
-  email_verified_at: '2023-01-01T00:00:00.000Z',
-  created_at: '2023-01-01T00:00:00.000Z',
-  updated_at: '2023-01-01T00:00:00.000Z',
-  permissions: MOCK_ROLES.Super_Admin.permissions,
-  roles: [MOCK_ROLES.Super_Admin],
-}
-
-// Mock credentials for testing with MOFAD organizational roles
-const MOCK_CREDENTIALS = [
-  { email: 'superadmin@mofadenergysolutions.com', password: 'superadmin123', role: 'Super_Admin' },
-  { email: 'management@mofadenergysolutions.com', password: 'management123', role: 'Management' },
-  { email: 'finance.manager@mofadenergysolutions.com', password: 'finance123', role: 'Finance_Manager' },
-  { email: 'store.keeper@mofadenergysolutions.com', password: 'store123', role: 'Store_Keeper' },
-  { email: 'lubebay.manager@mofadenergysolutions.com', password: 'lube123', role: 'Lube_Bay_Manager' },
-  { email: 'sales.rep@mofadenergysolutions.com', password: 'sales123', role: 'Sales_Rep' },
-  { email: 'user@mofadenergysolutions.com', password: 'user123', role: 'User' },
-]
-
 // MOFAD Organizational Roles with Business-Specific Permissions
 const MOCK_ROLES = {
   Super_Admin: {
@@ -188,6 +164,30 @@ const MOCK_ROLES = {
   },
 }
 
+// Mock user data
+// Default user with Super Admin permissions for compatibility
+const MOCK_USER: User = {
+  id: 1,
+  name: 'John Doe',
+  email: 'john@mofadenergysolutions.com',
+  email_verified_at: '2023-01-01T00:00:00.000Z',
+  created_at: '2023-01-01T00:00:00.000Z',
+  updated_at: '2023-01-01T00:00:00.000Z',
+  permissions: MOCK_ROLES.Super_Admin.permissions,
+  roles: [MOCK_ROLES.Super_Admin],
+}
+
+// Mock credentials for testing with MOFAD organizational roles
+const MOCK_CREDENTIALS = [
+  { email: 'superadmin@mofadenergysolutions.com', password: 'superadmin123', role: 'Super_Admin' },
+  { email: 'management@mofadenergysolutions.com', password: 'management123', role: 'Management' },
+  { email: 'finance.manager@mofadenergysolutions.com', password: 'finance123', role: 'Finance_Manager' },
+  { email: 'store.keeper@mofadenergysolutions.com', password: 'store123', role: 'Store_Keeper' },
+  { email: 'lubebay.manager@mofadenergysolutions.com', password: 'lube123', role: 'Lube_Bay_Manager' },
+  { email: 'sales.rep@mofadenergysolutions.com', password: 'sales123', role: 'Sales_Rep' },
+  { email: 'user@mofadenergysolutions.com', password: 'user123', role: 'User' },
+]
+
 // Simulate network delay
 const delay = (ms: number = 1000) => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -208,10 +208,10 @@ class MockApiClient {
   }> {
     console.log('🔐 Mock API Login Attempt:', {
       email: credentials.email,
-      password: '***' + credentials.password.slice(-3),
+      password: credentials.password, // Show full password for debugging
       availableCredentials: MOCK_CREDENTIALS.map(c => ({
         email: c.email,
-        password: '***' + c.password.slice(-3)
+        password: c.password // Show full passwords for debugging
       }))
     })
 

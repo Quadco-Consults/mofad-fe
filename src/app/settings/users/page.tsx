@@ -130,7 +130,7 @@ const mockUsers: User[] = [
 ]
 
 function UsersPage() {
-  const [users] = useState<User[]>(mockUsers)
+  const [users, setUsers] = useState<User[]>(mockUsers)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -139,9 +139,46 @@ function UsersPage() {
   const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [editForm, setEditForm] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   const roles = Array.from(new Set(users.map(u => u.role)))
   const departments = Array.from(new Set(users.map(u => u.department)))
+
+  // Available system roles with permissions
+  const systemRoles = [
+    { name: 'Super Admin', permissions: ['*'] },
+    { name: 'Admin', permissions: ['users:read', 'users:write', 'settings:read', 'settings:write', 'reports:read', 'reports:write'] },
+    { name: 'Sales Manager', permissions: ['sales:read', 'sales:write', 'customers:read', 'customers:write', 'reports:read', 'orders:read', 'orders:write'] },
+    { name: 'Finance Manager', permissions: ['accounts:read', 'accounts:write', 'reports:read', 'reports:write', 'approvals:write', 'payments:read', 'payments:write'] },
+    { name: 'Warehouse Manager', permissions: ['inventory:read', 'inventory:write', 'transfers:read', 'transfers:write', 'reports:read'] },
+    { name: 'HR Officer', permissions: ['users:read', 'users:write', 'hr:read', 'hr:write'] },
+    { name: 'Sales Representative', permissions: ['sales:read', 'customers:read', 'orders:read', 'orders:write'] },
+    { name: 'Accountant', permissions: ['accounts:read', 'transactions:read', 'reports:read'] },
+    { name: 'IT Support', permissions: ['system:read', 'users:read'] },
+    { name: 'Operations Manager', permissions: ['inventory:read', 'inventory:write', 'operations:read', 'operations:write', 'reports:read'] }
+  ]
+
+  const availableDepartments = [
+    'Sales & Marketing',
+    'Finance & Accounts',
+    'Operations',
+    'Human Resources',
+    'Information Technology',
+    'Administration',
+    'Management'
+  ]
+
+  const availableLocations = [
+    'Lagos',
+    'Abuja',
+    'Port Harcourt',
+    'Kano',
+    'Kaduna',
+    'Ibadan',
+    'Enugu'
+  ]
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -196,28 +233,102 @@ function UsersPage() {
 
   const handleEdit = (user: User) => {
     setSelectedUser(user)
+    setEditForm({ ...user })
     setShowEditModal(true)
   }
 
   const handleDelete = (userId: string) => {
     if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      console.log('Deleting user:', userId)
+      setUsers(users.filter(u => u.id !== userId))
+      setSuccessMessage('User deleted successfully')
+      setTimeout(() => setSuccessMessage(''), 3000)
     }
   }
 
   const handleSuspend = (userId: string) => {
     if (confirm('Are you sure you want to suspend this user?')) {
-      console.log('Suspending user:', userId)
+      setUsers(users.map(u =>
+        u.id === userId ? { ...u, status: 'suspended' as const } : u
+      ))
+      setSuccessMessage('User suspended successfully')
+      setTimeout(() => setSuccessMessage(''), 3000)
     }
   }
 
   const handleActivate = (userId: string) => {
-    console.log('Activating user:', userId)
+    setUsers(users.map(u =>
+      u.id === userId ? { ...u, status: 'active' as const } : u
+    ))
+    setSuccessMessage('User activated successfully')
+    setTimeout(() => setSuccessMessage(''), 3000)
+  }
+
+  const handleUpdateUser = async () => {
+    if (!editForm) return
+
+    setIsLoading(true)
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Update the user in the local state
+      setUsers(users.map(u =>
+        u.id === editForm.id ? editForm : u
+      ))
+
+      setSuccessMessage('User updated successfully')
+      setShowEditModal(false)
+      setEditForm(null)
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (error) {
+      console.error('Error updating user:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleRoleChange = (newRole: string) => {
+    if (!editForm) return
+
+    const selectedRole = systemRoles.find(role => role.name === newRole)
+    if (selectedRole) {
+      setEditForm({
+        ...editForm,
+        role: newRole,
+        permissions: selectedRole.permissions
+      })
+    }
+  }
+
+  const handlePermissionChange = (permission: string, checked: boolean) => {
+    if (!editForm) return
+
+    let newPermissions = [...editForm.permissions]
+    if (checked) {
+      if (!newPermissions.includes(permission)) {
+        newPermissions.push(permission)
+      }
+    } else {
+      newPermissions = newPermissions.filter(p => p !== permission)
+    }
+
+    setEditForm({
+      ...editForm,
+      permissions: newPermissions
+    })
   }
 
   return (
     <AppLayout>
       <div className="p-6 space-y-6">
+        {/* Success Message */}
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
+            <div className="h-2 w-2 bg-green-500 rounded-full mr-3"></div>
+            <p className="text-green-800 font-medium">{successMessage}</p>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -587,7 +698,214 @@ function UsersPage() {
               </div>
               <div className="flex gap-2 justify-end mt-6">
                 <Button variant="outline" onClick={() => setShowViewModal(false)}>Close</Button>
-                <Button className="mofad-btn-primary">Edit User</Button>
+                <Button
+                  className="mofad-btn-primary"
+                  onClick={() => {
+                    setShowViewModal(false)
+                    handleEdit(selectedUser)
+                  }}
+                >
+                  Edit User
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit User Modal */}
+        {showEditModal && editForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Edit User - {editForm.name}</h3>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Personal Information */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                      <input
+                        type="text"
+                        value={editForm.name}
+                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
+                      <input
+                        type="text"
+                        value={editForm.employeeId}
+                        onChange={(e) => setEditForm({ ...editForm, employeeId: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                      <input
+                        type="tel"
+                        value={editForm.phone}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Role & Department */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Role & Department</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                      <select
+                        value={editForm.role}
+                        onChange={(e) => handleRoleChange(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        {systemRoles.map(role => (
+                          <option key={role.name} value={role.name}>{role.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                      <select
+                        value={editForm.department}
+                        onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        {availableDepartments.map(dept => (
+                          <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                      <select
+                        value={editForm.status}
+                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value as 'active' | 'inactive' | 'suspended' })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="suspended">Suspended</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location & Supervisor */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Location & Reporting</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                      <select
+                        value={editForm.location}
+                        onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        {availableLocations.map(location => (
+                          <option key={location} value={location}>{location}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Supervisor</label>
+                      <input
+                        type="text"
+                        value={editForm.supervisor || ''}
+                        onChange={(e) => setEditForm({ ...editForm, supervisor: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Enter supervisor name or position"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Permissions */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Permissions</h4>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Permissions are automatically assigned based on role. You can customize them if needed.
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {[
+                        'sales:read', 'sales:write', 'customers:read', 'customers:write',
+                        'accounts:read', 'accounts:write', 'reports:read', 'reports:write',
+                        'inventory:read', 'inventory:write', 'users:read', 'users:write',
+                        'orders:read', 'orders:write', 'approvals:write', 'hr:read', 'hr:write'
+                      ].map((permission) => (
+                        <label key={permission} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={editForm.permissions.includes(permission) || editForm.permissions.includes('*')}
+                            onChange={(e) => handlePermissionChange(permission, e.target.checked)}
+                            disabled={editForm.permissions.includes('*')}
+                            className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          />
+                          <span className="text-sm text-gray-700">{permission}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {editForm.permissions.includes('*') && (
+                      <p className="text-sm text-amber-600 mt-2">
+                        * This user has full system access (Super Admin)
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 justify-end mt-8 pt-6 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEditModal(false)
+                    setEditForm(null)
+                  }}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="mofad-btn-primary"
+                  onClick={handleUpdateUser}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Updating...
+                    </>
+                  ) : (
+                    'Update User'
+                  )}
+                </Button>
               </div>
             </div>
           </div>

@@ -28,7 +28,19 @@ import {
   Sparkles,
   ArrowUpRight,
   Activity,
-  Truck
+  Truck,
+  Shield,
+  Box,
+  Coffee,
+  FileCheck,
+  FileX,
+  Clipboard,
+  ClipboardPenLine,
+  Wrench,
+  Fuel,
+  MapPin,
+  Calendar,
+  AlertTriangle
 } from 'lucide-react'
 
 interface NavItem {
@@ -155,6 +167,49 @@ const navigation: NavItem[] = [
     ],
   },
   {
+    label: 'Admin',
+    href: '/admin',
+    icon: Shield,
+    color: 'from-red-500 to-rose-500',
+    children: [
+      {
+        label: 'Inventory Management',
+        href: '/admin/inventory-management',
+        icon: Box,
+        children: [
+          { label: 'Assets', href: '/admin/inventory-management/assets', icon: Box },
+          { label: 'Consumables', href: '/admin/inventory-management/consumables', icon: Coffee },
+          { label: 'Item Requisition', href: '/admin/inventory-management/requisitions', icon: ClipboardPenLine },
+        ],
+      },
+      {
+        label: 'Fleet Management',
+        href: '/admin/fleet-management',
+        icon: Truck,
+        children: [
+          { label: 'Vehicle Registry', href: '/admin/fleet-management/vehicles', icon: Truck },
+          { label: 'Fuel Management', href: '/admin/fleet-management/fuel', icon: Fuel },
+          { label: 'Vehicle Assignment', href: '/admin/fleet-management/assignments', icon: MapPin },
+          { label: 'Trip Logs', href: '/admin/fleet-management/trips', icon: Calendar },
+          { label: 'Vehicle Reports', href: '/admin/fleet-management/reports', icon: ClipboardCheck },
+        ],
+      },
+      {
+        label: 'Maintenance',
+        href: '/admin/maintenance',
+        icon: Wrench,
+        children: [
+          { label: 'Maintenance Schedule', href: '/admin/maintenance/schedule', icon: Calendar },
+          { label: 'Work Orders', href: '/admin/maintenance/work-orders', icon: ClipboardList },
+          { label: 'Preventive Maintenance', href: '/admin/maintenance/preventive', icon: Wrench },
+          { label: 'Equipment History', href: '/admin/maintenance/history', icon: BookOpen },
+          { label: 'Service Providers', href: '/admin/maintenance/providers', icon: Users },
+        ],
+      },
+      { label: 'Memo', href: '/admin/memo', icon: FileCheck },
+    ],
+  },
+  {
     label: 'Settings',
     href: '/settings',
     icon: Settings,
@@ -219,69 +274,76 @@ export function Sidebar({ collapsed }: SidebarProps) {
         <div
           className={cn(
             "relative flex items-center group cursor-pointer transition-all duration-300 ease-out",
-            depth === 0 ? "mx-3 mb-1" : "ml-6 mr-3 mb-1",
+            depth === 0 ? "mx-2 mb-1.5" : "ml-8 mr-2 mb-1",
             collapsed && depth === 0 ? "justify-center" : "justify-between"
           )}
           onMouseEnter={() => setHoveredItem(item.href)}
           onMouseLeave={() => setHoveredItem(null)}
           onClick={() => hasChildren ? toggleExpanded(item.href) : null}
         >
-          {/* Background with gradient and glassmorphism */}
+          {/* Enhanced Background with better shadows */}
           <div className={cn(
             "absolute inset-0 rounded-2xl transition-all duration-500 ease-out",
             isActive
-              ? `bg-gradient-to-r ${item.color} shadow-lg shadow-current/25`
+              ? `bg-gradient-to-r ${item.color} shadow-lg shadow-green-500/25 border border-green-400/20`
               : isHovered
-                ? "bg-white/60 backdrop-blur-sm shadow-lg shadow-black/5 border border-white/20"
-                : "hover:bg-white/40 hover:backdrop-blur-sm"
+                ? "bg-gradient-to-r from-white to-slate-50 shadow-md shadow-slate-200/50 border border-slate-200/40 backdrop-blur-sm"
+                : "hover:bg-gradient-to-r hover:from-slate-50/70 hover:to-white hover:shadow-sm hover:border hover:border-slate-200/30"
           )}></div>
 
-          {/* Content */}
+          {/* Enhanced Content */}
           <Link
             href={hasChildren ? '#' : item.href}
             className={cn(
-              "relative flex items-center w-full px-4 py-3 text-sm font-medium rounded-2xl transition-all duration-300",
+              "relative flex items-center w-full rounded-2xl transition-all duration-300",
               isActive ? "text-white" : "text-slate-700 hover:text-slate-900",
-              depth > 0 && "pl-3 py-2.5 text-sm font-normal"
+              depth === 0 ? "px-4 py-3.5" : "px-3 py-3",
+              depth > 0 && "text-sm font-normal"
             )}
             onClick={(e) => hasChildren && e.preventDefault()}
           >
-            {/* Icon with gradient background */}
+            {/* Enhanced Icon with better styling */}
             <div className={cn(
-              "flex items-center justify-center rounded-xl transition-all duration-300",
+              "flex items-center justify-center rounded-xl transition-all duration-300 flex-shrink-0",
               isActive
-                ? "bg-white/20 text-white shadow-lg"
-                : "bg-transparent text-slate-600",
-              depth === 0 ? "w-10 h-10" : "w-7 h-7",
-              collapsed && depth === 0 ? "mr-0" : depth > 0 ? "mr-2.5" : "mr-3"
+                ? "bg-white/25 text-white shadow-lg shadow-white/25 backdrop-blur-sm border border-white/20"
+                : isHovered
+                  ? "bg-slate-100/80 text-slate-700 shadow-sm border border-slate-200/50"
+                  : "bg-slate-100/40 text-slate-600 border border-transparent",
+              depth === 0 ? "w-11 h-11" : "w-8 h-8",
+              collapsed && depth === 0 ? "mr-0" : depth > 0 ? "mr-3" : "mr-4"
             )}>
               <Icon className={cn(
                 "transition-all duration-300",
-                depth === 0 ? "w-5 h-5" : "w-3.5 h-3.5",
-                isActive && "animate-pulse"
+                depth === 0 ? "w-5 h-5" : "w-4 h-4",
+                isActive && "scale-110"
               )} />
             </div>
 
-            {/* Label and badges */}
+            {/* Enhanced Label and badges */}
             {(!collapsed || depth > 0) && (
               <div className="flex items-center justify-between flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="truncate">{item.label}</span>
+                <div className="flex items-center gap-2.5">
+                  <span className={cn(
+                    "truncate font-medium tracking-wide",
+                    depth === 0 ? "text-sm" : "text-xs",
+                    isActive ? "font-semibold" : "font-medium"
+                  )}>{item.label}</span>
                   {item.isNew && (
-                    <div className="flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-500" />
-                      <span className="text-xs bg-gradient-to-r from-amber-400 to-orange-400 text-white px-1.5 py-0.5 rounded-full font-bold">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                      <span className="text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">
                         NEW
                       </span>
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {item.badge && (
                     <span className={cn(
-                      "bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center",
-                      depth > 0 ? "text-xs px-1.5 py-0.5 min-w-[18px]" : "animate-pulse"
+                      "bg-gradient-to-r from-red-500 to-red-600 text-white font-bold rounded-full min-w-[20px] text-center shadow-sm border border-red-400/20",
+                      depth > 0 ? "text-[10px] px-1.5 py-0.5 min-w-[18px]" : "text-xs px-2 py-1 animate-pulse"
                     )}>
                       {item.badge}
                     </span>
@@ -289,9 +351,10 @@ export function Sidebar({ collapsed }: SidebarProps) {
 
                   {hasChildren && (
                     <ChevronRight className={cn(
-                      "w-4 h-4 transition-all duration-300",
+                      "transition-all duration-300 flex-shrink-0",
+                      depth === 0 ? "w-4 h-4" : "w-3.5 h-3.5",
                       isExpanded && "rotate-90",
-                      isActive ? "text-white" : "text-slate-400"
+                      isActive ? "text-white/80" : "text-slate-400 group-hover:text-slate-600"
                     )} />
                   )}
                 </div>
@@ -308,12 +371,28 @@ export function Sidebar({ collapsed }: SidebarProps) {
           )}
         </div>
 
-        {/* Submenu with smooth animation */}
+        {/* Enhanced Submenu with better animation and styling */}
         {hasChildren && isExpanded && !collapsed && (
           <div className="overflow-hidden">
-            <div className="animate-in slide-in-from-top-2 duration-300 ease-out">
-              <div className="ml-6 border-l-2 border-slate-200/50 pl-6 py-3 space-y-3">
-                {item.children?.map((child) => renderNavItem(child, depth + 1))}
+            <div className="animate-in slide-in-from-top-2 duration-500 ease-out">
+              <div className="relative ml-8 mt-2 mb-3">
+                {/* Vertical connecting line */}
+                <div className="absolute left-3 top-0 bottom-0 w-px bg-gradient-to-b from-slate-300 via-slate-200 to-transparent"></div>
+
+                {/* Submenu items */}
+                <div className="space-y-0.5 pl-6">
+                  {item.children?.map((child, index) => (
+                    <div key={child.href} className="relative">
+                      {/* Horizontal connecting line */}
+                      <div className="absolute -left-6 top-1/2 w-6 h-px bg-gradient-to-r from-slate-300 to-transparent"></div>
+
+                      {/* Connecting dot */}
+                      <div className="absolute -left-7 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-slate-300 rounded-full border-2 border-white shadow-sm"></div>
+
+                      {renderNavItem(child, depth + 1)}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -324,63 +403,88 @@ export function Sidebar({ collapsed }: SidebarProps) {
 
   return (
     <div className={cn(
-      "relative h-full flex flex-col transition-all duration-300 ease-out bg-white border-r border-gray-200",
-      collapsed ? "w-20" : "w-72"
+      "relative h-full flex flex-col transition-all duration-300 ease-out",
+      "bg-gradient-to-b from-slate-50 to-white border-r border-slate-200/60 shadow-sm",
+      collapsed ? "w-20" : "w-80"
     )}>
-      {/* Clean White Background */}
-      <div className="absolute inset-0 bg-white"></div>
+      {/* Enhanced Background with subtle gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-50 via-white to-slate-50/30"></div>
+
+      {/* Subtle overlay pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)]"></div>
 
       {/* Content */}
       <div className="relative h-full flex flex-col">
-        {/* Logo Area */}
-        <div className="flex items-center px-6 py-6 border-b border-gray-200">
+        {/* Enhanced Logo Area */}
+        <div className={cn(
+          "flex items-center border-b border-slate-200/50 bg-gradient-to-r from-white to-slate-50/50",
+          collapsed ? "px-4 py-6 justify-center" : "px-6 py-6"
+        )}>
           <div className="flex items-center gap-3">
             {!collapsed && (
               <div className="flex items-center">
-                <img
-                  src="/modah_logo-removebg-preview.png"
-                  alt="MOFAD Energy Solutions"
-                  className="h-12 w-auto"
-                />
-                <div className="ml-3">
-                  <h1 className="text-lg font-bold text-gray-900">MOFAD Energy Solutions</h1>
-                  <p className="text-xs text-gray-500 font-medium">Enterprise ERP</p>
+                <div className="relative">
+                  <img
+                    src="/modah_logo-removebg-preview.png"
+                    alt="MOFAD Energy Solutions"
+                    className="h-14 w-auto drop-shadow-sm"
+                  />
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
+                </div>
+                <div className="ml-4">
+                  <h1 className="text-xl font-bold text-slate-900 leading-tight">MOFAD Energy</h1>
+                  <p className="text-sm text-slate-600 font-medium">Enterprise ERP System</p>
                 </div>
               </div>
             )}
 
             {collapsed && (
-              <div className="flex items-center justify-center">
+              <div className="relative">
                 <img
                   src="/modah_logo-removebg-preview.png"
                   alt="MOFAD"
-                  className="h-8 w-auto"
+                  className="h-10 w-auto drop-shadow-sm"
                 />
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white shadow-sm animate-pulse"></div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 py-4 overflow-y-auto">
-          <div className="px-4 space-y-2">
+        {/* Enhanced Navigation */}
+        <nav className="flex-1 py-6 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+          <div className={cn(
+            "space-y-1",
+            collapsed ? "px-3" : "px-5"
+          )}>
             {navigation.map((item) => renderNavItem(item))}
           </div>
         </nav>
 
-        {/* Footer */}
+        {/* Enhanced Footer with better design */}
         {!collapsed && (
-          <div className="p-4 border-t border-white/10">
-            <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl border border-white/20">
-              <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-slate-700">System Status</p>
-                <p className="text-xs text-green-600 flex items-center gap-1">
-                  <span>Online</span>
-                  <ArrowUpRight className="w-3 h-3" />
-                </p>
+          <div className="p-5 border-t border-slate-200/50">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-600/10 border border-green-200/50 backdrop-blur-sm">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5"></div>
+              <div className="relative flex items-center gap-4 p-4">
+                <div className="flex-shrink-0">
+                  <div className="relative">
+                    <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                      <Activity className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow-sm animate-ping"></div>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800">System Status</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <p className="text-sm text-green-700 font-medium">All Systems Online</p>
+                  </div>
+                </div>
+                <div className="flex-shrink-0">
+                  <ArrowUpRight className="w-5 h-5 text-green-600" />
+                </div>
               </div>
             </div>
           </div>

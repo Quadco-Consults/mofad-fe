@@ -1,19 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-// Import both API clients for flexibility
-import mockApi from '@/lib/mockApi'
-import apiClient from '@/lib/apiClient'
+// Use the unified API client
+import api from '@/lib/api-client'
 import { User, LoginForm } from '@/types'
-
-// Use real Django API by default, fallback to mock if needed
-const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API !== 'false'
-const api = USE_REAL_API ? apiClient : mockApi
-
-// Debug logging to console
-console.log('🔧 Auth Store Configuration:')
-console.log('  NEXT_PUBLIC_USE_REAL_API:', process.env.NEXT_PUBLIC_USE_REAL_API)
-console.log('  USE_REAL_API:', USE_REAL_API)
-console.log('  API Client Selected:', USE_REAL_API ? 'Real API' : 'Mock API')
 
 interface AuthState {
   user: User | null

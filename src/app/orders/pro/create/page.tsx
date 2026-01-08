@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -205,12 +205,14 @@ const saveMockPROs = (pros: any[]) => {
 
 export default function CreatePROPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null)
   const [supplierProducts, setSupplierProducts] = useState<any[]>([])
   const isSubmittingRef = useRef(false)
+  const [memoData, setMemoData] = useState<any>(null)
 
   const [formData, setFormData] = useState<PROFormData>({
     supplier: 0,
@@ -244,6 +246,55 @@ export default function CreatePROPage() {
       estimated_total: total
     }))
   }, [formData.items])
+
+  // Handle memo data from query parameters
+  useEffect(() => {
+    const fromMemo = searchParams.get('fromMemo')
+    const memoDataParam = searchParams.get('memoData')
+
+    if (fromMemo === 'true' && memoDataParam) {
+      try {
+        const parsedMemoData = JSON.parse(memoDataParam)
+        setMemoData(parsedMemoData)
+
+        // Pre-populate form with memo data
+        if (parsedMemoData.items && parsedMemoData.items.length > 0) {
+          // Convert memo items to PRO items format
+          const proItems: PROItem[] = parsedMemoData.items.map((item: any, index: number) => ({
+            id: Date.now() + index,
+            product_name: item.description,
+            product_code: `MEMO-${item.id}`,
+            unit_price: item.unitCost,
+            quantity: item.quantity || 1,
+            total_amount: item.totalCost || item.unitCost,
+            unit: item.unit || 'Unit',
+            notes: item.specifications || `From memo: ${parsedMemoData.memoNumber}`
+          }))
+
+          setFormData(prev => ({
+            ...prev,
+            items: proItems,
+            notes: `Created from Memo: ${parsedMemoData.memoNumber} - ${parsedMemoData.purpose}`,
+            order_reference: `MEM-${parsedMemoData.memoNumber.replace('MEM-', '')}-${Date.now().toString().slice(-4)}`
+          }))
+        }
+
+        // Show success message
+        addToast({
+          title: 'Memo Loaded',
+          description: `PRO form pre-populated with data from ${parsedMemoData.memoNumber}`,
+          type: 'success'
+        })
+      } catch (error) {
+        console.error('Error parsing memo data:', error)
+        addToast({
+          title: 'Error',
+          description: 'Failed to load memo data',
+          type: 'error'
+        })
+      }
+    }
+  }, [searchParams, addToast])
 
 
   const handleAddProduct = (product: any) => {
@@ -331,9 +382,11 @@ export default function CreatePROPage() {
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       const existingPROs = getMockPROs()
+      const proNumber = `PRO-${new Date().getFullYear()}-${String(existingPROs.length + 1).padStart(4, '0')}`
+
       const newPRO = {
         id: Date.now(),
-        pro_number: `PRO-${new Date().getFullYear()}-${String(existingPROs.length + 1).padStart(4, '0')}`,
+        pro_number: proNumber,
         supplier_id: formData.supplier,
         supplier_name: formData.supplier_name,
         order_date: formData.order_date,
@@ -346,16 +399,34 @@ export default function CreatePROPage() {
         status,
         created_at: new Date().toISOString(),
         created_by: 'Admin User',
-        supplier_details: selectedSupplier
+        supplier_details: selectedSupplier,
+        // Add memo linking information
+        linkedMemoId: memoData?.memoId,
+        linkedMemoNumber: memoData?.memoNumber
       }
 
       const updatedPROs = [...existingPROs, newPRO]
       saveMockPROs(updatedPROs)
 
+      // Update memo linkage if this PRO was created from a memo
+      if (memoData) {
+        try {
+          // In a real app, this would be an API call to update the memo
+          // For now, we'll update localStorage where memo data might be stored
+          // This is a simplified implementation - in reality, you'd have proper memo management
+          console.log('Linking PRO to memo:', { memoId: memoData.memoId, proNumber })
+        } catch (error) {
+          console.error('Error updating memo linkage:', error)
+        }
+      }
+
       console.log('PRO created successfully:', newPRO)
 
       addToast({
         title: status === 'draft' ? 'PRO saved as draft successfully!' : 'PRO submitted successfully!',
+        description: memoData
+          ? `PRO ${proNumber} created and linked to memo ${memoData.memoNumber}`
+          : undefined,
         type: 'success'
       })
 
@@ -406,6 +477,36 @@ export default function CreatePROPage() {
             </div>
           </div>
         </div>
+
+        {/* Memo Information Banner */}
+        {memoData && (
+          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-full">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-blue-900">
+                    Creating PRO from Approved Memo
+                  </h3>
+                  <p className="text-sm text-blue-700">
+                    Form pre-populated with data from memo {memoData.memoNumber}: {memoData.title}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Requested by: {memoData.requestedBy} | Department: {memoData.department} | Purpose: {memoData.purpose}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-blue-900">
+                    {formatCurrency(memoData.totalAmount)}
+                  </p>
+                  <p className="text-xs text-blue-600">Total Amount</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form */}
