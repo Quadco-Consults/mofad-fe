@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Eye, Building, DollarSign, TrendingUp, Calendar, Package, Download, RefreshCw } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import { Pagination } from '@/components/ui/Pagination'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 
 const getStatusBadge = (status: string) => {
@@ -43,17 +44,24 @@ const getSupplierTypeBadge = (type: string) => {
 export default function SuppliersTransactionsPage() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
 
   // Fetch suppliers
   const { data: suppliersData, isLoading: suppliersLoading, error: suppliersError, refetch } = useQuery({
     queryKey: ['suppliers'],
-    queryFn: () => mockApi.get('/suppliers')
+    queryFn: () => apiClient.get('/suppliers')
   })
 
   // Fetch supplier transactions summary
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
     queryKey: ['suppliers-transactions-summary'],
-    queryFn: () => mockApi.get('/suppliers/transactions/summary')
+    queryFn: () => apiClient.get('/suppliers/transactions/summary')
   })
 
   // Handle both array and paginated responses
@@ -81,13 +89,19 @@ export default function SuppliersTransactionsPage() {
   })
 
   // Filter suppliers based on search
-  const filteredSuppliers = suppliersWithTransactions.filter((supplier: any) => {
+  const allFilteredSuppliers = suppliersWithTransactions.filter((supplier: any) => {
     if (!supplier) return false
     const matchesSearch = (supplier.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (supplier.contact_person || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (supplier.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     return matchesSearch
   })
+
+  // Pagination calculations
+  const totalCount = allFilteredSuppliers.length
+  const totalPages = Math.ceil(totalCount / pageSize) || 1
+  const startIndex = (currentPage - 1) * pageSize
+  const filteredSuppliers = allFilteredSuppliers.slice(startIndex, startIndex + pageSize)
 
   const handleViewTransactions = (supplier: any) => {
     router.push(`/suppliers/transactions/${supplier.id}`)
@@ -315,6 +329,19 @@ export default function SuppliersTransactionsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {!suppliersLoading && totalCount > 0 && (
+          <Card>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
+          </Card>
+        )}
       </div>
     </AppLayout>
   )

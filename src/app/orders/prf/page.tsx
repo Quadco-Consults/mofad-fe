@@ -1,11 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Checkbox } from '@/components/ui/Checkbox'
+import { Pagination } from '@/components/ui/Pagination'
+import { BulkActionBar } from '@/components/ui/BulkActionBar'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useSelection } from '@/hooks/useSelection'
 import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
@@ -90,9 +95,10 @@ const getPriorityBadge = (priority: string) => {
     urgent: 'bg-red-100 text-red-800',
   }
 
+  const displayPriority = priority || 'medium'
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[priority] || colors.medium}`}>
-      {priority?.charAt(0).toUpperCase() + priority?.slice(1)}
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[displayPriority] || colors.medium}`}>
+      {displayPriority.charAt(0).toUpperCase() + displayPriority.slice(1)}
     </span>
   )
 }
@@ -143,15 +149,26 @@ export default function PRFPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve')
   const [rejectionReason, setRejectionReason] = useState('')
   const [selectedPRF, setSelectedPRF] = useState<PRF | null>(null)
   const [formData, setFormData] = useState<PRFFormData>(initialFormData)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+
+  // Selection hook for bulk operations
+  const selection = useSelection<PRF>()
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, priorityFilter])
 
   // Helper functions for localStorage management
   const getMockPRFs = (): PRF[] => {
@@ -243,7 +260,7 @@ export default function PRFPage() {
 
   // Fetch PRFs (use mock data when backend is disabled)
   const { data: prfData, isLoading, error, refetch } = useQuery({
-    queryKey: ['prfs', searchTerm, statusFilter, priorityFilter],
+    queryKey: ['prfs', searchTerm, statusFilter, priorityFilter, currentPage, pageSize],
     queryFn: async () => {
       if (!USE_REAL_API) {
         // Use localStorage mock data directly when mock mode is enabled
@@ -270,13 +287,13 @@ export default function PRFPage() {
         return filteredPRFs
       }
 
-      // Only try real API when explicitly enabled
+      // Use real API
       try {
-        const params: Record<string, string> = {}
-        if (statusFilter !== 'all') params.status = statusFilter
-        if (priorityFilter !== 'all') params.priority = priorityFilter
-        if (searchTerm) params.search = searchTerm
-        return apiClient.get<PRF[]>('/prfs/', params)
+        return await apiClient.getPrfs({
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+          search: searchTerm || undefined,
+        })
       } catch (error) {
         // Fallback to mock data if real API fails
         console.log('🔧 Real API failed, falling back to localStorage mock data')
@@ -537,10 +554,27 @@ export default function PRFPage() {
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
-  const prfs = Array.isArray(prfData) ? prfData : []
-  const warehouses = Array.isArray(warehousesData) ? warehousesData : []
-  const customers = Array.isArray(customersData) ? customersData : []
-  const products = Array.isArray(productsData) ? productsData : []
+  // Helper to extract array from API response (handles paginated and direct array responses)
+  const extractResults = (data: any) => {
+    if (!data) return []
+    if (Array.isArray(data)) return data
+    if (data.results && Array.isArray(data.results)) return data.results
+    return []
+  }
+
+  const allPrfs = extractResults(prfData)
+  const warehouses = extractResults(warehousesData)
+  const customers = extractResults(customersData)
+  const products = extractResults(productsData)
+
+  // Pagination calculations
+  const totalCount = prfData?.paginator?.count || prfData?.count || allPrfs.length
+  const totalPages = prfData?.paginator?.total_pages || Math.ceil(totalCount / pageSize) || 1
+
+  // Apply client-side pagination for mock data
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const prfs = USE_REAL_API ? allPrfs : allPrfs.slice(startIndex, endIndex)
 
   // Debug logging to help identify issues
   console.log('Dropdown Data Debug:', {
@@ -554,6 +588,28 @@ export default function PRFPage() {
     customersError,
     productsError
   })
+
+  // Helper function to transform form data to API format
+  const transformFormDataToApiFormat = (data: PRFFormData) => {
+    return {
+      title: `Customer Order - ${data.customer_name || 'Unknown Customer'}`,
+      description: data.notes || 'Customer purchase order',
+      department: 'Sales',
+      purpose: `Purchase requisition for customer order ${data.order_reference || ''}`,
+      priority: data.priority,
+      delivery_location: data.customer_location || undefined,
+      expected_delivery_date: data.order_date,
+      estimated_total: data.estimated_total,
+      client_type: 'customer',
+      client_id: data.customer || undefined,
+      items: data.items.map(item => ({
+        product: item.product,
+        quantity_requested: item.quantity,
+        unit_price_estimate: item.unit_price,
+        specifications: item.notes || '',
+      }))
+    }
+  }
 
   // Create PRF mutation (with localStorage fallback)
   const createMutation = useMutation({
@@ -597,7 +653,8 @@ export default function PRFPage() {
 
       // Only try real API when explicitly enabled
       try {
-        return await apiClient.post<PRF>('/prfs/', data)
+        const apiData = transformFormDataToApiFormat(data)
+        return await apiClient.createPrf(apiData)
       } catch (error) {
         // Fallback to localStorage when real API is not available
         console.log('🔧 Creating PRF in localStorage (real API not available)')
@@ -651,7 +708,8 @@ export default function PRFPage() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<PRFFormData> }) => {
       try {
-        return await apiClient.patch<PRF>(`/prfs/${id}/`, data)
+        const apiData = transformFormDataToApiFormat(data as PRFFormData)
+        return await apiClient.updatePrf(id, apiData)
       } catch (error) {
         // Fallback to localStorage when backend is not available
         console.log('🔧 Updating PRF in localStorage (backend not available)')
@@ -706,7 +764,7 @@ export default function PRFPage() {
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       try {
-        return await apiClient.delete(`/prfs/${id}/`)
+        return await apiClient.deletePrf(id)
       } catch (error) {
         // Fallback to localStorage when backend is not available
         console.log('🔧 Deleting PRF in localStorage (backend not available)')
@@ -729,11 +787,58 @@ export default function PRFPage() {
     },
   })
 
+  // Bulk delete PRF mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: (number | string)[]) => {
+      if (!USE_REAL_API) {
+        // Use localStorage for mock mode
+        console.log('🔧 Bulk deleting PRFs in localStorage (mock mode)')
+        const existingPRFs = getMockPRFs()
+        const filteredPRFs = existingPRFs.filter(p => !ids.includes(p.id))
+        saveMockPRFs(filteredPRFs)
+        return { deleted_count: ids.length, failed_count: 0 }
+      }
+
+      try {
+        return await apiClient.post('/prfs/bulk-delete/', { ids })
+      } catch (error) {
+        // Fallback to localStorage
+        console.log('🔧 Bulk deleting PRFs in localStorage (API failed)')
+        const existingPRFs = getMockPRFs()
+        const filteredPRFs = existingPRFs.filter(p => !ids.includes(p.id))
+        saveMockPRFs(filteredPRFs)
+        return { deleted_count: ids.length, failed_count: 0 }
+      }
+    },
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ['prfs'] })
+      setShowBulkDeleteModal(false)
+      selection.clearSelection()
+
+      if (response?.failed_count > 0) {
+        addToast({
+          type: 'warning',
+          title: 'Partial Success',
+          message: `Deleted ${response.deleted_count} PRFs. ${response.failed_count} failed.`
+        })
+      } else {
+        addToast({
+          type: 'success',
+          title: 'Success',
+          message: `Successfully deleted ${response?.deleted_count || selection.selectedCount} PRFs`
+        })
+      }
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to delete PRFs' })
+    },
+  })
+
   // Submit PRF mutation (with localStorage fallback)
   const submitMutation = useMutation({
     mutationFn: async (id: number) => {
       try {
-        return await apiClient.post<PRF>(`/prfs/${id}/submit/`)
+        return await apiClient.submitPrf(id)
       } catch (error) {
         // Fallback to localStorage when backend is not available
         console.log('🔧 Submitting PRF in localStorage (backend not available)')
@@ -771,7 +876,7 @@ export default function PRFPage() {
   const approveMutation = useMutation({
     mutationFn: async (id: number) => {
       try {
-        return await apiClient.post<PRF>(`/prfs/${id}/approve/`)
+        return await apiClient.approvePrf(id)
       } catch (error) {
         // Fallback to localStorage when backend is not available
         console.log('🔧 Approving PRF in localStorage (backend not available)')
@@ -811,7 +916,7 @@ export default function PRFPage() {
   const rejectMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
       try {
-        return await apiClient.post<PRF>(`/prfs/${id}/reject/`, { reason })
+        return await apiClient.rejectPrf(id, reason)
       } catch (error) {
         // Fallback to localStorage when backend is not available
         console.log('🔧 Rejecting PRF in localStorage (backend not available)')
@@ -1225,6 +1330,13 @@ export default function PRFPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
+                      <th className="w-12 py-3 px-4">
+                        <Checkbox
+                          checked={selection.isAllSelected(prfs)}
+                          indeterminate={selection.isPartiallySelected(prfs)}
+                          onChange={() => selection.toggleAll(prfs)}
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">PRF Number</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Description</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Customer</th>
@@ -1237,7 +1349,13 @@ export default function PRFPage() {
                   </thead>
                   <tbody>
                     {prfs.map((prf: PRF) => (
-                      <tr key={prf.id} className="border-b border-border hover:bg-muted/50">
+                      <tr key={prf.id} className={`border-b border-border hover:bg-muted/50 ${selection.isSelected(prf.id) ? 'bg-primary/5' : ''}`}>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selection.isSelected(prf.id)}
+                            onChange={() => selection.toggle(prf.id)}
+                          />
+                        </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center">
                             {getStatusIcon(prf.status)}
@@ -1307,6 +1425,18 @@ export default function PRFPage() {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Pagination */}
+                {totalCount > 0 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalCount={totalCount}
+                    pageSize={pageSize}
+                    onPageChange={setCurrentPage}
+                    className="border-t border-border"
+                  />
+                )}
               </div>
             )}
           </CardContent>
@@ -1879,6 +2009,27 @@ export default function PRFPage() {
             </div>
           </div>
         )}
+
+        {/* Bulk Delete Confirmation Modal */}
+        <ConfirmDialog
+          open={showBulkDeleteModal}
+          onClose={() => setShowBulkDeleteModal(false)}
+          onConfirm={() => bulkDeleteMutation.mutate(selection.selectedIds)}
+          title="Delete Multiple PRFs"
+          message={`Are you sure you want to delete ${selection.selectedCount} PRF${selection.selectedCount > 1 ? 's' : ''}? This action cannot be undone.`}
+          confirmText={`Delete ${selection.selectedCount} PRF${selection.selectedCount > 1 ? 's' : ''}`}
+          variant="danger"
+          isLoading={bulkDeleteMutation.isPending}
+        />
+
+        {/* Bulk Action Bar */}
+        <BulkActionBar
+          selectedCount={selection.selectedCount}
+          onClearSelection={selection.clearSelection}
+          onBulkDelete={() => setShowBulkDeleteModal(true)}
+          isDeleting={bulkDeleteMutation.isPending}
+          entityName="PRF"
+        />
       </div>
     </AppLayout>
   )

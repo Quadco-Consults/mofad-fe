@@ -1,109 +1,125 @@
 'use client'
 
-import { useState } from 'react'
-import { Save, Settings, Database, Mail, Shield, Globe, Bell, CreditCard } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Save, Settings, Database, Mail, Shield, Globe, Bell, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { useToast } from '@/components/ui/Toast'
+import apiClient from '@/lib/apiClient'
 
-interface SystemSettings {
-  general: {
-    companyName: string
-    companyEmail: string
-    companyPhone: string
-    address: string
-    timezone: string
-    dateFormat: string
-    currency: string
-    language: string
-  }
-  notifications: {
-    emailNotifications: boolean
-    smsNotifications: boolean
-    pushNotifications: boolean
-    lowStockAlerts: boolean
-    paymentAlerts: boolean
-    systemMaintenanceAlerts: boolean
-  }
-  security: {
-    sessionTimeout: number
-    passwordPolicy: string
-    twoFactorAuth: boolean
-    loginAttempts: number
-    accountLockout: number
-  }
-  backup: {
-    autoBackup: boolean
-    backupFrequency: string
-    backupRetention: number
-    lastBackup: string
-  }
-  integrations: {
-    bankingApi: boolean
-    smsProvider: string
-    emailProvider: string
-    paymentGateway: string
-  }
-}
-
-const mockSystemSettings: SystemSettings = {
-  general: {
-    companyName: 'MOFAD Energy Solutions Limited',
-    companyEmail: 'info@mofadenergysolutions.com',
-    companyPhone: '+234 809 123 4567',
-    address: 'Plot 45, Admiralty Way, Lekki Phase 1, Lagos, Nigeria',
-    timezone: 'Africa/Lagos',
-    dateFormat: 'DD/MM/YYYY',
-    currency: 'NGN',
-    language: 'English'
-  },
-  notifications: {
-    emailNotifications: true,
-    smsNotifications: true,
-    pushNotifications: false,
-    lowStockAlerts: true,
-    paymentAlerts: true,
-    systemMaintenanceAlerts: true
-  },
-  security: {
-    sessionTimeout: 60,
-    passwordPolicy: 'strong',
-    twoFactorAuth: false,
-    loginAttempts: 3,
-    accountLockout: 15
-  },
-  backup: {
-    autoBackup: true,
-    backupFrequency: 'daily',
-    backupRetention: 30,
-    lastBackup: '2024-12-16T02:00:00Z'
-  },
-  integrations: {
-    bankingApi: true,
-    smsProvider: 'Termii',
-    emailProvider: 'SendGrid',
-    paymentGateway: 'Paystack'
-  }
+interface SystemSettingsData {
+  id: number
+  company_name: string
+  company_address: string | null
+  company_email: string | null
+  company_phone: string | null
+  company_website: string | null
+  tax_id: string | null
+  default_timezone: string
+  default_currency: string
+  currency_symbol: string
+  date_format: string
+  time_format: '12h' | '24h'
+  default_language: string
+  session_timeout_minutes: number
+  password_min_length: number
+  password_require_uppercase: boolean
+  password_require_lowercase: boolean
+  password_require_numbers: boolean
+  password_require_special: boolean
+  password_expiry_days: number
+  enforce_two_factor: boolean
+  max_login_attempts: number
+  lockout_duration_minutes: number
+  email_notifications_enabled: boolean
+  sms_notifications_enabled: boolean
+  push_notifications_enabled: boolean
+  smtp_host: string | null
+  smtp_port: number
+  smtp_username: string | null
+  smtp_use_tls: boolean
+  email_from_address: string | null
+  email_from_name: string
+  sms_provider: string | null
+  sms_sender_id: string | null
+  auto_backup_enabled: boolean
+  backup_frequency: 'daily' | 'weekly' | 'monthly'
+  backup_time: string
+  backup_retention_days: number
+  allow_negative_inventory: boolean
+  default_low_stock_threshold: number
+  maintenance_mode: boolean
+  updated_at: string
 }
 
 function SystemSettingsPage() {
-  const [settings, setSettings] = useState<SystemSettings>(mockSystemSettings)
+  const { addToast } = useToast()
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('general')
   const [hasChanges, setHasChanges] = useState(false)
+  const [formData, setFormData] = useState<Partial<SystemSettingsData>>({})
+
+  // Fetch system settings
+  const { data: settings, isLoading, error, refetch } = useQuery<SystemSettingsData>({
+    queryKey: ['systemSettings'],
+    queryFn: () => apiClient.getSystemSettings(),
+  })
+
+  // Update settings mutation
+  const updateMutation = useMutation({
+    mutationFn: (data: Partial<SystemSettingsData>) => apiClient.updateSystemSettings(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['systemSettings'] })
+      setHasChanges(false)
+      addToast({ type: 'success', title: 'Settings saved successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: error.message || 'Failed to save settings' })
+    },
+  })
+
+  // Test email mutation
+  const testEmailMutation = useMutation({
+    mutationFn: (email: string) => apiClient.testEmailConfiguration(email),
+    onSuccess: (data) => {
+      addToast({ type: 'success', title: data.message })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: error.message || 'Failed to send test email' })
+    },
+  })
+
+  // Initialize form data when settings are loaded
+  useEffect(() => {
+    if (settings) {
+      setFormData(settings)
+    }
+  }, [settings])
 
   const handleSave = () => {
-    console.log('Saving settings:', settings)
+    updateMutation.mutate(formData)
+  }
+
+  const handleChange = (key: keyof SystemSettingsData, value: any) => {
+    setFormData(prev => ({ ...prev, [key]: value }))
+    setHasChanges(true)
+  }
+
+  const handleDiscard = () => {
+    if (settings) {
+      setFormData(settings)
+    }
     setHasChanges(false)
   }
 
-  const handleChange = (section: keyof SystemSettings, key: string, value: any) => {
-    setSettings(prev => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [key]: value
-      }
-    }))
-    setHasChanges(true)
+  const handleTestEmail = () => {
+    const email = formData.email_from_address || settings?.company_email
+    if (email) {
+      testEmailMutation.mutate(email)
+    } else {
+      addToast({ type: 'error', title: 'Please enter an email address first' })
+    }
   }
 
   const formatDate = (dateString: string) => {
@@ -118,6 +134,32 @@ function SystemSettingsPage() {
     { id: 'integrations', name: 'Integrations', icon: Globe }
   ]
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        </div>
+      </AppLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="p-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-600">Failed to load system settings. Please try again.</p>
+            <Button onClick={() => refetch()} className="mt-2" variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        </div>
+      </AppLayout>
+    )
+  }
+
   return (
     <AppLayout>
       <div className="p-6 space-y-6">
@@ -130,9 +172,13 @@ function SystemSettingsPage() {
           <Button
             className="mofad-btn-primary"
             onClick={handleSave}
-            disabled={!hasChanges}
+            disabled={!hasChanges || updateMutation.isPending}
           >
-            <Save className="h-4 w-4 mr-2" />
+            {updateMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
             Save Changes
           </Button>
         </div>
@@ -172,8 +218,8 @@ function SystemSettingsPage() {
                       <input
                         type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.general.companyName}
-                        onChange={(e) => handleChange('general', 'companyName', e.target.value)}
+                        value={formData.company_name || ''}
+                        onChange={(e) => handleChange('company_name', e.target.value)}
                       />
                     </div>
                     <div>
@@ -181,8 +227,8 @@ function SystemSettingsPage() {
                       <input
                         type="email"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.general.companyEmail}
-                        onChange={(e) => handleChange('general', 'companyEmail', e.target.value)}
+                        value={formData.company_email || ''}
+                        onChange={(e) => handleChange('company_email', e.target.value)}
                       />
                     </div>
                   </div>
@@ -193,16 +239,39 @@ function SystemSettingsPage() {
                       <input
                         type="tel"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.general.companyPhone}
-                        onChange={(e) => handleChange('general', 'companyPhone', e.target.value)}
+                        value={formData.company_phone || ''}
+                        onChange={(e) => handleChange('company_phone', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Company Website</label>
+                      <input
+                        type="url"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        value={formData.company_website || ''}
+                        onChange={(e) => handleChange('company_website', e.target.value)}
+                        placeholder="https://"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tax ID</label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        value={formData.tax_id || ''}
+                        onChange={(e) => handleChange('tax_id', e.target.value)}
+                        placeholder="Company TIN"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.general.timezone}
-                        onChange={(e) => handleChange('general', 'timezone', e.target.value)}
+                        value={formData.default_timezone || ''}
+                        onChange={(e) => handleChange('default_timezone', e.target.value)}
                       >
                         <option value="Africa/Lagos">Africa/Lagos (WAT)</option>
                         <option value="UTC">UTC</option>
@@ -216,8 +285,8 @@ function SystemSettingsPage() {
                     <textarea
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       rows={3}
-                      value={settings.general.address}
-                      onChange={(e) => handleChange('general', 'address', e.target.value)}
+                      value={formData.company_address || ''}
+                      onChange={(e) => handleChange('company_address', e.target.value)}
                     />
                   </div>
 
@@ -226,8 +295,8 @@ function SystemSettingsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Date Format</label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.general.dateFormat}
-                        onChange={(e) => handleChange('general', 'dateFormat', e.target.value)}
+                        value={formData.date_format || ''}
+                        onChange={(e) => handleChange('date_format', e.target.value)}
                       >
                         <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                         <option value="MM/DD/YYYY">MM/DD/YYYY</option>
@@ -238,10 +307,10 @@ function SystemSettingsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.general.currency}
-                        onChange={(e) => handleChange('general', 'currency', e.target.value)}
+                        value={formData.default_currency || ''}
+                        onChange={(e) => handleChange('default_currency', e.target.value)}
                       >
-                        <option value="NGN">NGN (₦)</option>
+                        <option value="NGN">NGN ({formData.currency_symbol || '₦'})</option>
                         <option value="USD">USD ($)</option>
                         <option value="EUR">EUR (€)</option>
                       </select>
@@ -250,12 +319,12 @@ function SystemSettingsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.general.language}
-                        onChange={(e) => handleChange('general', 'language', e.target.value)}
+                        value={formData.default_language || ''}
+                        onChange={(e) => handleChange('default_language', e.target.value)}
                       >
-                        <option value="English">English</option>
-                        <option value="French">French</option>
-                        <option value="Hausa">Hausa</option>
+                        <option value="en">English</option>
+                        <option value="fr">French</option>
+                        <option value="ha">Hausa</option>
                       </select>
                     </div>
                   </div>
@@ -274,8 +343,8 @@ function SystemSettingsPage() {
                       </div>
                       <input
                         type="checkbox"
-                        checked={settings.notifications.emailNotifications}
-                        onChange={(e) => handleChange('notifications', 'emailNotifications', e.target.checked)}
+                        checked={formData.email_notifications_enabled || false}
+                        onChange={(e) => handleChange('email_notifications_enabled', e.target.checked)}
                         className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                       />
                     </div>
@@ -287,36 +356,91 @@ function SystemSettingsPage() {
                       </div>
                       <input
                         type="checkbox"
-                        checked={settings.notifications.smsNotifications}
-                        onChange={(e) => handleChange('notifications', 'smsNotifications', e.target.checked)}
+                        checked={formData.sms_notifications_enabled || false}
+                        onChange={(e) => handleChange('sms_notifications_enabled', e.target.checked)}
                         className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                       />
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium text-gray-900">Low Stock Alerts</h4>
-                        <p className="text-sm text-gray-500">Get notified when inventory is low</p>
+                        <h4 className="font-medium text-gray-900">Push Notifications</h4>
+                        <p className="text-sm text-gray-500">Enable browser push notifications</p>
                       </div>
                       <input
                         type="checkbox"
-                        checked={settings.notifications.lowStockAlerts}
-                        onChange={(e) => handleChange('notifications', 'lowStockAlerts', e.target.checked)}
+                        checked={formData.push_notifications_enabled || false}
+                        onChange={(e) => handleChange('push_notifications_enabled', e.target.checked)}
                         className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                       />
                     </div>
+                  </div>
 
-                    <div className="flex items-center justify-between">
+                  <div className="border-t pt-6">
+                    <h4 className="font-medium text-gray-900 mb-4">Email Configuration</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <h4 className="font-medium text-gray-900">Payment Alerts</h4>
-                        <p className="text-sm text-gray-500">Notifications for payment activities</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">SMTP Host</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          value={formData.smtp_host || ''}
+                          onChange={(e) => handleChange('smtp_host', e.target.value)}
+                          placeholder="smtp.example.com"
+                        />
                       </div>
-                      <input
-                        type="checkbox"
-                        checked={settings.notifications.paymentAlerts}
-                        onChange={(e) => handleChange('notifications', 'paymentAlerts', e.target.checked)}
-                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                      />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">SMTP Port</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          value={formData.smtp_port || 587}
+                          onChange={(e) => handleChange('smtp_port', parseInt(e.target.value))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">SMTP Username</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          value={formData.smtp_username || ''}
+                          onChange={(e) => handleChange('smtp_username', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">From Email</label>
+                        <input
+                          type="email"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          value={formData.email_from_address || ''}
+                          onChange={(e) => handleChange('email_from_address', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-4 flex items-center gap-4">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="smtp_tls"
+                          checked={formData.smtp_use_tls || false}
+                          onChange={(e) => handleChange('smtp_use_tls', e.target.checked)}
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="smtp_tls" className="ml-2 text-sm text-gray-700">Use TLS</label>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleTestEmail}
+                        disabled={testEmailMutation.isPending}
+                      >
+                        {testEmailMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Mail className="h-4 w-4 mr-2" />
+                        )}
+                        Test Email
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -332,21 +456,69 @@ function SystemSettingsPage() {
                       <input
                         type="number"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.security.sessionTimeout}
-                        onChange={(e) => handleChange('security', 'sessionTimeout', parseInt(e.target.value))}
+                        value={formData.session_timeout_minutes || 30}
+                        onChange={(e) => handleChange('session_timeout_minutes', parseInt(e.target.value))}
+                        min={5}
+                        max={480}
                       />
+                      <p className="text-xs text-gray-500 mt-1">Between 5 and 480 minutes</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Password Policy</label>
-                      <select
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Password Minimum Length</label>
+                      <input
+                        type="number"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.security.passwordPolicy}
-                        onChange={(e) => handleChange('security', 'passwordPolicy', e.target.value)}
-                      >
-                        <option value="weak">Weak (6+ characters)</option>
-                        <option value="medium">Medium (8+ characters, mixed case)</option>
-                        <option value="strong">Strong (10+ characters, mixed case, numbers, symbols)</option>
-                      </select>
+                        value={formData.password_min_length || 8}
+                        onChange={(e) => handleChange('password_min_length', parseInt(e.target.value))}
+                        min={6}
+                        max={32}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-gray-900">Password Requirements</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="req_upper"
+                          checked={formData.password_require_uppercase || false}
+                          onChange={(e) => handleChange('password_require_uppercase', e.target.checked)}
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="req_upper" className="ml-2 text-sm text-gray-700">Require uppercase letters</label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="req_lower"
+                          checked={formData.password_require_lowercase || false}
+                          onChange={(e) => handleChange('password_require_lowercase', e.target.checked)}
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="req_lower" className="ml-2 text-sm text-gray-700">Require lowercase letters</label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="req_num"
+                          checked={formData.password_require_numbers || false}
+                          onChange={(e) => handleChange('password_require_numbers', e.target.checked)}
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="req_num" className="ml-2 text-sm text-gray-700">Require numbers</label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="req_special"
+                          checked={formData.password_require_special || false}
+                          onChange={(e) => handleChange('password_require_special', e.target.checked)}
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="req_special" className="ml-2 text-sm text-gray-700">Require special characters</label>
+                      </div>
                     </div>
                   </div>
 
@@ -357,8 +529,8 @@ function SystemSettingsPage() {
                     </div>
                     <input
                       type="checkbox"
-                      checked={settings.security.twoFactorAuth}
-                      onChange={(e) => handleChange('security', 'twoFactorAuth', e.target.checked)}
+                      checked={formData.enforce_two_factor || false}
+                      onChange={(e) => handleChange('enforce_two_factor', e.target.checked)}
                       className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                     />
                   </div>
@@ -369,19 +541,35 @@ function SystemSettingsPage() {
                       <input
                         type="number"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.security.loginAttempts}
-                        onChange={(e) => handleChange('security', 'loginAttempts', parseInt(e.target.value))}
+                        value={formData.max_login_attempts || 5}
+                        onChange={(e) => handleChange('max_login_attempts', parseInt(e.target.value))}
+                        min={3}
+                        max={10}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Account Lockout (minutes)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Account Lockout Duration (minutes)</label>
                       <input
                         type="number"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.security.accountLockout}
-                        onChange={(e) => handleChange('security', 'accountLockout', parseInt(e.target.value))}
+                        value={formData.lockout_duration_minutes || 15}
+                        onChange={(e) => handleChange('lockout_duration_minutes', parseInt(e.target.value))}
+                        min={5}
+                        max={60}
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Password Expiry (days)</label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      value={formData.password_expiry_days || 90}
+                      onChange={(e) => handleChange('password_expiry_days', parseInt(e.target.value))}
+                      min={0}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Set to 0 for no expiry</p>
                   </div>
                 </div>
               )}
@@ -397,8 +585,8 @@ function SystemSettingsPage() {
                     </div>
                     <input
                       type="checkbox"
-                      checked={settings.backup.autoBackup}
-                      onChange={(e) => handleChange('backup', 'autoBackup', e.target.checked)}
+                      checked={formData.auto_backup_enabled || false}
+                      onChange={(e) => handleChange('auto_backup_enabled', e.target.checked)}
                       className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                     />
                   </div>
@@ -408,35 +596,45 @@ function SystemSettingsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Backup Frequency</label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.backup.backupFrequency}
-                        onChange={(e) => handleChange('backup', 'backupFrequency', e.target.value)}
-                        disabled={!settings.backup.autoBackup}
+                        value={formData.backup_frequency || 'daily'}
+                        onChange={(e) => handleChange('backup_frequency', e.target.value)}
+                        disabled={!formData.auto_backup_enabled}
                       >
-                        <option value="hourly">Hourly</option>
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>
                         <option value="monthly">Monthly</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Retention Period (days)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Backup Time</label>
                       <input
-                        type="number"
+                        type="time"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.backup.backupRetention}
-                        onChange={(e) => handleChange('backup', 'backupRetention', parseInt(e.target.value))}
-                        disabled={!settings.backup.autoBackup}
+                        value={formData.backup_time || '02:00'}
+                        onChange={(e) => handleChange('backup_time', e.target.value)}
+                        disabled={!formData.auto_backup_enabled}
                       />
                     </div>
                   </div>
 
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-2">Last Backup</h4>
-                    <p className="text-sm text-gray-600">{formatDate(settings.backup.lastBackup)}</p>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      Run Backup Now
-                    </Button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Retention Period (days)</label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      value={formData.backup_retention_days || 30}
+                      onChange={(e) => handleChange('backup_retention_days', parseInt(e.target.value))}
+                      disabled={!formData.auto_backup_enabled}
+                      min={1}
+                    />
                   </div>
+
+                  {settings?.updated_at && (
+                    <div className="p-4 bg-green-50 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-2">Last Updated</h4>
+                      <p className="text-sm text-gray-600">{formatDate(settings.updated_at)}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -447,54 +645,67 @@ function SystemSettingsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">SMS Provider</label>
-                      <select
+                      <input
+                        type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.integrations.smsProvider}
-                        onChange={(e) => handleChange('integrations', 'smsProvider', e.target.value)}
-                      >
-                        <option value="Termii">Termii</option>
-                        <option value="Twilio">Twilio</option>
-                        <option value="BulkSMS">BulkSMS</option>
-                      </select>
+                        value={formData.sms_provider || ''}
+                        onChange={(e) => handleChange('sms_provider', e.target.value)}
+                        placeholder="e.g., Termii, Twilio"
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email Provider</label>
-                      <select
+                      <label className="block text-sm font-medium text-gray-700 mb-2">SMS Sender ID</label>
+                      <input
+                        type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        value={settings.integrations.emailProvider}
-                        onChange={(e) => handleChange('integrations', 'emailProvider', e.target.value)}
-                      >
-                        <option value="SendGrid">SendGrid</option>
-                        <option value="Mailgun">Mailgun</option>
-                        <option value="AWS SES">AWS SES</option>
-                      </select>
+                        value={formData.sms_sender_id || ''}
+                        onChange={(e) => handleChange('sms_sender_id', e.target.value)}
+                        placeholder="Your sender ID"
+                      />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Payment Gateway</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      value={settings.integrations.paymentGateway}
-                      onChange={(e) => handleChange('integrations', 'paymentGateway', e.target.value)}
-                    >
-                      <option value="Paystack">Paystack</option>
-                      <option value="Flutterwave">Flutterwave</option>
-                      <option value="Stripe">Stripe</option>
-                    </select>
-                  </div>
+                  <div className="border-t pt-6">
+                    <h4 className="font-medium text-gray-900 mb-4">Business Rules</h4>
 
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Banking API Integration</h4>
-                      <p className="text-sm text-gray-500">Connect with bank APIs for real-time transaction data</p>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-gray-900">Allow Negative Inventory</h4>
+                          <p className="text-sm text-gray-500">Allow inventory to go below zero</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={formData.allow_negative_inventory || false}
+                          onChange={(e) => handleChange('allow_negative_inventory', e.target.checked)}
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Default Low Stock Threshold</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          value={formData.default_low_stock_threshold || 10}
+                          onChange={(e) => handleChange('default_low_stock_threshold', parseInt(e.target.value))}
+                          min={1}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-gray-900">Maintenance Mode</h4>
+                          <p className="text-sm text-gray-500">Put the system in maintenance mode</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={formData.maintenance_mode || false}
+                          onChange={(e) => handleChange('maintenance_mode', e.target.checked)}
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        />
+                      </div>
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.integrations.bankingApi}
-                      onChange={(e) => handleChange('integrations', 'bankingApi', e.target.checked)}
-                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                    />
                   </div>
                 </div>
               )}
@@ -507,10 +718,18 @@ function SystemSettingsPage() {
             <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
               <p className="text-sm text-gray-600 mb-2">You have unsaved changes</p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setHasChanges(false)}>
+                <Button variant="outline" size="sm" onClick={handleDiscard}>
                   Discard
                 </Button>
-                <Button size="sm" className="mofad-btn-primary" onClick={handleSave}>
+                <Button
+                  size="sm"
+                  className="mofad-btn-primary"
+                  onClick={handleSave}
+                  disabled={updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : null}
                   Save Changes
                 </Button>
               </div>

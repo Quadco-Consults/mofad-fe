@@ -414,8 +414,8 @@ export default function LubebayServicesPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(service.status)}`}>
-                            {service.status.charAt(0).toUpperCase() + service.status.slice(1)}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(service.status || 'unknown')}`}>
+                            {(service.status || 'Unknown').charAt(0).toUpperCase() + (service.status || 'unknown').slice(1)}
                           </span>
                         </td>
                         <td className="py-3 px-4">

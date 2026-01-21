@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Download, Edit, Trash2, TrendingUp, CreditCard, Clock, MapPin, User, Calendar, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { AppLayout } from '@/components/layout/AppLayout'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 
 interface CustomerTransaction {
   id: string
@@ -32,7 +32,7 @@ export default function TransactionViewPage() {
 
   const { data: transactions = [], isLoading, error } = useQuery<CustomerTransaction[]>({
     queryKey: ['customer-transactions'],
-    queryFn: () => mockApi.get('/customers/transactions/')
+    queryFn: () => apiClient.get('/customers/transactions/')
   })
 
   const transaction = transactions.find(t => t.id === transactionId)
@@ -188,8 +188,8 @@ export default function TransactionViewPage() {
                   {transaction.type === 'payment' || transaction.type === 'credit' ? '+' : '-'}
                   {formatCurrency(transaction.amount)}
                 </div>
-                <span className={`inline-flex px-3 py-1 text-sm leading-5 font-semibold rounded-full border ${getStatusBadge(transaction.status)}`}>
-                  {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                <span className={`inline-flex px-3 py-1 text-sm leading-5 font-semibold rounded-full border ${getStatusBadge(transaction.status || 'unknown')}`}>
+                  {(transaction.status || 'Unknown').charAt(0).toUpperCase() + (transaction.status || 'unknown').slice(1)}
                 </span>
               </div>
             </div>
@@ -288,8 +288,8 @@ export default function TransactionViewPage() {
               <div>
                 <p className="text-sm text-gray-600">Transaction Type</p>
                 <p className="text-xl font-bold text-gray-900 capitalize">{transaction.type}</p>
-                <span className={`inline-flex px-2 py-1 text-xs leading-4 font-medium rounded-full border ${getTypeBadge(transaction.type)}`}>
-                  {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
+                <span className={`inline-flex px-2 py-1 text-xs leading-4 font-medium rounded-full border ${getTypeBadge(transaction.type || 'unknown')}`}>
+                  {(transaction.type || 'Unknown').charAt(0).toUpperCase() + (transaction.type || 'unknown').slice(1)}
                 </span>
               </div>
             </div>

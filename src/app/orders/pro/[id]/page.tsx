@@ -1,845 +1,541 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter, useParams } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import {
   ArrowLeft,
   Download,
   Printer,
+  FileText,
   CheckCircle,
   Clock,
   XCircle,
   AlertTriangle,
+  Truck,
+  Package,
   Building,
   User,
   Calendar,
   MapPin,
-  Package,
-  Hash,
-  FileText,
   Phone,
   Mail,
-  ThumbsUp,
-  ThumbsDown
+  Hash,
+  DollarSign,
+  Edit,
+  RefreshCw,
+  Send,
+  CreditCard,
+  ShoppingCart,
+  ClipboardList
 } from 'lucide-react'
 
-// Helper functions for localStorage management
-const getMockPROs = (): any[] => {
-  if (typeof window === 'undefined') return []
-
-  try {
-    const stored = localStorage.getItem('mofad_mock_pros')
-    if (stored) {
-      return JSON.parse(stored)
-    }
-  } catch (error) {
-    console.error('Error reading PROs from localStorage:', error)
-  }
-
-  return []
+interface PROItem {
+  id?: number
+  product_id: string | number
+  product_name: string
+  product_code?: string
+  product_price?: string | number
+  product_quantity?: string | number
+  quantity?: number
+  unit_price?: number
+  total_price?: number
+  received_quantity?: number
+  notes?: string
 }
 
-// Status badge component (matching PRF format)
-const getStatusBadge = (status: string) => {
-  const colors: Record<string, string> = {
-    draft: 'bg-gray-100 text-gray-800 border-gray-300',
-    sent: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    submitted: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    confirmed: 'bg-green-100 text-green-800 border-green-300',
-    approved: 'bg-green-100 text-green-800 border-green-300',
-    delivered: 'bg-green-200 text-green-900 border-green-400',
-    cancelled: 'bg-red-100 text-red-800 border-red-300',
-  }
-
-  const labels: Record<string, string> = {
-    draft: 'DRAFT',
-    sent: 'PENDING CONFIRMATION',
-    submitted: 'PENDING CONFIRMATION',
-    confirmed: 'CONFIRMED',
-    approved: 'CONFIRMED',
-    delivered: 'DELIVERED',
-    cancelled: 'CANCELLED',
-  }
-
-  return (
-    <span className={`px-3 py-1 rounded-full text-sm font-bold border-2 ${colors[status] || colors.draft}`}>
-      {labels[status] || status.toUpperCase()}
-    </span>
-  )
+interface PRO {
+  id: number
+  pro_number: string
+  title?: string | null
+  description?: string | null
+  supplier?: string | null
+  supplier_id?: number
+  supplier_name?: string
+  supplier_contact?: string | null
+  supplier_address?: string
+  supplier_phone?: string | null
+  supplier_email?: string | null
+  delivery_address?: string | null
+  prf?: number | null
+  prf_id?: number
+  prf_number?: string
+  status: 'draft' | 'sent' | 'confirmed' | 'delivered' | 'cancelled'
+  delivery_status: 'pending' | 'partial' | 'completed'
+  total_amount: string | number
+  subtotal?: string | number
+  tax_amount?: string | number
+  discount_amount?: string | number
+  shipping_cost?: number
+  discount?: number
+  grand_total?: number
+  payment_terms?: string | null
+  payment_method?: string | null
+  delivery_terms?: string
+  expected_delivery_date?: string | null
+  expected_delivery?: string
+  actual_delivery?: string
+  delivered_at?: string | null
+  created_by?: string | null
+  created_by_name?: string | null
+  approved_by?: string | null
+  approved_by_name?: string | null
+  approved_at?: string
+  confirmed_at?: string | null
+  sent_at?: string | null
+  notes?: string | null
+  terms_conditions?: string | null
+  items: PROItem[]
+  items_count?: number
+  order_snapshot?: PROItem[]
+  warehouse_id?: number
+  po_number?: string | null
+  transaction_id?: string | null
+  approval_status?: string
+  created_at: string
+  updated_at?: string
 }
 
-// Default PROs for demo purposes
-const getDefaultPROs = () => [
-  {
-    id: 1,
-    pro_number: 'PRO-2024-001',
-    supplier_name: 'NNPC Retail Ltd',
-    supplier_details: {
-      name: 'NNPC Retail Ltd',
-      code: 'NNPC',
-      contact_person: 'John Adebayo',
-      email: 'procurement@nnpc.com',
-      phone: '+234 800 123 4567',
-      address: 'Plot 15, Industrial Estate, Lagos',
-      payment_terms: '30 days net',
-      rating: 5,
-      category: 'Premium Supplier'
+const getStatusConfig = (status: string) => {
+  const configs: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
+    draft: {
+      color: 'text-gray-700',
+      bg: 'bg-gray-100 border-gray-300',
+      icon: <Clock className="w-4 h-4" />,
+      label: 'DRAFT'
     },
-    estimated_total: 4500000,
-    status: 'confirmed',
-    created_by: 'John Doe',
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    order_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    priority: 'medium',
-    payment_terms: 'NET 30',
-    items: [
-      {
-        id: 1,
-        product_name: 'Premium Motor Spirit (PMS)',
-        product_code: 'PMS-001',
-        unit_price: 617,
-        quantity: 7000,
-        total_amount: 4319000,
-        unit: 'Liter',
-        notes: 'Bulk supply for retail'
-      }
-    ],
-    notes: 'Monthly supply contract for PMS'
+    sent: {
+      color: 'text-amber-700',
+      bg: 'bg-amber-100 border-amber-300',
+      icon: <Send className="w-4 h-4" />,
+      label: 'SENT TO SUPPLIER'
+    },
+    confirmed: {
+      color: 'text-blue-700',
+      bg: 'bg-blue-100 border-blue-300',
+      icon: <CheckCircle className="w-4 h-4" />,
+      label: 'CONFIRMED'
+    },
+    delivered: {
+      color: 'text-emerald-700',
+      bg: 'bg-emerald-100 border-emerald-300',
+      icon: <Package className="w-4 h-4" />,
+      label: 'DELIVERED'
+    },
+    cancelled: {
+      color: 'text-red-700',
+      bg: 'bg-red-100 border-red-300',
+      icon: <XCircle className="w-4 h-4" />,
+      label: 'CANCELLED'
+    }
   }
-]
+  return configs[status] || configs.draft
+}
+
+const getDeliveryConfig = (status: string) => {
+  const configs: Record<string, { color: string; bg: string; label: string }> = {
+    pending: { color: 'text-amber-700', bg: 'bg-amber-50', label: 'Pending' },
+    partial: { color: 'text-orange-700', bg: 'bg-orange-50', label: 'Partial' },
+    completed: { color: 'text-emerald-700', bg: 'bg-emerald-50', label: 'Completed' }
+  }
+  return configs[status] || configs.pending
+}
 
 export default function PRODetailPage() {
   const router = useRouter()
   const params = useParams()
-  const [pro, setPro] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
   const printRef = useRef<HTMLDivElement>(null)
+  const proId = parseInt(params.id as string)
 
-  useEffect(() => {
-    const fetchPRO = () => {
-      const id = parseInt(params.id as string)
-
-      // Get both stored and default PROs
-      const storedPROs = getMockPROs()
-      const defaultPROs = getDefaultPROs()
-      const allPROs = [...storedPROs, ...defaultPROs]
-
-      // Find the PRO by ID
-      const foundPRO = allPROs.find(p => p.id === id)
-
-      if (foundPRO) {
-        setPro(foundPRO)
-      } else {
-        console.error('PRO not found with ID:', id)
-      }
-      setLoading(false)
-    }
-
-    if (params.id) {
-      fetchPRO()
-    }
-  }, [params.id])
+  const { data: pro, isLoading, error, refetch } = useQuery({
+    queryKey: ['pro-detail', proId],
+    queryFn: async () => {
+      return apiClient.getProById(proId)
+    },
+  })
 
   const handlePrint = () => {
-    if (printRef.current) {
-      const printWindow = window.open('', '_blank')
-      if (printWindow) {
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>PRO ${pro?.pro_number}</title>
-              <style>
-                * { box-sizing: border-box; }
-                body {
-                  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-                  margin: 0;
-                  padding: 0;
-                  line-height: 1.5;
-                  color: #1f2937;
-                  background: white;
-                }
-                .bg-gradient-to-r {
-                  background: linear-gradient(90deg, #D4AF37, #B8941F);
-                  color: white;
-                  padding: 30px;
-                  margin-bottom: 0;
-                }
-                .text-white { color: white !important; }
-                .text-blue-100 { color: rgba(252, 233, 106, 0.8); }
-                .bg-white { background: white; }
-                .rounded-lg { border-radius: 8px; }
-                .p-3 { padding: 12px; }
-                .w-16, .h-16 { width: 64px; height: 64px; }
-                .bg-blue-600 { background: #2563eb; }
-                .text-2xl { font-size: 24px; }
-                .text-3xl { font-size: 30px; }
-                .font-bold { font-weight: bold; }
-                .flex { display: flex; }
-                .items-center { align-items: center; }
-                .gap-6 { gap: 24px; }
-                .gap-4 { gap: 16px; }
-                .gap-3 { gap: 12px; }
-                .mt-1, .mt-2 { margin-top: 8px; }
-                .mt-8 { margin-top: 32px; }
-                .pt-4 { padding-top: 16px; }
-                .border-t { border-top: 1px solid rgba(59, 130, 246, 0.3); }
-                .tracking-wide { letter-spacing: 0.05em; }
-                .justify-between { justify-content: space-between; }
-                .bg-white\\/20 { background: rgba(255, 255, 255, 0.2); }
-                .px-4, .py-2 { padding: 8px 16px; }
-                .border { border: 1px solid rgba(255, 255, 255, 0.3); }
-                .text-sm { font-size: 14px; }
-                .p-8 { padding: 32px; }
-                .grid { display: grid; }
-                .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
-                .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
-                .bg-gray-50 { background: #f9fafb; }
-                .border-gray-200 { border: 1px solid #e5e7eb; }
-                .text-gray-600 { color: #6b7280; }
-                .text-gray-900 { color: #111827; }
-                .uppercase { text-transform: uppercase; }
-                .mb-2, .mb-6, .mb-8 { margin-bottom: 16px; }
-                .font-medium { font-weight: 500; }
-                .font-semibold { font-weight: 600; }
-                .w-8, .h-8 { width: 32px; height: 32px; }
-                .bg-blue-100 { background: #dbeafe; }
-                .text-blue-600 { color: #2563eb; }
-                .text-xl { font-size: 20px; }
-                .overflow-hidden { overflow: hidden; }
-                table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-                th, td {
-                  border: 1px solid #e5e7eb;
-                  padding: 12px 16px;
-                  text-align: left;
-                }
-                th {
-                  background: #f9fafb;
-                  font-weight: 600;
-                  text-transform: uppercase;
-                  font-size: 12px;
-                  letter-spacing: 0.05em;
-                }
-                .text-center { text-align: center; }
-                .text-right { text-align: right; }
-                .hover\\:bg-gray-50:hover { background: #f9fafb; }
-                .bg-blue-50 { background: #eff6ff; }
-                .border-t-2 { border-top: 2px solid #3b82f6; }
-                .text-blue-600 { color: #2563eb; }
-                .border-gray-200 { border: 1px solid #e5e7eb; }
-                .space-y-1 > * + * { margin-top: 4px; }
-                .text-xs { font-size: 12px; }
-                .text-gray-500 { color: #6b7280; }
-
-                @media print {
-                  @page {
-                    size: A4;
-                    margin: 0.5in 0.4in;
-                    padding: 0;
-                  }
-
-                  body {
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                    font-size: 12px !important;
-                    line-height: 1.3 !important;
-                  }
-
-                  .print-container {
-                    max-width: 100% !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                  }
-
-                  .bg-gradient-to-r {
-                    background: linear-gradient(90deg, #D4AF37, #B8941F) !important;
-                    color: white !important;
-                    padding: 15px !important;
-                    margin: 0 !important;
-                  }
-
-                  .p-8 { padding: 12px !important; }
-                  .p-6 { padding: 8px !important; }
-                  .p-4 { padding: 6px !important; }
-                  .gap-6 { gap: 8px !important; }
-                  .gap-4 { gap: 6px !important; }
-                  .gap-3 { gap: 4px !important; }
-                  .mb-8 { margin-bottom: 12px !important; }
-                  .mb-6 { margin-bottom: 8px !important; }
-                  .mb-4 { margin-bottom: 6px !important; }
-                  .mt-6 { margin-top: 8px !important; }
-
-                  .no-print { display: none !important; }
-                  .rounded-xl, .rounded-lg { border-radius: 0 !important; }
-                  .shadow-lg, .shadow-xl { box-shadow: none !important; }
-
-                  table {
-                    width: 100% !important;
-                    border-collapse: collapse !important;
-                    font-size: 11px !important;
-                  }
-
-                  th, td {
-                    border: 1px solid #e5e7eb !important;
-                    padding: 6px 8px !important;
-                    text-align: left !important;
-                  }
-
-                  .text-3xl { font-size: 18px !important; }
-                  .text-2xl { font-size: 16px !important; }
-                  .text-xl { font-size: 14px !important; }
-                  .text-lg { font-size: 13px !important; }
-                  .text-base { font-size: 12px !important; }
-                  .text-sm { font-size: 11px !important; }
-                  .text-xs { font-size: 10px !important; }
-                }
-              </style>
-            </head>
-            <body>
-              ${printRef.current.innerHTML}
-            </body>
-          </html>
-        `)
-        printWindow.document.close()
-        printWindow.print()
-      }
-    }
+    window.print()
   }
 
-  const handleDownloadPDF = async () => {
-    if (!printRef.current) return
-
-    // Enhanced print-to-PDF approach with better styling
-    const printWindow = window.open('', '_blank', 'width=800,height=600')
-    if (!printWindow) return
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>PRO ${pro?.pro_number || 'Document'}</title>
-          <style>
-            @page {
-              size: A4;
-              margin: 0.5in;
-            }
-            * { box-sizing: border-box; }
-            body {
-              font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-              margin: 0;
-              padding: 0;
-              line-height: 1.4;
-              color: #1f2937;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .header-gradient {
-              background: linear-gradient(135deg, #D4AF37 0%, #B8941F 50%, #1B4F3A 100%) !important;
-              color: white !important;
-              padding: 20px !important;
-            }
-            .logo-container {
-              background: rgba(255, 255, 255, 0.95) !important;
-              padding: 8px !important;
-              border-radius: 8px !important;
-              display: inline-block !important;
-            }
-            .company-title {
-              font-size: 24px !important;
-              font-weight: bold !important;
-              margin-bottom: 8px !important;
-            }
-            .contact-info {
-              display: flex !important;
-              gap: 20px !important;
-              font-size: 12px !important;
-              margin-top: 8px !important;
-            }
-            .document-ref {
-              background: rgba(255, 255, 255, 0.2) !important;
-              padding: 8px 12px !important;
-              border-radius: 8px !important;
-              border: 1px solid rgba(255, 255, 255, 0.3) !important;
-            }
-            .section-title {
-              font-size: 18px !important;
-              font-weight: bold !important;
-              margin: 20px 0 15px 0 !important;
-              color: #1f2937 !important;
-            }
-            .info-grid {
-              display: grid !important;
-              grid-template-columns: 1fr 1fr !important;
-              gap: 15px !important;
-              margin-bottom: 20px !important;
-            }
-            .info-card {
-              background: #f9fafb !important;
-              padding: 12px !important;
-              border: 1px solid #e5e7eb !important;
-              border-radius: 8px !important;
-            }
-            .info-label {
-              font-size: 10px !important;
-              font-weight: 600 !important;
-              color: #6b7280 !important;
-              text-transform: uppercase !important;
-              margin-bottom: 4px !important;
-            }
-            .info-value {
-              font-size: 12px !important;
-              font-weight: 500 !important;
-              color: #1f2937 !important;
-            }
-            table {
-              width: 100% !important;
-              border-collapse: collapse !important;
-              margin: 15px 0 !important;
-              font-size: 11px !important;
-            }
-            th, td {
-              border: 1px solid #d1d5db !important;
-              padding: 8px !important;
-              text-align: left !important;
-            }
-            th {
-              background: #f3f4f6 !important;
-              font-weight: 600 !important;
-              font-size: 10px !important;
-              text-transform: uppercase !important;
-            }
-            .total-row {
-              background: #fef3cd !important;
-              font-weight: bold !important;
-            }
-            .footer {
-              text-align: center !important;
-              margin-top: 30px !important;
-              padding-top: 20px !important;
-              border-top: 1px solid #d1d5db !important;
-              font-size: 10px !important;
-              color: #6b7280 !important;
-            }
-            .no-print { display: none !important; }
-          </style>
-        </head>
-        <body>
-          ${printRef.current.innerHTML}
-        </body>
-      </html>
-    `)
-
-    printWindow.document.close()
-
-    // Wait for content to load, then trigger print
-    setTimeout(() => {
-      printWindow.focus()
-      printWindow.print()
-    }, 500)
-  }
-
-  // Approval functions
-  const handleApprovePRO = () => {
-    if (!pro) return
-
-    try {
-      const stored = localStorage.getItem('mofad_mock_pros')
-      if (stored) {
-        const pros = JSON.parse(stored)
-        const updatedPROs = pros.map((p: any) =>
-          p.id === pro.id ? { ...p, status: 'confirmed' } : p
-        )
-        localStorage.setItem('mofad_mock_pros', JSON.stringify(updatedPROs))
-
-        // Update local state
-        setPro({ ...pro, status: 'confirmed' })
-
-        alert(`PRO ${pro.pro_number} has been approved successfully!`)
-      }
-    } catch (error) {
-      console.error('Error approving PRO:', error)
-      alert('Error approving PRO. Please try again.')
-    }
-  }
-
-  const handleRejectPRO = () => {
-    if (!pro) return
-
-    const reason = prompt('Please provide a reason for rejection (optional):')
-
-    try {
-      const stored = localStorage.getItem('mofad_mock_pros')
-      if (stored) {
-        const pros = JSON.parse(stored)
-        const updatedPROs = pros.map((p: any) =>
-          p.id === pro.id ? {
-            ...p,
-            status: 'cancelled',
-            rejection_reason: reason || 'No reason provided'
-          } : p
-        )
-        localStorage.setItem('mofad_mock_pros', JSON.stringify(updatedPROs))
-
-        // Update local state
-        setPro({ ...pro, status: 'cancelled' })
-
-        alert(`PRO ${pro.pro_number} has been rejected.`)
-      }
-    } catch (error) {
-      console.error('Error rejecting PRO:', error)
-      alert('Error rejecting PRO. Please try again.')
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'draft':
-        return <Clock className="w-5 h-5 text-gray-500" />
-      case 'submitted':
-      case 'sent':
-        return <AlertTriangle className="w-5 h-5 text-orange-500" />
-      case 'confirmed':
-        return <CheckCircle className="w-5 h-5 text-green-500" />
-      default:
-        return <XCircle className="w-5 h-5 text-red-500" />
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'draft':
-        return 'text-gray-600 bg-gray-100'
-      case 'submitted':
-      case 'sent':
-        return 'text-orange-600 bg-orange-100'
-      case 'confirmed':
-        return 'text-green-600 bg-green-100'
-      default:
-        return 'text-red-600 bg-red-100'
-    }
-  }
-
-  if (loading) {
+  if (isLoading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="p-6 space-y-6">
+          <div className="animate-pulse space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-24 bg-gray-200 rounded"></div>
+              <div className="h-8 w-64 bg-gray-200 rounded"></div>
+            </div>
+            <div className="h-48 bg-gray-200 rounded-lg"></div>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="h-40 bg-gray-200 rounded-lg"></div>
+              <div className="h-40 bg-gray-200 rounded-lg"></div>
+            </div>
+            <div className="h-64 bg-gray-200 rounded-lg"></div>
+          </div>
         </div>
       </AppLayout>
     )
   }
 
-  if (!pro) {
+  if (error || !pro) {
     return (
       <AppLayout>
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center py-12">
-            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">PRO Not Found</h2>
-            <p className="text-gray-600 mb-4">
-              The Purchase Request Order you're looking for doesn't exist or has been removed.
+        <div className="p-6">
+          <div className="text-center py-16 bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl border border-red-100">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertTriangle className="w-10 h-10 text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Purchase Order Not Found</h2>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              The purchase order you're looking for doesn't exist or may have been removed.
             </p>
-            <Button onClick={() => router.push('/orders/pro')} variant="outline">
+            <Button onClick={() => router.back()} className="mofad-btn-primary">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to PRO List
+              Go Back
             </Button>
           </div>
         </div>
       </AppLayout>
     )
   }
+
+  const statusConfig = getStatusConfig(pro.status)
+  const deliveryConfig = getDeliveryConfig(pro.delivery_status)
+
+  // Normalize items from both PROItem format and legacy order_snapshot format
+  const rawItems = pro.items || []
+  const items = rawItems.map((item: Record<string, unknown>) => {
+    const quantity = Number(item.product_quantity) || Number(item.quantity) || Number(item.qty) || Number(item.ordered_quantity) || 0
+    const unitPrice = Number(item.product_price) || Number(item.unit_price) || Number(item.price) || Number(item.cost) || 0
+    return {
+      id: item.id || item.product_id || Math.random(),
+      product_id: item.product_id || item.product || item.id,
+      product_name: item.product_name || item.name || item.product || 'Unknown Product',
+      product_code: item.product_code || item.code || '',
+      quantity,
+      unit_price: unitPrice,
+      total_price: Number(item.total_price) || Number(item.total) || (quantity * unitPrice),
+      received_quantity: Number(item.received_quantity) || Number(item.quantity_delivered) || 0,
+      notes: item.notes || item.specifications || '',
+    }
+  })
+
+  const subtotal = items.reduce((sum: number, item: { total_price: number }) => sum + (item.total_price || 0), 0)
+  // Use total_amount from API if available, otherwise calculate from subtotal
+  const grandTotal = pro.grand_total || Number(pro.total_amount) || (subtotal + Number(pro.tax_amount || 0) + (pro.shipping_cost || 0) - Number(pro.discount_amount || pro.discount || 0))
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto">
-        {/* Action Bar */}
-        <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200 no-print">
+      <div className="space-y-6 print:space-y-4" ref={printRef}>
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 print:hidden">
           <div className="flex items-center gap-4">
-            <Button onClick={() => router.push('/orders/pro')} variant="outline" className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Back to PROs
+            <Button variant="outline" onClick={() => router.back()} className="group">
+              <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+              Back
             </Button>
-            <div className="border-l border-gray-300 pl-4">
-              <h1 className="text-xl font-semibold text-gray-900">PRO #{pro.pro_number}</h1>
-              <p className="text-gray-600 text-sm">Purchase Request Order Details</p>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-foreground">Purchase Order</h1>
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold border-2 ${statusConfig.bg} ${statusConfig.color}`}>
+                  {statusConfig.icon}
+                  {statusConfig.label}
+                </span>
+              </div>
+              <p className="text-muted-foreground flex items-center gap-2 mt-1">
+                <Hash className="w-4 h-4" />
+                PRO Number: <span className="font-mono font-semibold text-primary">{pro.pro_number}</span>
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Button onClick={handlePrint} variant="outline" className="flex items-center gap-2">
-              <Printer className="w-4 h-4" />
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+            <Button variant="outline" onClick={handlePrint}>
+              <Printer className="w-4 h-4 mr-2" />
               Print
             </Button>
-            <Button onClick={handleDownloadPDF} className="text-white flex items-center gap-2" style={{ backgroundColor: '#D4AF37', '&:hover': { backgroundColor: '#B8941F' } }} onMouseEnter={(e) => e.target.style.backgroundColor = '#B8941F'} onMouseLeave={(e) => e.target.style.backgroundColor = '#D4AF37'}>
-              <Download className="w-4 h-4" />
-              Download PDF
+            <Button variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Export PDF
             </Button>
-
-            {/* Approval Buttons - Only show for submitted or draft PROs */}
-            {(pro.status === 'submitted' || pro.status === 'draft') && (
-              <>
-                <Button
-                  onClick={handleApprovePRO}
-                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-                >
-                  <ThumbsUp className="w-4 h-4" />
-                  Approve
-                </Button>
-                <Button
-                  onClick={handleRejectPRO}
-                  className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
-                >
-                  <ThumbsDown className="w-4 h-4" />
-                  Reject
-                </Button>
-              </>
-            )}
+            <Button className="mofad-btn-primary" onClick={() => router.push(`/orders/pro/${proId}/edit`)}>
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Order
+            </Button>
           </div>
         </div>
 
-        {/* PRO Document */}
-        <div ref={printRef} className="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-200 print:shadow-none print:rounded-none print:border-none print:max-w-none print:w-full print:h-auto print:m-0 print:p-0">
-          {/* Professional Header */}
-          <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #B8941F 50%, #1B4F3A 100%)' }}>
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 left-0 w-full h-full" style={{
-                backgroundImage: `radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 2px, transparent 0)`,
-                backgroundSize: '30px 30px'
-              }}></div>
-            </div>
-
-            <div className="relative p-8 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                  <div className="bg-white/95 p-4 rounded-xl shadow-lg backdrop-blur-sm">
-                    <img
-                      src="/modah_logo-removebg-preview.png"
-                      alt="MOFAD Energy Solutions"
-                      className="w-16 h-16 object-contain"
-                    />
-                  </div>
-                  <div>
-                    <h1 className="text-4xl font-bold tracking-tight mb-2">MOFAD Energy Solutions</h1>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-white/90">
-                      <span className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-white/60 rounded-full"></div>
-                        <MapPin className="w-4 h-4" />
-                        <span>45 TOS Benson Crescent, Utako, Abuja FCT</span>
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-white/60 rounded-full"></div>
-                        <Phone className="w-4 h-4" />
-                        <span>+234 809 123 4567</span>
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-white/60 rounded-full"></div>
-                        <Mail className="w-4 h-4" />
-                        <span>info@mofadenergy.com</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="bg-white/20 backdrop-blur-sm px-6 py-3 rounded-xl border border-white/30">
-                    <p className="text-xs text-white/80 mb-1">Document Reference</p>
-                    <p className="font-bold text-lg">PRO/{new Date().getFullYear()}/{String(pro?.id || '0001').padStart(4, '0')}</p>
-                  </div>
-                </div>
+        {/* Print Header */}
+        <div className="hidden print:block">
+          <div className="mofad-gradient-bg text-white p-6 rounded-lg mb-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-3xl font-bold">PURCHASE ORDER</h1>
+                <p className="text-white/80 mt-1">MOFAD Energy Nigeria Limited</p>
               </div>
-
-              <div className="mt-8 pt-6 border-t border-white/20">
-                <div className="flex items-center gap-4">
-                  <div className="w-1 h-8 bg-white/80 rounded-full"></div>
-                  <h2 className="text-3xl font-bold tracking-wide">PURCHASE ORDER FORM</h2>
-                </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold">{pro.pro_number}</p>
+                <p className="text-white/80">Date: {formatDateTime(pro.created_at).split(' ')[0]}</p>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Document Content */}
-          <div className="p-8">
-            {/* Order Information Section */}
-            <div className="mb-8">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#E8F4F0' }}>
-                  <FileText className="w-5 h-5 text-green-700" style={{ color: '#1B4F3A' }} />
+        {/* Order Info Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:grid-cols-2 print:gap-4">
+          {/* Supplier Info */}
+          <Card className="overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500 print:hidden"></div>
+            <CardHeader className="print:py-2">
+              <CardTitle className="flex items-center gap-2 text-blue-700">
+                <Building className="w-5 h-5" />
+                Supplier Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="print:py-2">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xl font-bold text-gray-900">{pro.supplier_name || 'Not specified'}</p>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Order Information</h3>
+                {pro.supplier_address && (
+                  <div className="flex items-start gap-2 text-sm">
+                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-600">{pro.supplier_address}</span>
+                  </div>
+                )}
+                {pro.supplier_phone && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-600">{pro.supplier_phone}</span>
+                  </div>
+                )}
+                {pro.supplier_email && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-600">{pro.supplier_email}</span>
+                  </div>
+                )}
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Date of Order</label>
-                  <p className="text-base font-medium text-gray-900">{formatDateTime(pro.order_date || pro.created_at).split(',')[0]}</p>
+          {/* Order Details */}
+          <Card className="overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-emerald-500 to-teal-500 print:hidden"></div>
+            <CardHeader className="print:py-2">
+              <CardTitle className="flex items-center gap-2 text-emerald-700">
+                <ClipboardList className="w-5 h-5" />
+                Order Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="print:py-2">
+              <div className="space-y-3 text-sm">
+                {pro.prf_number && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">PRF Reference:</span>
+                    <span className="font-mono font-semibold text-primary">{pro.prf_number}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Created By:</span>
+                  <span className="font-medium">{pro.created_by_name || pro.created_by || 'System'}</span>
                 </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Supplier</label>
-                  <p className="text-base font-medium text-gray-900">{pro.supplier_name || pro.supplier_details?.name || 'Supplier'}</p>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Created Date:</span>
+                  <span className="font-medium">{formatDateTime(pro.created_at).split(' ')[0]}</span>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Created By</label>
-                  <p className="text-base font-medium text-gray-900">{pro.created_by || 'N/A'}</p>
-                  <p className="text-sm text-gray-600 mt-1">Order Ref: {pro.pro_number}</p>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Payment Terms</label>
-                  <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                    {pro.payment_terms || 'NET 30'}
+                {pro.approved_by_name && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Approved By:</span>
+                    <span className="font-medium">{pro.approved_by_name}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Delivery Status:</span>
+                  <span className={`px-2 py-1 rounded-md text-xs font-medium ${deliveryConfig.bg} ${deliveryConfig.color}`}>
+                    {deliveryConfig.label}
                   </span>
                 </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Status</label>
-                  {getStatusBadge(pro.status)}
-                </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            {/* Items & Services Section */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FDF4E7' }}>
-                    <Package className="w-5 h-5 text-amber-600" style={{ color: '#D4AF37' }} />
+          {/* Delivery & Payment */}
+          <Card className="overflow-hidden lg:col-span-1 print:col-span-2">
+            <div className="h-2 bg-gradient-to-r from-amber-500 to-orange-500 print:hidden"></div>
+            <CardHeader className="print:py-2">
+              <CardTitle className="flex items-center gap-2 text-amber-700">
+                <Truck className="w-5 h-5" />
+                Delivery & Payment
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="print:py-2">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Expected Delivery</p>
+                  <p className="font-semibold flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    {pro.expected_delivery ? formatDateTime(pro.expected_delivery).split(' ')[0] : 'TBD'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Payment Terms</p>
+                  <p className="font-semibold flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-gray-400" />
+                    {pro.payment_terms || 'Net 30'}
+                  </p>
+                </div>
+                {pro.delivery_terms && (
+                  <div className="col-span-2">
+                    <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Delivery Terms</p>
+                    <p className="font-medium">{pro.delivery_terms}</p>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900">Items & Services</h3>
-                </div>
-                <p className="text-sm text-gray-600">Detailed breakdown of items and services</p>
+                )}
               </div>
+            </CardContent>
+          </Card>
+        </div>
 
-              <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                <table className="w-full">
-                  <thead>
-                    <tr style={{ background: 'linear-gradient(90deg, #F3F4F6, #E5E7EB)' }}>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">S/N</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Description of Items/Services</th>
-                      <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Code</th>
-                      <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Qty</th>
-                      <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Unit</th>
-                      <th className="px-6 py-4 text-right text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Unit Cost</th>
-                      <th className="px-6 py-4 text-right text-sm font-bold text-gray-800 uppercase tracking-wide">Total Cost</th>
+        {/* Order Items Table */}
+        <Card className="overflow-hidden">
+          <div className="h-2 mofad-gradient-bg print:hidden"></div>
+          <CardHeader className="print:py-2">
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5 text-primary" />
+              Order Items
+              <span className="ml-2 px-2 py-0.5 bg-primary/10 text-primary text-sm font-medium rounded-full">
+                {items.length} item{items.length !== 1 ? 's' : ''}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-y print:bg-gray-100">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">#</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">Product</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">Qty Ordered</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">Qty Received</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">Unit Price</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {items.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center">
+                        <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 font-medium">No items in this order</p>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {(pro.items || []).map((item: any, index: number) => (
-                      <tr key={index} className={`border-b border-gray-200 transition-colors ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                      } hover:bg-blue-50/30`}>
-                        <td className="px-6 py-4 text-center font-bold text-gray-900 border-r border-gray-200">
-                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mx-auto text-sm">
-                            {index + 1}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 border-r border-gray-200">
+                  ) : (
+                    items.map((item, index) => (
+                      <tr key={item.id} className="hover:bg-gray-50 transition-colors print:hover:bg-white">
+                        <td className="py-4 px-4 text-gray-500 font-medium">{index + 1}</td>
+                        <td className="py-4 px-4">
                           <div>
-                            <p className="font-semibold text-gray-900 mb-1">{item.product_name || 'Unknown Product'}</p>
-                            {item.notes && <p className="text-sm text-gray-600 italic">{item.notes}</p>}
+                            <p className="font-semibold text-gray-900">{item.product_name}</p>
+                            {item.product_code && (
+                              <p className="text-xs text-gray-500 font-mono">{item.product_code}</p>
+                            )}
+                            {item.notes && (
+                              <p className="text-xs text-gray-400 mt-1">{item.notes}</p>
+                            )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center border-r border-gray-200">
-                          <span className="px-2 py-1 bg-gray-100 rounded text-sm font-mono text-gray-700">
-                            {item.product_code || 'N/A'}
+                        <td className="py-4 px-4 text-center">
+                          <span className="font-semibold text-gray-900">{item.quantity.toLocaleString()}</span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className={`font-semibold ${
+                            (item.received_quantity || 0) >= item.quantity
+                              ? 'text-emerald-600'
+                              : (item.received_quantity || 0) > 0
+                                ? 'text-amber-600'
+                                : 'text-gray-400'
+                          }`}>
+                            {item.received_quantity?.toLocaleString() || 0}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center font-bold text-lg text-gray-900 border-r border-gray-200">{item.quantity}</td>
-                        <td className="px-6 py-4 text-center border-r border-gray-200">
-                          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                            {item.unit || 'Unit'}
-                          </span>
+                        <td className="py-4 px-4 text-right font-medium">
+                          {formatCurrency(item.unit_price)}
                         </td>
-                        <td className="px-6 py-4 text-right font-semibold text-gray-900 border-r border-gray-200">{formatCurrency(item.unit_price)}</td>
-                        <td className="px-6 py-4 text-right font-bold text-lg" style={{ color: '#1B4F3A' }}>{formatCurrency(item.total_amount)}</td>
+                        <td className="py-4 px-4 text-right font-bold text-gray-900">
+                          {formatCurrency(item.total_price)}
+                        </td>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ background: 'linear-gradient(90deg, #FEF3C7, #FDE68A)', borderTop: '3px solid #D4AF37' }}>
-                      <td colSpan={6} className="px-6 py-5 text-right font-bold text-xl text-gray-900">
-                        <div className="flex items-center justify-end gap-2">
-                          <span>Grand Total:</span>
-                          <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <div className="font-bold text-2xl" style={{ color: '#D4AF37' }}>
-                          {formatCurrency(pro.estimated_total)}
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {(pro.items || []).length} item(s)
-                        </div>
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
 
-            {/* Approval Workflow Section */}
-            <div className="mb-8">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#E8F4F0' }}>
-                  <CheckCircle className="w-5 h-5" style={{ color: '#1B4F3A' }} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900">Approval Workflow</h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Requested By</h4>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-600">Name: {pro.created_by}</p>
-                    <p className="text-sm text-gray-600">Position: Procurement Officer</p>
-                    <p className="text-sm text-gray-600">Date: {formatDateTime(pro.created_at).split(',')[0]}</p>
-                    <div className="mt-3 pt-2 border-t border-gray-200">
-                      <p className="text-xs text-gray-500">Signature: ________________</p>
-                    </div>
+            {/* Order Summary */}
+            <div className="border-t bg-gradient-to-r from-gray-50 to-white p-6 print:p-4">
+              <div className="flex justify-end">
+                <div className="w-80 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Subtotal:</span>
+                    <span className="font-semibold">{formatCurrency(subtotal)}</span>
                   </div>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Supplier Confirmation</h4>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-600">Name: ________________</p>
-                    <p className="text-sm text-gray-600">Position: Supplier Representative</p>
-                    <p className="text-sm text-gray-600">Date: ________________</p>
-                    <div className="mt-3 pt-2 border-t border-gray-200">
-                      <p className="text-xs text-gray-500">Signature: ________________</p>
+                  {Number(pro.tax_amount) > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Tax:</span>
+                      <span className="font-medium">{formatCurrency(Number(pro.tax_amount))}</span>
                     </div>
-                  </div>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Finance Approval</h4>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-600">Name: ________________</p>
-                    <p className="text-sm text-gray-600">Position: Finance Manager</p>
-                    <p className="text-sm text-gray-600">Date: ________________</p>
-                    <div className="mt-3 pt-2 border-t border-gray-200">
-                      <p className="text-xs text-gray-500">Signature: ________________</p>
+                  )}
+                  {pro.shipping_cost && pro.shipping_cost > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Shipping:</span>
+                      <span className="font-medium">{formatCurrency(pro.shipping_cost)}</span>
                     </div>
+                  )}
+                  {(Number(pro.discount_amount) > 0 || (pro.discount && pro.discount > 0)) && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Discount:</span>
+                      <span className="font-medium text-emerald-600">-{formatCurrency(Number(pro.discount_amount) || pro.discount || 0)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-3 border-t-2 border-primary">
+                    <span className="text-lg font-bold text-gray-900">Grand Total:</span>
+                    <span className="text-xl font-bold text-primary">{formatCurrency(grandTotal)}</span>
                   </div>
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Footer */}
-            <div className="border-t-2 border-gray-200 pt-6 text-center">
-              <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
-                <p className="font-semibold">This is an official MOFAD Energy Solutions Purchase Order Form</p>
-                <p className="mt-1">Generated on {formatDateTime(new Date().toISOString())}</p>
-                <p className="mt-2 text-xs">© 2025 MOFAD Energy Solutions</p>
-              </div>
-            </div>
-          </div>
+        {/* Notes */}
+        {pro.notes && (
+          <Card>
+            <CardHeader className="print:py-2">
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-gray-500" />
+                Notes & Remarks
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="print:py-2">
+              <p className="text-gray-700 whitespace-pre-wrap">{pro.notes}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Footer for print */}
+        <div className="hidden print:block mt-8 pt-4 border-t text-center text-xs text-gray-500">
+          <p>This is a computer-generated document. No signature is required.</p>
+          <p className="mt-1">MOFAD Energy Nigeria Limited - {formatDateTime(new Date().toISOString())}</p>
         </div>
       </div>
     </AppLayout>

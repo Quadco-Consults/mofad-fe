@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Filter, Download, Plus, Eye, Edit, Trash2, TrendingUp, CreditCard, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Pagination } from '@/components/ui/Pagination'
 import { AppLayout } from '@/components/layout/AppLayout'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 
 interface CustomerTransaction {
   id: string
@@ -30,19 +31,26 @@ function CustomerTransactionsPage() {
   const router = useRouter()
   const { data: transactions = [], isLoading, error } = useQuery<CustomerTransaction[]>({
     queryKey: ['customer-transactions'],
-    queryFn: () => mockApi.get('/customers/transactions/')
+    queryFn: () => apiClient.get('/customers/transactions/')
   })
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, typeFilter, statusFilter, customerTypeFilter])
 
   const transactionTypes = Array.from(new Set(transactions.filter(t => t?.type).map(t => t.type)))
   const customerTypes = Array.from(new Set(transactions.filter(t => t?.customerType).map(t => t.customerType)))
 
-  const filteredTransactions = transactions.filter(transaction => {
+  const allFilteredTransactions = transactions.filter(transaction => {
     if (!transaction) return false
 
     const matchesSearch = (transaction.transactionId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -55,6 +63,12 @@ function CustomerTransactionsPage() {
 
     return matchesSearch && matchesType && matchesStatus && matchesCustomerType
   })
+
+  // Pagination calculations
+  const totalCount = allFilteredTransactions.length
+  const totalPages = Math.ceil(totalCount / pageSize) || 1
+  const startIndex = (currentPage - 1) * pageSize
+  const filteredTransactions = allFilteredTransactions.slice(startIndex, startIndex + pageSize)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
@@ -324,7 +338,7 @@ function CustomerTransactionsPage() {
                         <div className="flex items-center">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(transaction.type)}`}>
                             {getTypeIcon(transaction.type)}
-                            <span className="ml-1">{transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}</span>
+                            <span className="ml-1">{(transaction.type || 'Unknown').charAt(0).toUpperCase() + (transaction.type || 'unknown').slice(1)}</span>
                           </span>
                         </div>
                       </td>
@@ -348,8 +362,8 @@ function CustomerTransactionsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(transaction.status)}`}>
-                          {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                        <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(transaction.status || 'unknown')}`}>
+                          {(transaction.status || 'Unknown').charAt(0).toUpperCase() + (transaction.status || 'unknown').slice(1)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -382,6 +396,18 @@ function CustomerTransactionsPage() {
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination */}
+              {totalCount > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  className="border-t border-gray-200"
+                />
+              )}
             </div>
           )}
         </div>

@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import {
   ArrowLeft,
@@ -91,7 +91,13 @@ const getTypeBadge = (type: string) => {
     }
   }
 
-  const config = typeConfig[type as keyof typeof typeConfig]
+  const defaultConfig = {
+    label: type ? type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ') : 'Unknown',
+    color: 'bg-gray-100 text-gray-800',
+    icon: <Building2 className="w-3 h-3" />
+  }
+
+  const config = typeConfig[type as keyof typeof typeConfig] || defaultConfig
   return (
     <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
       {config.icon}
@@ -298,7 +304,7 @@ export default function SubstoreDashboard() {
   // Fetch substore details
   const { data: substore, isLoading: substoreLoading } = useQuery({
     queryKey: ['substore-details', substoreId],
-    queryFn: () => mockApi.get(`/channels/substores/${substoreId}`)
+    queryFn: () => apiClient.get(`/substores/${substoreId}/`)
   })
 
   // Mock recent sales data
@@ -558,7 +564,7 @@ export default function SubstoreDashboard() {
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                       substore.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {substore.status.charAt(0).toUpperCase() + substore.status.slice(1)}
+                      {(substore.status || 'Unknown').charAt(0).toUpperCase() + (substore.status || 'unknown').slice(1)}
                     </span>
                   </div>
                 </div>

@@ -1,66 +1,73 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Filter, Calendar, Users, DollarSign, TrendingUp, Star } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Download, Filter, Calendar, Users, DollarSign, TrendingUp, Star, RefreshCw, FileSpreadsheet, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { AppLayout } from '@/components/layout/AppLayout'
+import apiClient from '@/lib/apiClient'
+import { useToast } from '@/components/ui/Toast'
 
-interface CustomerReport {
-  id: string
-  period: string
-  totalCustomers: number
-  activeCustomers: number
-  newCustomers: number
-  customerRetention: number
-  averageOrderValue: number
-  totalRevenue: number
-  topCustomers: Array<{ name: string; type: string; orders: number; revenue: number; growth: number }>
-  customersByType: Array<{ type: string; count: number; revenue: number; percentage: number }>
-  customerGrowth: Array<{ month: string; newCustomers: number; churned: number; net: number }>
-  loyaltyMetrics: { averageOrderValue: number; repeatPurchaseRate: number; customerLifetimeValue: number }
+interface CustomerAnalyticsData {
+  summary: {
+    total_customers: number
+    active_customers: number
+    new_customers: number
+    churned_customers: number
+    average_lifetime_value: number
+  }
+  by_type: Array<{
+    type_id: number
+    type_name: string
+    customer_count: number
+    total_revenue: number
+    average_order_value: number
+  }>
+  by_location: Array<{
+    state_id: number
+    state_name: string
+    customer_count: number
+    total_revenue: number
+  }>
+  top_customers: Array<{
+    customer_id: number
+    customer_name: string
+    total_transactions: number
+    total_spent: number
+    last_purchase_date: string
+  }>
+  customer_trends: Array<{
+    month: string
+    new_customers: number
+    active_customers: number
+    churned: number
+  }>
+  purchase_frequency: {
+    one_time: number
+    occasional: number
+    regular: number
+    frequent: number
+  }
 }
 
-const mockCustomerReports: CustomerReport[] = [
-  {
-    id: '1',
-    period: '2024-12',
-    totalCustomers: 234,
-    activeCustomers: 189,
-    newCustomers: 15,
-    customerRetention: 87.5,
-    averageOrderValue: 346939,
-    totalRevenue: 85000000,
-    topCustomers: [
-      { name: 'Conoil Petroleum Ltd', type: 'Major Oil Marketing', orders: 15, revenue: 18500000, growth: 12.5 },
-      { name: 'MRS Oil Nigeria Plc', type: 'Major Oil Marketing', orders: 12, revenue: 14200000, growth: 8.3 },
-      { name: 'Oando Marketing Plc', type: 'Major Oil Marketing', orders: 10, revenue: 12800000, growth: 15.2 },
-      { name: 'Total Nigeria Plc', type: 'Major Oil Marketing', orders: 8, revenue: 9600000, growth: 6.8 },
-      { name: 'Lagos State Transport', type: 'Government Agency', orders: 7, revenue: 8400000, growth: 22.1 }
-    ],
-    customersByType: [
-      { type: 'Major Oil Marketing Companies', count: 12, revenue: 45000000, percentage: 52.9 },
-      { type: 'Independent Fuel Retailers', count: 89, revenue: 25000000, percentage: 29.4 },
-      { type: 'Fleet Operators', count: 45, revenue: 10000000, percentage: 11.8 },
-      { type: 'Government Agencies', count: 18, revenue: 5000000, percentage: 5.9 }
-    ],
-    customerGrowth: [
-      { month: 'Oct', newCustomers: 12, churned: 3, net: 9 },
-      { month: 'Nov', newCustomers: 18, churned: 5, net: 13 },
-      { month: 'Dec', newCustomers: 15, churned: 2, net: 13 }
-    ],
-    loyaltyMetrics: {
-      averageOrderValue: 346939,
-      repeatPurchaseRate: 68.5,
-      customerLifetimeValue: 2450000
-    }
-  }
-]
-
 function CustomerReportsPage() {
-  const [reports] = useState<CustomerReport[]>(mockCustomerReports)
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('2024-12')
+  const [period, setPeriod] = useState<string>('ytd')
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const { addToast } = useToast()
 
-  const currentReport = reports.find(r => r.period === selectedPeriod) || reports[0]
+  // Fetch customer analytics data
+  const { data: reportData, isLoading, refetch } = useQuery<CustomerAnalyticsData>({
+    queryKey: ['customerAnalytics', period, startDate, endDate],
+    queryFn: () => apiClient.getCustomerAnalytics({
+      period,
+      start_date: startDate || undefined,
+      end_date: endDate || undefined,
+    }),
+  })
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
@@ -78,9 +85,66 @@ function CustomerReportsPage() {
     return `${num.toFixed(1)}%`
   }
 
-  const getGrowthColor = (rate: number) => {
-    return rate >= 0 ? 'text-green-600' : 'text-red-600'
+  const getPeriodLabel = (p: string) => {
+    switch (p) {
+      case 'ytd': return 'Year to Date'
+      case 'last_30_days': return 'Last 30 Days'
+      case 'last_90_days': return 'Last 90 Days'
+      case 'last_7_days': return 'Last 7 Days'
+      case 'custom': return 'Custom Range'
+      default: return p
+    }
   }
+
+  const handleExportExcel = async () => {
+    setExportingExcel(true)
+    try {
+      await apiClient.downloadReport('customers', 'excel', {
+        period,
+        start_date: startDate || undefined,
+        end_date: endDate || undefined,
+      })
+      addToast({ type: 'success', title: 'Excel report downloaded successfully' })
+    } catch (error) {
+      addToast({ type: 'error', title: 'Failed to export Excel report' })
+    } finally {
+      setExportingExcel(false)
+    }
+  }
+
+  const handleExportPdf = async () => {
+    setExportingPdf(true)
+    try {
+      await apiClient.downloadReport('customers', 'pdf', {
+        period,
+        start_date: startDate || undefined,
+        end_date: endDate || undefined,
+      })
+      addToast({ type: 'success', title: 'PDF report downloaded successfully' })
+    } catch (error) {
+      addToast({ type: 'error', title: 'Failed to export PDF report' })
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
+  const summary = reportData?.summary || {
+    total_customers: 0,
+    active_customers: 0,
+    new_customers: 0,
+    churned_customers: 0,
+    average_lifetime_value: 0
+  }
+
+  const customersByType = reportData?.by_type || []
+  const customersByLocation = reportData?.by_location || []
+  const topCustomers = reportData?.top_customers || []
+  const customerTrends = reportData?.customer_trends || []
+  const purchaseFrequency = reportData?.purchase_frequency || { one_time: 0, occasional: 0, regular: 0, frequent: 0 }
+
+  const retentionRate = summary.total_customers > 0
+    ? ((summary.total_customers - summary.churned_customers) / summary.total_customers) * 100
+    : 0
 
   return (
     <AppLayout>
@@ -92,39 +156,121 @@ function CustomerReportsPage() {
             <p className="text-gray-600">Comprehensive customer analytics and behavior insights</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+            >
               <Filter className="h-4 w-4 mr-2" />
               Filters
             </Button>
-            <Button className="mofad-btn-primary">
-              <Download className="h-4 w-4 mr-2" />
-              Export Report
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleExportExcel}
+              disabled={exportingExcel}
+            >
+              {exportingExcel ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+              )}
+              Excel
+            </Button>
+            <Button
+              className="mofad-btn-primary"
+              onClick={handleExportPdf}
+              disabled={exportingPdf}
+            >
+              {exportingPdf ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              PDF
             </Button>
           </div>
         </div>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="bg-white rounded-lg shadow p-4 space-y-4">
+            <h3 className="font-semibold text-gray-900">Report Filters</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Period</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  value={period}
+                  onChange={(e) => {
+                    setPeriod(e.target.value)
+                    if (e.target.value !== 'custom') {
+                      setStartDate('')
+                      setEndDate('')
+                    }
+                  }}
+                >
+                  <option value="ytd">Year to Date</option>
+                  <option value="last_7_days">Last 7 Days</option>
+                  <option value="last_30_days">Last 30 Days</option>
+                  <option value="last_90_days">Last 90 Days</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+              {period === 'custom' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Period Selector */}
         <div className="flex items-center gap-4 p-4 bg-white rounded-lg shadow">
           <Calendar className="h-5 w-5 text-gray-600" />
           <span className="text-sm font-medium text-gray-700">Report Period:</span>
-          <select
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-          >
-            <option value="2024-12">December 2024</option>
-            <option value="2024-11">November 2024</option>
-            <option value="2024-Q4">Q4 2024</option>
-          </select>
+          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+            {getPeriodLabel(period)}
+          </span>
+          {isLoading && (
+            <div className="flex items-center text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading data...
+            </div>
+          )}
         </div>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Customers</p>
-                <p className="text-2xl font-bold text-primary-600">{formatNumber(currentReport.totalCustomers)}</p>
+                <p className="text-2xl font-bold text-primary-600">{formatNumber(summary.total_customers)}</p>
               </div>
               <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
                 <Users className="h-5 w-5 text-primary-600" />
@@ -136,7 +282,7 @@ function CustomerReportsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Active Customers</p>
-                <p className="text-2xl font-bold text-green-600">{formatNumber(currentReport.activeCustomers)}</p>
+                <p className="text-2xl font-bold text-green-600">{formatNumber(summary.active_customers)}</p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                 <TrendingUp className="h-5 w-5 text-green-600" />
@@ -147,11 +293,11 @@ function CustomerReportsPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Customer Retention</p>
-                <p className="text-2xl font-bold text-blue-600">{formatPercentage(currentReport.customerRetention)}</p>
+                <p className="text-sm text-gray-600">New Customers</p>
+                <p className="text-2xl font-bold text-blue-600">{formatNumber(summary.new_customers)}</p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Star className="h-5 w-5 text-blue-600" />
+                <Users className="h-5 w-5 text-blue-600" />
               </div>
             </div>
           </div>
@@ -159,70 +305,91 @@ function CustomerReportsPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Customer Revenue</p>
-                <p className="text-2xl font-bold text-purple-600">{formatCurrency(currentReport.totalRevenue)}</p>
+                <p className="text-sm text-gray-600">Retention Rate</p>
+                <p className="text-2xl font-bold text-purple-600">{formatPercentage(retentionRate)}</p>
               </div>
               <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-purple-600" />
+                <Star className="h-5 w-5 text-purple-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="mofad-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Avg. Lifetime Value</p>
+                <p className="text-2xl font-bold text-orange-600">{formatCurrency(summary.average_lifetime_value)}</p>
+              </div>
+              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-orange-600" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Customer Loyalty Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="mofad-card">
-            <h4 className="text-sm font-medium text-gray-600 mb-2">Average Order Value</h4>
-            <p className="text-2xl font-bold text-primary-600">{formatCurrency(currentReport.loyaltyMetrics.averageOrderValue)}</p>
-          </div>
-          <div className="mofad-card">
-            <h4 className="text-sm font-medium text-gray-600 mb-2">Repeat Purchase Rate</h4>
-            <p className="text-2xl font-bold text-green-600">{formatPercentage(currentReport.loyaltyMetrics.repeatPurchaseRate)}</p>
-          </div>
-          <div className="mofad-card">
-            <h4 className="text-sm font-medium text-gray-600 mb-2">Customer Lifetime Value</h4>
-            <p className="text-2xl font-bold text-blue-600">{formatCurrency(currentReport.loyaltyMetrics.customerLifetimeValue)}</p>
+        {/* Purchase Frequency */}
+        <div className="mofad-card">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Purchase Frequency Distribution</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-3xl font-bold text-gray-600 mb-2">{formatNumber(purchaseFrequency.one_time)}</div>
+              <div className="text-sm text-gray-700">One-time Buyers</div>
+            </div>
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-3xl font-bold text-blue-600 mb-2">{formatNumber(purchaseFrequency.occasional)}</div>
+              <div className="text-sm text-blue-700">Occasional (2-3 purchases)</div>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-3xl font-bold text-green-600 mb-2">{formatNumber(purchaseFrequency.regular)}</div>
+              <div className="text-sm text-green-700">Regular (4-6 purchases)</div>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <div className="text-3xl font-bold text-purple-600 mb-2">{formatNumber(purchaseFrequency.frequent)}</div>
+              <div className="text-sm text-purple-700">Frequent (7+ purchases)</div>
+            </div>
           </div>
         </div>
 
         {/* Top Customers */}
         <div className="mofad-card">
           <h3 className="text-lg font-semibold text-gray-900 mb-6">Top Performing Customers</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Customer</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Orders</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Revenue</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Growth</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentReport.topCustomers.map((customer, index) => (
-                  <tr key={index} className="border-b border-gray-100">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
+          {topCustomers.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <p>No customer data available for this period</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Rank</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Customer</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Transactions</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Total Spent</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Last Purchase</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topCustomers.slice(0, 10).map((customer, index) => (
+                    <tr key={customer.customer_id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4">
                         <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
                           <span className="text-primary-600 font-medium text-sm">{index + 1}</span>
                         </div>
-                        <div className="font-medium text-gray-900">{customer.name}</div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{customer.type}</td>
-                    <td className="py-3 px-4 font-medium">{customer.orders}</td>
-                    <td className="py-3 px-4 font-bold text-primary-600">{formatCurrency(customer.revenue)}</td>
-                    <td className="py-3 px-4">
-                      <span className={`font-medium ${getGrowthColor(customer.growth)}`}>
-                        {customer.growth >= 0 ? '+' : ''}{formatPercentage(customer.growth)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </td>
+                      <td className="py-3 px-4 font-medium text-gray-900">{customer.customer_name}</td>
+                      <td className="py-3 px-4">{formatNumber(customer.total_transactions)}</td>
+                      <td className="py-3 px-4 font-bold text-primary-600">{formatCurrency(customer.total_spent)}</td>
+                      <td className="py-3 px-4 text-gray-500">
+                        {new Date(customer.last_purchase_date).toLocaleDateString('en-NG')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Customer Segmentation */}
@@ -230,71 +397,100 @@ function CustomerReportsPage() {
           {/* Customers by Type */}
           <div className="mofad-card">
             <h3 className="text-lg font-semibold text-gray-900 mb-6">Customers by Type</h3>
-            <div className="space-y-4">
-              {currentReport.customersByType.map((type, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 bg-primary-500 rounded"></div>
-                      <div>
-                        <p className="font-medium text-gray-900">{type.type}</p>
-                        <p className="text-sm text-gray-500">{type.count} customers • {formatPercentage(type.percentage)}</p>
+            {customersByType.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>No customer type data available</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {customersByType.map((type) => (
+                  <div key={type.type_id} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 bg-primary-500 rounded"></div>
+                        <div>
+                          <p className="font-medium text-gray-900">{type.type_name}</p>
+                          <p className="text-sm text-gray-500">
+                            {type.customer_count} customers • Avg: {formatCurrency(type.average_order_value)}
+                          </p>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-900">{formatCurrency(type.total_revenue)}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900">{formatCurrency(type.revenue)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Customer Growth Trend */}
+          {/* Customers by Location */}
+          <div className="mofad-card">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Customers by Location</h3>
+            {customersByLocation.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>No location data available</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {customersByLocation.slice(0, 6).map((location) => (
+                  <div key={location.state_id} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 bg-green-500 rounded"></div>
+                        <div>
+                          <p className="font-medium text-gray-900">{location.state_name}</p>
+                          <p className="text-sm text-gray-500">{location.customer_count} customers</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-900">{formatCurrency(location.total_revenue)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Customer Growth Trend */}
+        {customerTrends.length > 0 && (
           <div className="mofad-card">
             <h3 className="text-lg font-semibold text-gray-900 mb-6">Customer Growth Trend</h3>
-            <div className="space-y-4">
-              {currentReport.customerGrowth.map((growth, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{growth.month} 2024</p>
-                    <p className="text-sm text-gray-500">
-                      +{growth.newCustomers} new, -{growth.churned} churned
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`font-bold text-lg ${getGrowthColor(growth.net)}`}>
-                      {growth.net >= 0 ? '+' : ''}{growth.net}
-                    </p>
-                    <p className="text-xs text-gray-500">net growth</p>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Month</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">New Customers</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Active Customers</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Churned</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Net Growth</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customerTrends.map((trend, index) => (
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4 font-medium text-gray-900">{trend.month}</td>
+                      <td className="py-3 px-4 text-green-600">+{formatNumber(trend.new_customers)}</td>
+                      <td className="py-3 px-4">{formatNumber(trend.active_customers)}</td>
+                      <td className="py-3 px-4 text-red-600">-{formatNumber(trend.churned)}</td>
+                      <td className="py-3 px-4">
+                        <span className={`font-bold ${trend.new_customers - trend.churned >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {trend.new_customers - trend.churned >= 0 ? '+' : ''}{formatNumber(trend.new_customers - trend.churned)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-
-        {/* Customer Insights */}
-        <div className="mofad-card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Customer Insights</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-3xl font-bold text-green-600 mb-2">{formatNumber(currentReport.newCustomers)}</div>
-              <div className="text-sm text-green-700">New Customers This Period</div>
-              <div className="text-xs text-gray-600 mt-1">25% increase from last month</div>
-            </div>
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-3xl font-bold text-blue-600 mb-2">{formatPercentage(80.5)}</div>
-              <div className="text-sm text-blue-700">Customer Satisfaction</div>
-              <div className="text-xs text-gray-600 mt-1">Based on surveys & feedback</div>
-            </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-3xl font-bold text-purple-600 mb-2">4.2</div>
-              <div className="text-sm text-purple-700">Average Rating</div>
-              <div className="text-xs text-gray-600 mt-1">From customer reviews</div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </AppLayout>
   )

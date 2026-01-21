@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 import { Loader2 } from 'lucide-react'
+import { saveLastVisitedPath } from '@/components/RouteTracker'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -14,6 +15,7 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const { isAuthenticated, isLoading, checkAuth } = useAuthStore()
   const router = useRouter()
+  const pathname = usePathname()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
@@ -22,9 +24,14 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
+      // Save the current path before redirecting to login
+      // This allows the user to return to this page after logging back in
+      if (pathname) {
+        saveLastVisitedPath(pathname)
+      }
       router.push('/auth/login')
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, router, pathname])
 
   if (isLoading) {
     return (

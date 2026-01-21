@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
 import {
   LayoutDashboard,
   FileText,
@@ -43,6 +44,13 @@ import {
   AlertTriangle
 } from 'lucide-react'
 
+// Define user roles for access control
+type UserRole = 'admin' | 'manager' | 'accountant' | 'storekeeper' | 'user'
+
+// All roles that have access to most features (not regular users)
+const PRIVILEGED_ROLES: UserRole[] = ['admin', 'manager', 'accountant', 'storekeeper']
+const ADMIN_ROLES: UserRole[] = ['admin', 'manager']
+
 interface NavItem {
   label: string
   href: string
@@ -51,6 +59,7 @@ interface NavItem {
   badge?: string
   isNew?: boolean
   color?: string
+  roles?: UserRole[] // If not specified, all authenticated users can see it
 }
 
 const navigation: NavItem[] = [
@@ -58,13 +67,15 @@ const navigation: NavItem[] = [
     label: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
-    color: 'from-emerald-600 to-green-600'
+    color: 'from-emerald-600 to-green-600',
+    roles: PRIVILEGED_ROLES, // Only privileged users see dashboard
   },
   {
     label: 'Orders',
     href: '/orders',
     icon: FileText,
     color: 'from-emerald-500 to-teal-500',
+    roles: PRIVILEGED_ROLES,
     children: [
       { label: 'Purchase Requisitions', href: '/orders/prf', icon: FileText, badge: '12' },
       { label: 'Purchase Orders', href: '/orders/pro', icon: ClipboardList, badge: '8' },
@@ -76,6 +87,7 @@ const navigation: NavItem[] = [
     href: '/customers',
     icon: Users,
     color: 'from-purple-500 to-violet-500',
+    roles: PRIVILEGED_ROLES,
     children: [
       { label: 'All Customers', href: '/customers', icon: Users },
       { label: 'Customer Types', href: '/customers/types', icon: Users },
@@ -87,6 +99,7 @@ const navigation: NavItem[] = [
     href: '/suppliers',
     icon: Truck,
     color: 'from-blue-500 to-indigo-500',
+    roles: PRIVILEGED_ROLES,
     children: [
       { label: 'All Suppliers', href: '/suppliers', icon: Truck },
       { label: 'Supplier Products', href: '/suppliers/products', icon: Package },
@@ -98,6 +111,7 @@ const navigation: NavItem[] = [
     href: '/products',
     icon: Package,
     color: 'from-orange-500 to-red-500',
+    roles: PRIVILEGED_ROLES,
     children: [
       { label: 'All Products', href: '/products', icon: Package },
       { label: 'Price Schemes', href: '/products/pricing', icon: DollarSign },
@@ -109,6 +123,7 @@ const navigation: NavItem[] = [
     href: '/inventory',
     icon: Warehouse,
     color: 'from-indigo-500 to-purple-500',
+    roles: ['admin', 'manager', 'storekeeper'],
     children: [
       { label: 'Warehouse Inventory', href: '/inventory/warehouse', icon: Warehouse },
       { label: 'Substore Inventory', href: '/inventory/substore', icon: Building2 },
@@ -121,6 +136,7 @@ const navigation: NavItem[] = [
     href: '/channels',
     icon: Building2,
     color: 'from-pink-500 to-rose-500',
+    roles: PRIVILEGED_ROLES,
     children: [
       { label: 'Substores', href: '/channels/substores', icon: Building2 },
       { label: 'Substore Transactions', href: '/channels/substores/transactions', icon: ShoppingCart },
@@ -133,6 +149,7 @@ const navigation: NavItem[] = [
     href: '/accounts',
     icon: DollarSign,
     color: 'from-green-500 to-emerald-500',
+    roles: ['admin', 'manager', 'accountant'],
     children: [
       { label: 'All Accounts', href: '/accounts', icon: DollarSign },
       { label: 'Account Transactions', href: '/accounts/transactions', icon: TrendingUp },
@@ -145,6 +162,7 @@ const navigation: NavItem[] = [
     icon: Calculator,
     color: 'from-amber-500 to-yellow-500',
     isNew: true,
+    roles: ['admin', 'manager', 'accountant'],
     children: [
       { label: 'Financial Dashboard', href: '/finance', icon: Calculator },
       { label: 'General Ledger', href: '/finance/general-ledger', icon: BookOpen },
@@ -159,6 +177,7 @@ const navigation: NavItem[] = [
     href: '/reports',
     icon: TrendingUp,
     color: 'from-cyan-500 to-blue-500',
+    roles: ['admin', 'manager', 'accountant'],
     children: [
       { label: 'Sales Reports', href: '/reports/sales', icon: TrendingUp },
       { label: 'Inventory Reports', href: '/reports/inventory', icon: Warehouse },
@@ -171,6 +190,7 @@ const navigation: NavItem[] = [
     href: '/admin',
     icon: Shield,
     color: 'from-red-500 to-rose-500',
+    roles: ADMIN_ROLES,
     children: [
       {
         label: 'Inventory Management',
@@ -214,19 +234,33 @@ const navigation: NavItem[] = [
     href: '/settings',
     icon: Settings,
     color: 'from-slate-500 to-gray-500',
+    roles: ADMIN_ROLES,
     children: [
       { label: 'User Management', href: '/settings/users', icon: Users },
+      { label: 'Roles', href: '/settings/roles', icon: Shield },
+      { label: 'Permissions', href: '/settings/permissions', icon: ClipboardCheck },
       { label: 'System Settings', href: '/settings/system', icon: Settings },
       { label: 'Audit Logs', href: '/settings/audit-logs', icon: ClipboardCheck },
       { label: 'Warehouses', href: '/settings/warehouses', icon: Warehouse },
       { label: 'States', href: '/settings/states', icon: Building2 },
+      { label: 'Locations', href: '/settings/locations', icon: MapPin },
+      { label: 'Price Schemes', href: '/settings/price-schemes', icon: DollarSign },
+      { label: 'Expense Types', href: '/settings/expense-types', icon: Receipt },
     ],
+  },
+  {
+    label: 'My Profile',
+    href: '/profile',
+    icon: Users,
+    color: 'from-green-500 to-emerald-500',
+    // No roles specified - all authenticated users can see this
   },
   {
     label: 'Notifications',
     href: '/notifications',
     icon: Bell,
     color: 'from-blue-500 to-indigo-500',
+    // No roles specified - all authenticated users can see this
   },
 ]
 
@@ -234,10 +268,46 @@ interface SidebarProps {
   collapsed: boolean
 }
 
+// Helper function to check if user has access to a nav item
+const hasAccess = (item: NavItem, userRole: string | undefined): boolean => {
+  // If no roles specified, all authenticated users can access
+  if (!item.roles || item.roles.length === 0) {
+    return true
+  }
+  // Check if user's role is in the allowed roles
+  return item.roles.includes(userRole as UserRole)
+}
+
+// Helper function to filter navigation based on user role
+const filterNavigation = (items: NavItem[], userRole: string | undefined): NavItem[] => {
+  return items
+    .filter(item => hasAccess(item, userRole))
+    .map(item => ({
+      ...item,
+      children: item.children ? filterNavigation(item.children, userRole) : undefined
+    }))
+}
+
 export function Sidebar({ collapsed }: SidebarProps) {
   const pathname = usePathname()
+  const { user } = useAuthStore()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+
+  // Get user role - handle different ways role might be stored
+  const userRole = useMemo(() => {
+    if (!user) return undefined
+    // Check if role is stored directly on user
+    if ((user as any).role) return (user as any).role
+    // Check if role is in roles array
+    if (user.roles && user.roles.length > 0) return user.roles[0].name
+    return 'user' // Default to regular user
+  }, [user])
+
+  // Filter navigation based on user role
+  const filteredNavigation = useMemo(() => {
+    return filterNavigation(navigation, userRole)
+  }, [userRole])
 
   const toggleExpanded = (href: string) => {
     setExpandedItems(prev =>
@@ -249,7 +319,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
 
   // Auto-expand active parent
   useEffect(() => {
-    navigation.forEach(item => {
+    filteredNavigation.forEach(item => {
       if (item.children) {
         const hasActiveChild = item.children.some(child =>
           pathname === child.href || pathname.startsWith(child.href + '/')
@@ -259,7 +329,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
         }
       }
     })
-  }, [pathname])
+  }, [pathname, filteredNavigation])
 
   const renderNavItem = (item: NavItem, depth = 0) => {
     const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
@@ -285,7 +355,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
           <div className={cn(
             "absolute inset-0 rounded-2xl transition-all duration-500 ease-out",
             isActive
-              ? `bg-gradient-to-r ${item.color} shadow-lg shadow-green-500/25 border border-green-400/20`
+              ? `bg-gradient-to-r ${item.color || 'from-green-600 to-emerald-600'} shadow-lg shadow-green-500/25 border border-green-400/20`
               : isHovered
                 ? "bg-gradient-to-r from-white to-slate-50 shadow-md shadow-slate-200/50 border border-slate-200/40 backdrop-blur-sm"
                 : "hover:bg-gradient-to-r hover:from-slate-50/70 hover:to-white hover:shadow-sm hover:border hover:border-slate-200/30"
@@ -457,7 +527,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
             "space-y-1",
             collapsed ? "px-3" : "px-5"
           )}>
-            {navigation.map((item) => renderNavItem(item))}
+            {filteredNavigation.map((item) => renderNavItem(item))}
           </div>
         </nav>
 

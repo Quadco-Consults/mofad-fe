@@ -69,7 +69,8 @@ export function getStatusColor(status: string): string {
   }
 }
 
-export function capitalizeFirst(str: string): string {
+export function capitalizeFirst(str: string | undefined | null): string {
+  if (!str) return 'Unknown'
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 

@@ -5,8 +5,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import { Checkbox } from '@/components/ui/Checkbox'
+import { Pagination } from '@/components/ui/Pagination'
+import { BulkActionBar } from '@/components/ui/BulkActionBar'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useSelection } from '@/hooks/useSelection'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { useToast } from '@/components/ui/Toast'
 import {
   Plus,
   Search,
@@ -28,25 +34,37 @@ import {
   Shield,
   Search as SearchIcon,
   Thermometer,
+  RefreshCw,
 } from 'lucide-react'
 
 interface Service {
   id: number
-  service_name: string
-  description: string
-  duration_minutes: number
+  name: string
+  code: string | null
+  description: string | null
+  category: string | null
   base_price: number
-  materials_cost: number
-  labor_cost: number
-  category: string
-  status: 'active' | 'inactive'
-  popularity_score: number
-  bookings_this_month: number
+  minimum_price: number | null
+  maximum_price: number | null
+  estimated_duration: string | null
+  maximum_daily_capacity: number
+  requires_appointment: boolean
+  requires_special_equipment: boolean
+  equipment_notes: string | null
+  requires_certification: boolean
+  certification_notes: string | null
+  tax_rate: number
+  is_active: boolean
+  is_seasonal: boolean
+  seasonal_start: string | null
+  seasonal_end: string | null
   created_at: string
+  updated_at: string
 }
 
-const getCategoryIcon = (category: string) => {
-  switch (category.toLowerCase()) {
+const getCategoryIcon = (category: string | null | undefined) => {
+  const safeCategory = (category || '').toLowerCase()
+  switch (safeCategory) {
     case 'oil change':
       return <Wrench className="w-5 h-5 text-blue-500" />
     case 'wheel services':
@@ -81,15 +99,14 @@ const getCategoryIcon = (category: string) => {
   }
 }
 
-const getStatusBadge = (status: string) => {
-  const colors = {
-    active: 'bg-green-100 text-green-800',
-    inactive: 'bg-gray-100 text-gray-800'
-  }
-
-  return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status as keyof typeof colors]}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+const getStatusBadge = (isActive: boolean) => {
+  return isActive ? (
+    <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+      Active
+    </span>
+  ) : (
+    <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+      Inactive
     </span>
   )
 }
@@ -115,33 +132,53 @@ export default function ServicesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [formData, setFormData] = useState<Partial<Service>>({
-    service_name: '',
+    name: '',
+    code: '',
     description: '',
-    duration_minutes: 30,
+    category: 'oil_change',
     base_price: 0,
-    materials_cost: 0,
-    labor_cost: 0,
-    category: 'Maintenance',
-    status: 'active'
+    minimum_price: 0,
+    maximum_price: 0,
+    is_active: true
   })
 
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
 
-  const { data: servicesList, isLoading } = useQuery({
-    queryKey: ['services-list'],
-    queryFn: () => mockApi.get('/services'),
+  // Selection hook for bulk operations
+  const selection = useSelection<Service>()
+
+  const { data: servicesData, isLoading, refetch } = useQuery({
+    queryKey: ['services-list', searchTerm, categoryFilter, statusFilter, currentPage, pageSize],
+    queryFn: async () => {
+      const params: any = { page: currentPage, size: pageSize }
+      if (searchTerm) params.search = searchTerm
+      if (categoryFilter !== 'all') params.category = categoryFilter
+      if (statusFilter !== 'all') params.is_active = statusFilter === 'active'
+      return apiClient.getServices(params)
+    },
   })
 
-  const services = servicesList || []
+  // Extract data from response - handle both paginated and non-paginated responses
+  const services: Service[] = Array.isArray(servicesData)
+    ? servicesData
+    : servicesData?.results || servicesData?.data?.results || []
+
+  // Extract pagination info
+  const totalCount = servicesData?.paginator?.count || servicesData?.count || services.length
+  const totalPages = servicesData?.paginator?.total_pages || Math.ceil(totalCount / pageSize) || 1
 
   // Mutations
   const createServiceMutation = useMutation({
-    mutationFn: (data: Partial<Service>) => mockApi.post('/services', data),
+    mutationFn: (data: Partial<Service>) => apiClient.createService(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services-list'] })
       setShowCreateModal(false)
@@ -151,7 +188,7 @@ export default function ServicesPage() {
 
   const updateServiceMutation = useMutation({
     mutationFn: ({ id, data }: { id: number, data: Partial<Service> }) =>
-      mockApi.patch(`/services/${id}/`, data),
+      apiClient.updateService(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services-list'] })
       setShowEditModal(false)
@@ -160,25 +197,60 @@ export default function ServicesPage() {
   })
 
   const deleteServiceMutation = useMutation({
-    mutationFn: (id: number) => mockApi.delete(`/services/${id}/`),
+    mutationFn: (id: number) => apiClient.deleteService(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services-list'] })
       setShowDeleteModal(false)
       setSelectedService(null)
+      addToast({ type: 'success', title: 'Success', message: 'Service deleted successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to delete service' })
+    }
+  })
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: (number | string)[]) => apiClient.bulkDeleteServices(ids),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['services-list'] })
+      setShowBulkDeleteModal(false)
+      selection.clearSelection()
+
+      if (response.failed_count > 0) {
+        addToast({
+          type: 'warning',
+          title: 'Partial Success',
+          message: `Deleted ${response.deleted_count} services. ${response.failed_count} failed.`
+        })
+      } else {
+        addToast({
+          type: 'success',
+          title: 'Success',
+          message: `Successfully deleted ${response.deleted_count} services`
+        })
+      }
+    },
+    onError: (error: any) => {
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: error.message || 'Failed to delete services'
+      })
     }
   })
 
   // Helper functions
   const resetForm = () => {
     setFormData({
-      service_name: '',
+      name: '',
+      code: '',
       description: '',
-      duration_minutes: 30,
+      category: 'oil_change',
       base_price: 0,
-      materials_cost: 0,
-      labor_cost: 0,
-      category: 'Maintenance',
-      status: 'active'
+      minimum_price: 0,
+      maximum_price: 0,
+      is_active: true
     })
     setSelectedService(null)
   }
@@ -191,14 +263,14 @@ export default function ServicesPage() {
   const openEditModal = (service: Service) => {
     setSelectedService(service)
     setFormData({
-      service_name: service.service_name,
-      description: service.description,
-      duration_minutes: service.duration_minutes,
+      name: service.name,
+      code: service.code || '',
+      description: service.description || '',
+      category: service.category || 'oil_change',
       base_price: service.base_price,
-      materials_cost: service.materials_cost,
-      labor_cost: service.labor_cost,
-      category: service.category,
-      status: service.status
+      minimum_price: service.minimum_price || 0,
+      maximum_price: service.maximum_price || 0,
+      is_active: service.is_active
     })
     setShowEditModal(true)
   }
@@ -223,17 +295,8 @@ export default function ServicesPage() {
     }
   }
 
-  // Filter services
-  const filteredServices = services.filter((service: Service) => {
-    const matchesSearch = service.service_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         service.category.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter
-    const matchesStatus = statusFilter === 'all' || service.status === statusFilter
-
-    return matchesSearch && matchesCategory && matchesStatus
-  })
+  // Services are now filtered server-side via API params
+  // Using services directly from the API response
 
   return (
     <AppLayout>
@@ -245,6 +308,10 @@ export default function ServicesPage() {
             <p className="text-muted-foreground">Manage service offerings and pricing</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
             <Button variant="outline">
               <Download className="w-4 h-4 mr-2" />
               Export
@@ -392,7 +459,7 @@ export default function ServicesPage() {
                   ))}
                 </div>
               </div>
-            ) : filteredServices.length === 0 ? (
+            ) : services.length === 0 ? (
               <div className="p-12 text-center">
                 <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No services found</h3>
@@ -411,79 +478,73 @@ export default function ServicesPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b">
                     <tr>
+                      <th className="w-12 py-3 px-4">
+                        <Checkbox
+                          checked={selection.isAllSelected(services)}
+                          indeterminate={selection.isPartiallySelected(services)}
+                          onChange={() => selection.toggleAll(services)}
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Service</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Code</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Category</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Description</th>
-                      <th className="text-center py-3 px-4 font-medium text-gray-900">Duration</th>
                       <th className="text-right py-3 px-4 font-medium text-gray-900">Base Price</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-900">Materials</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-900">Labor</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-900">Margin</th>
-                      <th className="text-center py-3 px-4 font-medium text-gray-900">Popularity</th>
-                      <th className="text-center py-3 px-4 font-medium text-gray-900">Bookings</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Min Price</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Max Price</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {filteredServices.map((service: Service) => (
-                      <tr key={service.id} className="hover:bg-gray-50">
+                    {services.map((service: Service) => (
+                      <tr
+                        key={service.id}
+                        className={`hover:bg-gray-50 ${selection.isSelected(service.id) ? 'bg-primary-50' : ''}`}
+                      >
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selection.isSelected(service.id)}
+                            onChange={() => selection.toggle(service.id)}
+                          />
+                        </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             {getCategoryIcon(service.category)}
                             <div>
-                              <div className="font-medium text-gray-900">{service.service_name}</div>
+                              <div className="font-medium text-gray-900">{service.name || 'Unnamed Service'}</div>
                               <div className="text-sm text-gray-500">ID: {service.id}</div>
                             </div>
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-sm text-gray-700">{service.category}</span>
+                          <span className="font-mono text-sm text-gray-700">{service.code || '-'}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-700">{service.category || '-'}</span>
                         </td>
                         <td className="py-3 px-4 max-w-xs">
-                          <p className="text-sm text-gray-600 truncate" title={service.description}>
-                            {service.description}
+                          <p className="text-sm text-gray-600 truncate" title={service.description || ''}>
+                            {service.description || '-'}
                           </p>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Clock className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm font-medium">{service.duration_minutes} mins</span>
-                          </div>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="font-bold text-primary">
-                            {formatCurrency(service.base_price)}
+                            {formatCurrency(service.base_price || 0)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="text-sm text-gray-700">
-                            {formatCurrency(service.materials_cost)}
+                            {service.minimum_price ? formatCurrency(service.minimum_price) : '-'}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="text-sm text-gray-700">
-                            {formatCurrency(service.labor_cost)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className="font-bold text-green-600">
-                            {(((service.base_price - service.materials_cost - service.labor_cost) / service.base_price) * 100).toFixed(1)}%
+                            {service.maximum_price ? formatCurrency(service.maximum_price) : '-'}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center">
-                            {getPopularityStars(service.popularity_score)}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Users className="w-4 h-4 text-gray-400" />
-                            <span className="font-medium text-gray-900">{service.bookings_this_month}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {getStatusBadge(service.status)}
+                          {getStatusBadge(service.is_active)}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center justify-center gap-1">
@@ -521,6 +582,18 @@ export default function ServicesPage() {
                 </table>
               </div>
             )}
+
+            {/* Pagination */}
+            {totalCount > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                className="border-t"
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -540,55 +613,72 @@ export default function ServicesPage() {
                       type="text"
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.service_name}
-                      onChange={(e) => setFormData({ ...formData, service_name: e.target.value })}
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Enter service name"
                     />
                   </div>
 
                   <div>
+                    <label className="block text-sm font-medium mb-1">Service Code</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.code || ''}
+                      onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                      placeholder="Auto-generated if empty"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
                     <label className="block text-sm font-medium mb-1">Category *</label>
                     <select
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.category}
+                      value={formData.category || ''}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     >
-                      <option value="Maintenance">Maintenance</option>
-                      <option value="Cleaning">Cleaning</option>
-                      <option value="Electrical">Electrical</option>
-                      <option value="Safety">Safety</option>
-                      <option value="Diagnostics">Diagnostics</option>
-                      <option value="HVAC">HVAC</option>
+                      <option value="oil_change">Oil Change</option>
+                      <option value="car_wash">Car Wash</option>
+                      <option value="tire_service">Tire Service</option>
+                      <option value="battery_service">Battery Service</option>
+                      <option value="brake_service">Brake Service</option>
+                      <option value="engine_service">Engine Service</option>
+                      <option value="ac_service">AC Service</option>
+                      <option value="diagnostic">Diagnostic</option>
+                      <option value="filter">Filter</option>
+                      <option value="commission">Commission</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Status</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.is_active ? 'active' : 'inactive'}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'active' })}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Description *</label>
+                  <label className="block text-sm font-medium mb-1">Description</label>
                   <textarea
-                    required
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={formData.description}
+                    value={formData.description || ''}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Enter service description"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Duration (minutes) *</label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.duration_minutes}
-                      onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
-                    />
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium mb-1">Base Price (₦) *</label>
                     <input
@@ -603,41 +693,27 @@ export default function ServicesPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-1">Materials Cost (₦)</label>
+                    <label className="block text-sm font-medium mb-1">Minimum Price (₦)</label>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.materials_cost}
-                      onChange={(e) => setFormData({ ...formData, materials_cost: parseFloat(e.target.value) || 0 })}
+                      value={formData.minimum_price || ''}
+                      onChange={(e) => setFormData({ ...formData, minimum_price: parseFloat(e.target.value) || null })}
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Labor Cost (₦)</label>
+                    <label className="block text-sm font-medium mb-1">Maximum Price (₦)</label>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.labor_cost}
-                      onChange={(e) => setFormData({ ...formData, labor_cost: parseFloat(e.target.value) || 0 })}
+                      value={formData.maximum_price || ''}
+                      onChange={(e) => setFormData({ ...formData, maximum_price: parseFloat(e.target.value) || null })}
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Status</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
                   </div>
                 </div>
 
@@ -668,35 +744,47 @@ export default function ServicesPage() {
         )}
 
         {/* Delete Confirmation Modal */}
-        {showDeleteModal && selectedService && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-              <h2 className="text-xl font-bold mb-4 text-red-600">Delete Service</h2>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to delete <strong>{selectedService.service_name}</strong>?
+        <ConfirmDialog
+          open={showDeleteModal && !!selectedService}
+          onClose={() => {
+            setShowDeleteModal(false)
+            setSelectedService(null)
+          }}
+          onConfirm={handleDelete}
+          title="Delete Service"
+          message={
+            selectedService ? (
+              <>
+                Are you sure you want to delete <strong>{selectedService.name}</strong>?
                 This action cannot be undone.
-              </p>
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowDeleteModal(false)
-                    setSelectedService(null)
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleDelete}
-                  disabled={deleteServiceMutation.isPending}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  {deleteServiceMutation.isPending ? 'Deleting...' : 'Delete'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+              </>
+            ) : ''
+          }
+          confirmText="Delete Service"
+          variant="danger"
+          isLoading={deleteServiceMutation.isPending}
+        />
+
+        {/* Bulk Delete Confirmation Modal */}
+        <ConfirmDialog
+          open={showBulkDeleteModal}
+          onClose={() => setShowBulkDeleteModal(false)}
+          onConfirm={() => bulkDeleteMutation.mutate(selection.selectedIds)}
+          title="Delete Multiple Services"
+          message={`Are you sure you want to delete ${selection.selectedCount} service${selection.selectedCount > 1 ? 's' : ''}? This action cannot be undone.`}
+          confirmText={`Delete ${selection.selectedCount} Service${selection.selectedCount > 1 ? 's' : ''}`}
+          variant="danger"
+          isLoading={bulkDeleteMutation.isPending}
+        />
+
+        {/* Bulk Action Bar */}
+        <BulkActionBar
+          selectedCount={selection.selectedCount}
+          onClearSelection={selection.clearSelection}
+          onBulkDelete={() => setShowBulkDeleteModal(true)}
+          isDeleting={bulkDeleteMutation.isPending}
+          entityName="service"
+        />
       </div>
     </AppLayout>
   )

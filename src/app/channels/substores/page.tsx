@@ -7,8 +7,13 @@ import { createPortal } from 'react-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Checkbox } from '@/components/ui/Checkbox'
+import { Pagination } from '@/components/ui/Pagination'
+import { BulkActionBar } from '@/components/ui/BulkActionBar'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useSelection } from '@/hooks/useSelection'
 import { useToast } from '@/components/ui/Toast'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import {
   Plus,
@@ -25,11 +30,9 @@ import {
   Phone,
   Mail,
   Calendar,
-  Star,
   TrendingUp,
   Package,
   DollarSign,
-  Percent,
   Fuel,
   Wrench,
 } from 'lucide-react'
@@ -38,72 +41,72 @@ interface Substore {
   id: number
   name: string
   code: string
-  type: 'lubebay' | 'filling_station'
-  location: string
-  state: string
-  manager: string
-  phone: string
-  email: string
-  status: 'active' | 'inactive'
-  opening_date: string
-  monthly_sales: number
-  commission_rate: number
-  products_count: number
-  last_transaction: string
-  rating: number
+  substore_type: string
+  state: number | null
+  state_name: string | null
+  location: number | null
+  location_name?: string | null
+  customer: number | null
+  customer_name?: string | null
+  manager: number | null
+  manager_name?: string | null
+  phone: string | null
+  email: string | null
+  address: string | null
+  is_active: boolean
+  current_balance: number | string
+  credit_limit: number | string
+  available_credit?: number | string
+  is_credit_exceeded?: boolean
+  created_datetime: string
+  updated_datetime: string
+  old_reference_id?: number | null
 }
 
-const getStatusBadge = (status: string) => {
-  const colors = {
-    active: 'bg-green-100 text-green-800',
-    inactive: 'bg-gray-100 text-gray-800'
-  }
-
-  return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status as keyof typeof colors]}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+const getStatusBadge = (isActive: boolean) => {
+  return isActive ? (
+    <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+      Active
+    </span>
+  ) : (
+    <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+      Inactive
     </span>
   )
 }
 
 const getTypeBadge = (type: string) => {
-  const typeConfig = {
-    lubebay: {
-      label: 'Lubebay',
-      color: 'bg-blue-100 text-blue-800',
-      icon: <Wrench className="w-3 h-3" />
-    },
-    filling_station: {
-      label: 'Filling Station',
+  const typeConfig: Record<string, { label: string; color: string }> = {
+    station: {
+      label: 'Fuel Station',
       color: 'bg-orange-100 text-orange-800',
-      icon: <Fuel className="w-3 h-3" />
-    }
+    },
+    distribution: {
+      label: 'Distribution',
+      color: 'bg-blue-100 text-blue-800',
+    },
+    retail: {
+      label: 'Retail',
+      color: 'bg-green-100 text-green-800',
+    },
+    wholesale: {
+      label: 'Wholesale',
+      color: 'bg-purple-100 text-purple-800',
+    },
   }
 
-  const config = typeConfig[type as keyof typeof typeConfig]
+  const config = typeConfig[type] || {
+    label: type ? type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ') : 'Unknown',
+    color: 'bg-gray-100 text-gray-800',
+  }
+
   return (
-    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
-      {config.icon}
-      <span>{config.label}</span>
-    </div>
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      {config.label}
+    </span>
   )
 }
 
-const getRatingStars = (rating: number) => {
-  return (
-    <div className="flex items-center gap-1">
-      {[...Array(5)].map((_, i) => (
-        <Star
-          key={i}
-          className={`w-4 h-4 ${
-            i < Math.floor(rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
-          }`}
-        />
-      ))}
-      <span className="ml-1 text-xs text-muted-foreground">({rating})</span>
-    </div>
-  )
-}
 
 export default function SubstoresPage() {
   const router = useRouter()
@@ -115,6 +118,16 @@ export default function SubstoresPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [stateFilter, setStateFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
+
+  // Selection hook
+  const selection = useSelection<Substore>()
+
+  // Bulk delete modal state
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
 
   // Modal State
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -141,16 +154,57 @@ export default function SubstoresPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
   const { data: substoresList, isLoading } = useQuery({
-    queryKey: ['substores-list'],
-    queryFn: () => mockApi.get('/channels/substores'),
+    queryKey: ['substores-list', currentPage, pageSize, searchTerm, statusFilter, typeFilter, stateFilter],
+    queryFn: () => apiClient.get('/substores/', {
+      page: currentPage,
+      size: pageSize,
+      search: searchTerm || undefined,
+      is_active: statusFilter === 'active' ? 'true' : statusFilter === 'inactive' ? 'false' : undefined,
+      substore_type: typeFilter !== 'all' ? typeFilter : undefined,
+      state: stateFilter !== 'all' ? stateFilter : undefined,
+    }),
   })
 
-  const substores = substoresList || []
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: (number | string)[]) => apiClient.bulkDeleteSubstores(ids),
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ['substores-list'] })
+      setShowBulkDeleteModal(false)
+      selection.clearSelection()
+      addToast({
+        type: 'success',
+        title: 'Bulk Delete Complete',
+        message: `Successfully deleted ${response.deleted_count || selection.selectedIds.length} substore(s)`,
+      })
+    },
+    onError: (error: any) => {
+      addToast({
+        type: 'error',
+        title: 'Delete Failed',
+        message: error.message || 'Failed to delete substores',
+      })
+    },
+  })
+
+  // Helper to extract array from API response
+  const extractResults = (data: any) => {
+    if (!data) return []
+    if (Array.isArray(data)) return data
+    if (data.results && Array.isArray(data.results)) return data.results
+    return []
+  }
+
+  // Get pagination info
+  const totalCount = substoresList?.paginator?.count ?? substoresList?.count ?? 0
+  const totalPages = substoresList?.paginator?.total_pages ?? Math.ceil(totalCount / pageSize)
+
+  const substores = extractResults(substoresList)
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return mockApi.post('/channels/substores', data)
+      return apiClient.post('/substores/', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['substores-list'] })
@@ -166,7 +220,7 @@ export default function SubstoresPage() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...data }: any) => {
-      return mockApi.put(`/channels/substores/${id}`, data)
+      return apiClient.put(`/substores//${id}`, data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['substores-list'] })
@@ -183,7 +237,7 @@ export default function SubstoresPage() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return mockApi.delete(`/channels/substores/${id}`)
+      return apiClient.delete(`/substores//${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['substores-list'] })
@@ -305,19 +359,22 @@ export default function SubstoresPage() {
 
   // Navigation handler
   const handleViewSubstore = (substoreId: number) => {
-    router.push(`/channels/substores/${substoreId}`)
+    router.push(`/substores//${substoreId}`)
   }
 
-  // Filter substores
+  // Filter substores (server-side filtering is primary, this is for immediate UI feedback)
   const filteredSubstores = substores.filter((substore: Substore) => {
-    const matchesSearch = substore.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         substore.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         substore.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         substore.manager.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = !searchTerm ||
+      (substore.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       substore.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       substore.state_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       substore.manager_name?.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    const matchesStatus = statusFilter === 'all' || substore.status === statusFilter
-    const matchesState = stateFilter === 'all' || substore.state === stateFilter
-    const matchesType = typeFilter === 'all' || substore.type === typeFilter
+    const matchesStatus = statusFilter === 'all' ||
+      (statusFilter === 'active' && substore.is_active) ||
+      (statusFilter === 'inactive' && !substore.is_active)
+    const matchesState = stateFilter === 'all' || String(substore.state) === stateFilter
+    const matchesType = typeFilter === 'all' || substore.substore_type === typeFilter
 
     return matchesSearch && matchesStatus && matchesState && matchesType
   })
@@ -385,10 +442,10 @@ export default function SubstoresPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Avg Rating</p>
-                  <p className="text-2xl font-bold text-accent">4.5</p>
+                  <p className="text-sm text-muted-foreground">Active Substores</p>
+                  <p className="text-2xl font-bold text-accent">{substores.filter((s: Substore) => s.is_active).length}</p>
                 </div>
-                <Star className="w-8 h-8 text-accent/60" />
+                <Building2 className="w-8 h-8 text-accent/60" />
               </div>
             </CardContent>
           </Card>
@@ -418,8 +475,10 @@ export default function SubstoresPage() {
                   onChange={(e) => setTypeFilter(e.target.value)}
                 >
                   <option value="all">All Types</option>
-                  <option value="lubebay">Lubebay</option>
-                  <option value="filling_station">Filling Station</option>
+                  <option value="station">Fuel Station</option>
+                  <option value="distribution">Distribution</option>
+                  <option value="retail">Retail Outlet</option>
+                  <option value="wholesale">Wholesale</option>
                 </select>
 
                 <select
@@ -472,14 +531,20 @@ export default function SubstoresPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b">
                     <tr>
+                      <th className="w-12 py-3 px-4">
+                        <Checkbox
+                          checked={selection.isAllSelected(filteredSubstores)}
+                          indeterminate={selection.isPartiallySelected(filteredSubstores)}
+                          onChange={() => selection.toggleAll(filteredSubstores)}
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Substore</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Location</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Manager</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-900">Monthly Sales</th>
-                      <th className="text-center py-3 px-4 font-medium text-gray-900">Rating</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Last Transaction</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Balance</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Updated</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
                     </tr>
                   </thead>
@@ -487,20 +552,26 @@ export default function SubstoresPage() {
                     {isLoading ? (
                       [...Array(6)].map((_, i) => (
                         <tr key={i} className="animate-pulse">
+                          <td className="py-3 px-4"><div className="h-4 bg-gray-200 rounded w-4"></div></td>
                           <td className="py-3 px-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
                           <td className="py-3 px-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
-                          <td className="py-3 px-4"><div className="h-4 bg-gray-200 rounded w-40"></div></td>
+                          <td className="py-3 px-4"><div className="h-4 bg-gray-200 rounded w-28"></div></td>
                           <td className="py-3 px-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
                           <td className="py-3 px-4"><div className="h-4 bg-gray-200 rounded w-16 mx-auto"></div></td>
                           <td className="py-3 px-4"><div className="h-4 bg-gray-200 rounded w-20 ml-auto"></div></td>
-                          <td className="py-3 px-4"><div className="h-4 bg-gray-200 rounded w-16 mx-auto"></div></td>
                           <td className="py-3 px-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
                           <td className="py-3 px-4"><div className="h-8 bg-gray-200 rounded w-20 mx-auto"></div></td>
                         </tr>
                       ))
                     ) : (
                       filteredSubstores.map((substore: Substore) => (
-                        <tr key={substore.id} className="hover:bg-gray-50">
+                        <tr key={substore.id} className={`hover:bg-gray-50 ${selection.isSelected(substore.id) ? 'bg-blue-50' : ''}`}>
+                          <td className="py-3 px-4">
+                            <Checkbox
+                              checked={selection.isSelected(substore.id)}
+                              onChange={() => selection.toggle(substore.id)}
+                            />
+                          </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -513,51 +584,48 @@ export default function SubstoresPage() {
                             </div>
                           </td>
                           <td className="py-3 px-4">
-                            {getTypeBadge(substore.type)}
+                            {getTypeBadge(substore.substore_type)}
                           </td>
                           <td className="py-3 px-4">
                             <div>
                               <div className="flex items-center gap-1">
                                 <MapPin className="w-4 h-4 text-gray-400" />
-                                <span className="text-gray-900">{substore.location}</span>
+                                <span className="text-gray-900">{substore.state_name || '-'}</span>
                               </div>
-                              <div className="text-sm text-gray-500">{substore.state}</div>
+                              <div className="text-sm text-gray-500">{substore.location_name || substore.address || '-'}</div>
                             </div>
                           </td>
                           <td className="py-3 px-4">
                             <div>
                               <div className="flex items-center gap-1">
                                 <User className="w-4 h-4 text-gray-400" />
-                                <span className="text-gray-900">{substore.manager}</span>
+                                <span className="text-gray-900">{substore.manager_name || '-'}</span>
                               </div>
                               <div className="flex items-center gap-1 text-sm text-gray-500">
                                 <Phone className="w-3 h-3" />
-                                <span>{substore.phone}</span>
+                                <span>{substore.phone || '-'}</span>
                               </div>
                             </div>
                           </td>
                           <td className="py-3 px-4 text-center">
-                            {getStatusBadge(substore.status)}
+                            {getStatusBadge(substore.is_active)}
                           </td>
                           <td className="py-3 px-4 text-right">
                             <div>
-                              <div className="font-bold text-primary">{formatCurrency(substore.monthly_sales)}</div>
+                              <div className="font-bold text-primary">{formatCurrency(parseFloat(String(substore.current_balance || 0)))}</div>
                               <div className="text-sm text-gray-500 flex items-center justify-end gap-1">
-                                <Percent className="w-3 h-3" />
-                                <span>{substore.commission_rate}%</span>
+                                <DollarSign className="w-3 h-3" />
+                                <span>Limit: {formatCurrency(parseFloat(String(substore.credit_limit || 0)))}</span>
                               </div>
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-center">
-                            {getRatingStars(substore.rating)}
-                          </td>
                           <td className="py-3 px-4">
                             <div className="text-sm text-gray-500">
-                              {formatDateTime(substore.last_transaction).split(',')[0]}
+                              {substore.updated_datetime ? formatDateTime(substore.updated_datetime).split(',')[0] : '-'}
                             </div>
                             <div className="flex items-center gap-1 text-xs text-gray-400">
                               <Calendar className="w-3 h-3" />
-                              <span>Since {new Date(substore.opening_date).getFullYear()}</span>
+                              <span>Since {substore.created_datetime ? new Date(substore.created_datetime).getFullYear() : '-'}</span>
                             </div>
                           </td>
                           <td className="py-3 px-4 text-center">
@@ -597,6 +665,42 @@ export default function SubstoresPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={(page) => {
+              setCurrentPage(page)
+              selection.clearSelection()
+            }}
+          />
+        )}
+
+        {/* Bulk Action Bar */}
+        <BulkActionBar
+          selectedCount={selection.selectedCount}
+          onClearSelection={selection.clearSelection}
+          onBulkDelete={() => setShowBulkDeleteModal(true)}
+          isDeleting={bulkDeleteMutation.isPending}
+          entityName="substores"
+        />
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <ConfirmDialog
+          open={showBulkDeleteModal}
+          onClose={() => setShowBulkDeleteModal(false)}
+          onConfirm={() => bulkDeleteMutation.mutate(selection.selectedIds)}
+          title="Delete Selected Substores"
+          message={`Are you sure you want to delete ${selection.selectedCount} substore(s)? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="danger"
+          isLoading={bulkDeleteMutation.isPending}
+        />
       </div>
 
       {/* Create/Edit Modal */}

@@ -1,13 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import { Checkbox } from '@/components/ui/Checkbox'
+import { Pagination } from '@/components/ui/Pagination'
+import { BulkActionBar } from '@/components/ui/BulkActionBar'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useSelection } from '@/hooks/useSelection'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import {
@@ -86,12 +91,23 @@ export default function SuppliersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null)
+
+  // Selection hook for bulk operations
+  const selection = useSelection<any>()
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, typeFilter])
 
   // Form states
   const [formData, setFormData] = useState({
@@ -113,13 +129,13 @@ export default function SuppliersPage() {
 
   // Fetch suppliers
   const { data: suppliersData, isLoading, error, refetch } = useQuery({
-    queryKey: ['suppliers', searchTerm, statusFilter, typeFilter],
+    queryKey: ['suppliers', searchTerm, statusFilter, typeFilter, currentPage, pageSize],
     queryFn: async () => {
-      const params: Record<string, string> = {}
+      const params: Record<string, any> = { page: currentPage, size: pageSize }
       if (statusFilter !== 'all') params.status = statusFilter
       if (typeFilter !== 'all') params.supplier_type = typeFilter
       if (searchTerm) params.search = searchTerm
-      return mockApi.get('/suppliers', params)
+      return apiClient.get('/suppliers', params)
     },
   })
 
@@ -130,12 +146,16 @@ export default function SuppliersPage() {
     return []
   }
 
-  const suppliers = extractResults(suppliersData)
+  const allSuppliers = extractResults(suppliersData)
+
+  // Pagination calculations
+  const totalCount = suppliersData?.paginator?.count || suppliersData?.count || allSuppliers.length
+  const totalPages = suppliersData?.paginator?.total_pages || Math.ceil(totalCount / pageSize) || 1
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return mockApi.post('/suppliers', data)
+      return apiClient.post('/suppliers', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
@@ -152,7 +172,7 @@ export default function SuppliersPage() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return mockApi.put(`/suppliers/${selectedSupplier.id}`, data)
+      return apiClient.put(`/suppliers/${selectedSupplier.id}`, data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
@@ -169,7 +189,7 @@ export default function SuppliersPage() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return mockApi.delete(`/suppliers/${id}`)
+      return apiClient.delete(`/suppliers/${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
@@ -181,17 +201,50 @@ export default function SuppliersPage() {
     }
   })
 
-  // Filter suppliers based on search and filters
-  const filteredSuppliers = suppliers.filter((supplier: any) => {
-    const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.contact_person.toLowerCase().includes(searchTerm.toLowerCase())
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: (number | string)[]) => {
+      return apiClient.post('/suppliers/bulk-delete/', { ids })
+    },
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+      setShowBulkDeleteModal(false)
+      selection.clearSelection()
+
+      if (response?.failed_count > 0) {
+        addToast({
+          type: 'warning',
+          title: 'Partial Success',
+          message: `Deleted ${response.deleted_count} suppliers. ${response.failed_count} failed.`
+        })
+      } else {
+        addToast({
+          type: 'success',
+          title: 'Success',
+          message: `Successfully deleted ${response?.deleted_count || selection.selectedCount} suppliers`
+        })
+      }
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to delete suppliers' })
+    }
+  })
+
+  // Filter suppliers based on search and filters (client-side filtering for already fetched data)
+  const filteredSuppliers = allSuppliers.filter((supplier: any) => {
+    const matchesSearch = !searchTerm ||
+                         supplier.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         supplier.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         supplier.contact_person?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === 'all' || supplier.status === statusFilter
     const matchesType = typeFilter === 'all' || supplier.supplier_type === typeFilter
 
     return matchesSearch && matchesStatus && matchesType
   })
+
+  // Apply pagination for client-side filtered data
+  const suppliers = filteredSuppliers
 
   // Form validation
   const validateForm = (): boolean => {
@@ -387,6 +440,13 @@ export default function SuppliersPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b">
                     <tr>
+                      <th className="w-12 py-3 px-4">
+                        <Checkbox
+                          checked={selection.isAllSelected(suppliers)}
+                          indeterminate={selection.isPartiallySelected(suppliers)}
+                          onChange={() => selection.toggleAll(suppliers)}
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Supplier</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Contact</th>
@@ -401,8 +461,14 @@ export default function SuppliersPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {filteredSuppliers.map((supplier: any) => (
-                      <tr key={supplier.id} className="hover:bg-gray-50">
+                    {suppliers.map((supplier: any) => (
+                      <tr key={supplier.id} className={`hover:bg-gray-50 ${selection.isSelected(supplier.id) ? 'bg-primary/5' : ''}`}>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selection.isSelected(supplier.id)}
+                            onChange={() => selection.toggle(supplier.id)}
+                          />
+                        </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
@@ -502,6 +568,18 @@ export default function SuppliersPage() {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Pagination */}
+                {totalCount > 0 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalCount={totalCount}
+                    pageSize={pageSize}
+                    onPageChange={setCurrentPage}
+                    className="border-t"
+                  />
+                )}
               </div>
             )}
           </CardContent>
@@ -800,6 +878,26 @@ export default function SuppliersPage() {
           document.body
         )}
 
+        {/* Bulk Delete Confirmation Modal */}
+        <ConfirmDialog
+          open={showBulkDeleteModal}
+          onClose={() => setShowBulkDeleteModal(false)}
+          onConfirm={() => bulkDeleteMutation.mutate(selection.selectedIds)}
+          title="Delete Multiple Suppliers"
+          message={`Are you sure you want to delete ${selection.selectedCount} supplier${selection.selectedCount > 1 ? 's' : ''}? This action cannot be undone.`}
+          confirmText={`Delete ${selection.selectedCount} Supplier${selection.selectedCount > 1 ? 's' : ''}`}
+          variant="danger"
+          isLoading={bulkDeleteMutation.isPending}
+        />
+
+        {/* Bulk Action Bar */}
+        <BulkActionBar
+          selectedCount={selection.selectedCount}
+          onClearSelection={selection.clearSelection}
+          onBulkDelete={() => setShowBulkDeleteModal(true)}
+          isDeleting={bulkDeleteMutation.isPending}
+          entityName="supplier"
+        />
       </div>
     </AppLayout>
   )

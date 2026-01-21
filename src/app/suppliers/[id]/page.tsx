@@ -6,7 +6,7 @@ import { ArrowLeft, Download, Edit, Trash2, Building, Phone, Mail, MapPin, Packa
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { AppLayout } from '@/components/layout/AppLayout'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 
 const getStatusBadge = (status: string) => {
@@ -59,7 +59,7 @@ export default function SupplierViewPage() {
 
   const { data: suppliersData, isLoading, error } = useQuery({
     queryKey: ['suppliers'],
-    queryFn: () => mockApi.get('/suppliers')
+    queryFn: () => apiClient.get('/suppliers')
   })
 
   // Handle both array and paginated responses

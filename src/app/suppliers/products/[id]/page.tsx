@@ -7,7 +7,7 @@ import { ArrowLeft, Search, Package, Building, DollarSign, Calendar, Clock, Chec
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 
 const getAvailabilityBadge = (status: string) => {
@@ -49,13 +49,13 @@ export default function SupplierProductsViewPage() {
   // Fetch suppliers to get supplier info
   const { data: suppliersData } = useQuery({
     queryKey: ['suppliers'],
-    queryFn: () => mockApi.get('/suppliers')
+    queryFn: () => apiClient.get('/suppliers')
   })
 
   // Fetch supplier products
   const { data: productsData, isLoading, error } = useQuery({
     queryKey: ['supplier-products', 'v3'], // Added version to force refresh
-    queryFn: () => mockApi.get('/suppliers/products/'),
+    queryFn: () => apiClient.get('/suppliers/products/'),
     staleTime: 0, // Disable cache
     gcTime: 0 // Force fresh data (renamed from cacheTime in v5)
   })

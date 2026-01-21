@@ -8,7 +8,12 @@ import { Plus, Search, MapPin, Wrench, Phone, TrendingUp, AlertTriangle, Eye, Ed
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
-import mockApi from '@/lib/mockApi'
+import { Checkbox } from '@/components/ui/Checkbox'
+import { Pagination } from '@/components/ui/Pagination'
+import { BulkActionBar } from '@/components/ui/BulkActionBar'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useSelection } from '@/hooks/useSelection'
+import apiClient from '@/lib/apiClient'
 import { useToast } from '@/components/ui/Toast'
 
 interface Lubebay {
@@ -34,6 +39,16 @@ export default function LubebaysPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'maintenance' | 'inactive'>('all')
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
+
+  // Selection hook
+  const selection = useSelection<Lubebay>()
+
+  // Bulk delete modal state
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -56,12 +71,37 @@ export default function LubebaysPage() {
 
   // Fetch lubebays
   const { data: lubebaysData, isLoading, error, refetch } = useQuery({
-    queryKey: ['lubebays', searchTerm, statusFilter],
+    queryKey: ['lubebays', currentPage, pageSize, searchTerm, statusFilter],
     queryFn: async () => {
-      const params: Record<string, string> = {}
-      if (statusFilter !== 'all') params.status = statusFilter
+      const params: Record<string, string> = {
+        page: String(currentPage),
+        size: String(pageSize),
+      }
+      if (statusFilter !== 'all') params.is_active = statusFilter === 'active' ? 'true' : 'false'
       if (searchTerm) params.search = searchTerm
-      return mockApi.get('/lubebays', params)
+      return apiClient.get('/lubebays/', params)
+    },
+  })
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: (number | string)[]) => apiClient.bulkDeleteLubebays(ids),
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ['lubebays'] })
+      setShowBulkDeleteModal(false)
+      selection.clearSelection()
+      addToast({
+        type: 'success',
+        title: 'Bulk Delete Complete',
+        message: `Successfully deleted ${response.deleted_count || selection.selectedIds.length} lubebay(s)`,
+      })
+    },
+    onError: (error: any) => {
+      addToast({
+        type: 'error',
+        title: 'Delete Failed',
+        message: error.message || 'Failed to delete lubebays',
+      })
     },
   })
 
@@ -72,12 +112,16 @@ export default function LubebaysPage() {
     return []
   }
 
+  // Get pagination info
+  const totalCount = lubebaysData?.paginator?.count ?? lubebaysData?.count ?? 0
+  const totalPages = lubebaysData?.paginator?.total_pages ?? Math.ceil(totalCount / pageSize)
+
   const lubebays = extractResults(lubebaysData)
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return mockApi.post('/lubebays', data)
+      return apiClient.post('/lubebays/', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lubebays'] })
@@ -94,7 +138,7 @@ export default function LubebaysPage() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return mockApi.put(`/lubebays/${selectedLubebay.id}`, data)
+      return apiClient.put(`/lubebays/${selectedLubebay.id}/`, data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lubebays'] })
@@ -111,7 +155,7 @@ export default function LubebaysPage() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return mockApi.delete(`/lubebays/${id}`)
+      return apiClient.delete(`/lubebays/${id}/`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lubebays'] })
@@ -360,6 +404,13 @@ export default function LubebaysPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b">
                   <tr>
+                    <th className="w-12 py-3 px-4">
+                      <Checkbox
+                        checked={selection.isAllSelected(filteredLubebays)}
+                        indeterminate={selection.isPartiallySelected(filteredLubebays)}
+                        onChange={() => selection.toggleAll(filteredLubebays)}
+                      />
+                    </th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Lubebay</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Location</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Manager</th>
@@ -375,7 +426,13 @@ export default function LubebaysPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {filteredLubebays.map((lubebay: Lubebay) => (
-                    <tr key={lubebay.id} className="hover:bg-gray-50">
+                    <tr key={lubebay.id} className={`hover:bg-gray-50 ${selection.isSelected(lubebay.id) ? 'bg-blue-50' : ''}`}>
+                      <td className="py-3 px-4">
+                        <Checkbox
+                          checked={selection.isSelected(lubebay.id)}
+                          onChange={() => selection.toggle(lubebay.id)}
+                        />
+                      </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -414,26 +471,26 @@ export default function LubebaysPage() {
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                          <span className="font-medium text-gray-900">{lubebay.rating}</span>
+                          <span className="font-medium text-gray-900">{lubebay.rating || 'N/A'}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex flex-wrap gap-1 max-w-[200px]">
-                          {lubebay.services.slice(0, 2).map((service, index) => (
+                          {(lubebay.services || []).slice(0, 2).map((service, index) => (
                             <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                               {service}
                             </span>
                           ))}
-                          {lubebay.services.length > 2 && (
+                          {(lubebay.services || []).length > 2 && (
                             <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                              +{lubebay.services.length - 2} more
+                              +{(lubebay.services || []).length - 2} more
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className="text-sm text-gray-600">
-                          {new Date(lubebay.lastInspection).toLocaleDateString()}
+                          {lubebay.lastInspection ? new Date(lubebay.lastInspection).toLocaleDateString() : 'N/A'}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -441,8 +498,8 @@ export default function LubebaysPage() {
                           {lubebay.status === 'maintenance' && (
                             <AlertTriangle className="w-4 h-4 text-yellow-500 mr-2" />
                           )}
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(lubebay.status)}`}>
-                            {lubebay.status.charAt(0).toUpperCase() + lubebay.status.slice(1)}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(lubebay.status || 'unknown')}`}>
+                            {(lubebay.status || 'Unknown').charAt(0).toUpperCase() + (lubebay.status || 'unknown').slice(1)}
                           </span>
                         </div>
                       </td>
@@ -485,6 +542,42 @@ export default function LubebaysPage() {
           )}
         </CardContent>
       </Card>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={(page) => {
+              setCurrentPage(page)
+              selection.clearSelection()
+            }}
+          />
+        )}
+
+        {/* Bulk Action Bar */}
+        <BulkActionBar
+          selectedCount={selection.selectedCount}
+          onClearSelection={selection.clearSelection}
+          onBulkDelete={() => setShowBulkDeleteModal(true)}
+          isDeleting={bulkDeleteMutation.isPending}
+          entityName="lubebays"
+        />
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <ConfirmDialog
+          open={showBulkDeleteModal}
+          onClose={() => setShowBulkDeleteModal(false)}
+          onConfirm={() => bulkDeleteMutation.mutate(selection.selectedIds)}
+          title="Delete Selected Lubebays"
+          message={`Are you sure you want to delete ${selection.selectedCount} lubebay(s)? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="danger"
+          isLoading={bulkDeleteMutation.isPending}
+        />
 
         {/* Create/Edit Modal */}
         {(showCreateModal || showEditModal) && createPortal(

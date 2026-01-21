@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import {
   ArrowLeft,
@@ -123,19 +123,19 @@ export default function ProductBinCardPage() {
   // Fetch warehouse data
   const { data: warehousesList } = useQuery({
     queryKey: ['warehouses-list'],
-    queryFn: () => mockApi.get('/warehouses'),
+    queryFn: () => apiClient.get('/warehouses'),
   })
 
   // Fetch warehouse inventory to get product details
   const { data: inventoryList } = useQuery({
     queryKey: ['warehouse-inventory', warehouseId],
-    queryFn: () => mockApi.get(`/warehouses/${warehouseId}`),
+    queryFn: () => apiClient.get(`/warehouses/${warehouseId}`),
   })
 
   // Fetch bin card data
   const { data: binCardData, isLoading, error } = useQuery({
     queryKey: ['product-bin-card', warehouseId, productId],
-    queryFn: () => mockApi.get(`/warehouses/${warehouseId}/products/${productId}/bin-card`),
+    queryFn: () => apiClient.get(`/warehouses/${warehouseId}/products/${productId}/bin-card`),
   })
 
   const warehouses = warehousesList || []

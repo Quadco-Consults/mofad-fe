@@ -7,7 +7,7 @@ import { ArrowLeft, Search, Download, Eye, Building, DollarSign, Calendar, Packa
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 
 const getStatusBadge = (status: string) => {
@@ -49,13 +49,13 @@ export default function SupplierTransactionsDetailPage() {
   // Fetch supplier details
   const { data: suppliersData } = useQuery({
     queryKey: ['suppliers'],
-    queryFn: () => mockApi.get('/suppliers')
+    queryFn: () => apiClient.get('/suppliers')
   })
 
   // Fetch supplier transactions
   const { data: transactionsData, isLoading, error } = useQuery({
     queryKey: ['supplier-transactions', supplierId],
-    queryFn: () => mockApi.get(`/suppliers/transactions/${supplierId}`)
+    queryFn: () => apiClient.get(`/suppliers/transactions/${supplierId}`)
   })
 
   // Handle both array and paginated responses for suppliers

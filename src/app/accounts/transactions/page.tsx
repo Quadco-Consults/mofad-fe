@@ -490,8 +490,8 @@ function AccountTransactionsPage() {
                         <div className="text-xs text-gray-500">{formatDate(payment.created_at)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(payment.status)}`}>
-                          {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                        <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(payment.status || 'unknown')}`}>
+                          {(payment.status || 'Unknown').charAt(0).toUpperCase() + (payment.status || 'unknown').slice(1)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -859,8 +859,8 @@ function AccountTransactionsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500">Status</label>
-                    <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(selectedPayment.status)}`}>
-                      {selectedPayment.status.charAt(0).toUpperCase() + selectedPayment.status.slice(1)}
+                    <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(selectedPayment.status || 'unknown')}`}>
+                      {(selectedPayment.status || 'Unknown').charAt(0).toUpperCase() + (selectedPayment.status || 'unknown').slice(1)}
                     </span>
                   </div>
                 </div>

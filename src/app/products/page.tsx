@@ -5,7 +5,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import { Checkbox } from '@/components/ui/Checkbox'
+import { Pagination } from '@/components/ui/Pagination'
+import { BulkActionBar } from '@/components/ui/BulkActionBar'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useSelection } from '@/hooks/useSelection'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { Product, ProductFormData } from '@/types/api'
@@ -113,22 +118,84 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [formData, setFormData] = useState<ProductFormData>(initialFormData)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
-  // Fetch products
+  // Selection hook for bulk operations
+  const selection = useSelection<Product>()
+
+  // Fetch products with proper API method and pagination
   const { data: productsData, isLoading, error, refetch } = useQuery({
-    queryKey: ['products', searchTerm, categoryFilter, statusFilter],
-    queryFn: () => mockApi.get('/products/'),
+    queryKey: ['products', searchTerm, categoryFilter, statusFilter, currentPage, pageSize],
+    queryFn: () => apiClient.getProducts({
+      search: searchTerm || undefined,
+      category: categoryFilter !== 'all' ? categoryFilter : undefined,
+      is_active: statusFilter === 'active' ? true : statusFilter === 'inactive' ? false : undefined,
+      page: currentPage,
+      size: pageSize, // Backend uses 'size' not 'page_size'
+    }),
   })
 
+  // Reset to first page when filters change
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value)
+    setCurrentPage(1)
+  }
+
+  const handleCategoryChange = (value: string) => {
+    setCategoryFilter(value)
+    setCurrentPage(1)
+  }
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value)
+    setCurrentPage(1)
+  }
+
+  // Helper to extract array from API response (handles paginated and direct array responses)
+  // Backend returns: { paginator: { count, page, ... }, results: [...] }
+  const extractResults = (data: any): Product[] => {
+    if (!data) return []
+    if (Array.isArray(data)) return data
+    if (data.results && Array.isArray(data.results)) return data.results
+    // Handle nested data structure from API wrapper
+    if (data.data?.results) return data.data.results
+    return []
+  }
+
+  // Extract total count for pagination
+  // Backend pagination format: { paginator: { count, page, page_size, total_pages, ... }, results: [...] }
+  const getTotalCount = (data: any): number => {
+    if (!data) return 0
+    if (Array.isArray(data)) return data.length
+    // Check paginator structure first (backend format)
+    if (data.paginator?.count !== undefined) return data.paginator.count
+    // Standard DRF format
+    if (data.count !== undefined) return data.count
+    if (data.results && Array.isArray(data.results)) return data.results.length
+    return 0
+  }
+
+  // Extract total pages from backend response
+  const getTotalPages = (data: any): number => {
+    if (!data) return 0
+    if (data.paginator?.total_pages !== undefined) return data.paginator.total_pages
+    return Math.ceil(getTotalCount(data) / pageSize)
+  }
+
+  const totalCount = getTotalCount(productsData)
+  const totalPages = getTotalPages(productsData)
+
   // Extract and filter products data
-  const allProducts = Array.isArray(productsData) ? productsData : []
+  const allProducts = extractResults(productsData)
 
   // Calculate low stock from the same products data
   const lowStockProducts = allProducts.filter((product: any) => {
@@ -137,34 +204,12 @@ export default function ProductsPage() {
     return product.minimum_stock_level > 0 && product.minimum_stock_level < 100
   })
 
-  // Apply filters
-  const products = allProducts.filter((product: any) => {
-    // Search filter
-    if (searchTerm) {
-      const searchMatch =
-        product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.primary_supplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.brand?.toLowerCase().includes(searchTerm.toLowerCase())
-      if (!searchMatch) return false
-    }
-
-    // Category filter
-    if (categoryFilter !== 'all' && product.category !== categoryFilter) return false
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      const isActive = product.is_active
-      if (statusFilter === 'active' && !isActive) return false
-      if (statusFilter === 'inactive' && isActive) return false
-    }
-
-    return true
-  })
+  // Products are already filtered by API, just use allProducts
+  const products = allProducts
 
   // Create product mutation
   const createMutation = useMutation({
-    mutationFn: (data: ProductFormData) => mockApi.post('/products/', data),
+    mutationFn: (data: ProductFormData) => apiClient.post('/products/', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setShowAddModal(false)
@@ -183,7 +228,7 @@ export default function ProductsPage() {
   // Update product mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<ProductFormData> }) =>
-      mockApi.patch(`/products/${id}/`, data),
+      apiClient.patch(`/products/${id}/`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setShowEditModal(false)
@@ -201,7 +246,7 @@ export default function ProductsPage() {
 
   // Delete product mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => mockApi.delete(`/products/${id}/`),
+    mutationFn: (id: number) => apiClient.delete(`/products/${id}/`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setShowDeleteModal(false)
@@ -216,7 +261,7 @@ export default function ProductsPage() {
 
   // Activate product mutation
   const activateMutation = useMutation({
-    mutationFn: (id: number) => mockApi.post(`/products/${id}/activate/`),
+    mutationFn: (id: number) => apiClient.post(`/products/${id}/activate/`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       addToast({ type: 'success', title: 'Success', message: 'Product activated successfully' })
@@ -228,13 +273,44 @@ export default function ProductsPage() {
 
   // Deactivate product mutation
   const deactivateMutation = useMutation({
-    mutationFn: (id: number) => mockApi.post(`/products/${id}/deactivate/`),
+    mutationFn: (id: number) => apiClient.post(`/products/${id}/deactivate/`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       addToast({ type: 'success', title: 'Success', message: 'Product deactivated successfully' })
     },
     onError: (error: any) => {
       addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to deactivate product' })
+    },
+  })
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: (number | string)[]) => apiClient.bulkDeleteProducts(ids),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      setShowBulkDeleteModal(false)
+      selection.clearSelection()
+
+      if (response.failed_count > 0) {
+        addToast({
+          type: 'warning',
+          title: 'Partial Success',
+          message: `Deleted ${response.deleted_count} products. ${response.failed_count} failed.`
+        })
+      } else {
+        addToast({
+          type: 'success',
+          title: 'Success',
+          message: `Successfully deleted ${response.deleted_count} products`
+        })
+      }
+    },
+    onError: (error: any) => {
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: error.message || 'Failed to delete products'
+      })
     },
   })
 
@@ -331,13 +407,21 @@ export default function ProductsPage() {
     }
   }
 
+  const handleBulkDelete = () => {
+    setShowBulkDeleteModal(true)
+  }
+
+  const confirmBulkDelete = () => {
+    bulkDeleteMutation.mutate(selection.selectedIds)
+  }
+
   // Stats calculation
   const totalProducts = products.length
   const activeProducts = products.filter(p => p.is_active).length
   const lowStockCount = lowStockProducts.length
   const categories = Array.from(new Set(products.map(p => p.category))).length
   const avgMargin = products.length > 0
-    ? products.reduce((sum, p) => sum + calculateProfitMargin(p.retail_selling_price || p.direct_sales_price || 0, p.cost_price), 0) / products.length
+    ? products.reduce((sum, p) => sum + calculateProfitMargin(p.retail_selling_price || p.bulk_selling_price || 0, p.cost_price), 0) / products.length
     : 0
 
   // Form Input component
@@ -486,7 +570,7 @@ export default function ProductsPage() {
                     placeholder="Search products by name, code, supplier..."
                     className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                   />
                 </div>
               </div>
@@ -495,24 +579,24 @@ export default function ProductsPage() {
                 <select
                   className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                   value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                 >
                   <option value="all">All Categories</option>
-                  <option value="lubricants">Lubricants</option>
-                  <option value="engine_oils">Engine Oils</option>
-                  <option value="hydraulics">Hydraulic Oils</option>
-                  <option value="transmission">Transmission Fluids</option>
-                  <option value="specialty_products">Specialty Products</option>
-                  <option value="marine">Marine Products</option>
-                  <option value="service">Services</option>
-                  <option value="equipment">Equipment</option>
+                  <option value="engine_oil">Engine Oils</option>
+                  <option value="hydraulic_oil">Hydraulic Oils</option>
+                  <option value="gear_oil">Gear Oils</option>
+                  <option value="brake_fluid">Brake Fluids</option>
+                  <option value="coolant">Coolants</option>
+                  <option value="grease">Greases</option>
+                  <option value="filter">Filters</option>
+                  <option value="additive">Additives</option>
                   <option value="other">Other</option>
                 </select>
 
                 <select
                   className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => handleStatusChange(e.target.value)}
                 >
                   <option value="all">All Status</option>
                   <option value="active">Active</option>
@@ -580,6 +664,13 @@ export default function ProductsPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b">
                     <tr>
+                      <th className="w-12 py-3 px-4">
+                        <Checkbox
+                          checked={selection.isAllSelected(products)}
+                          indeterminate={selection.isPartiallySelected(products)}
+                          onChange={() => selection.toggleAll(products)}
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Product</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Code</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Category</th>
@@ -594,7 +685,16 @@ export default function ProductsPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {products.map((product) => (
-                      <tr key={product.id} className="hover:bg-gray-50">
+                      <tr
+                        key={product.id}
+                        className={`hover:bg-gray-50 ${selection.isSelected(product.id) ? 'bg-primary-50' : ''}`}
+                      >
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selection.isSelected(product.id)}
+                            onChange={() => selection.toggle(product.id)}
+                          />
+                        </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
@@ -622,13 +722,13 @@ export default function ProductsPage() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="font-bold text-primary">
-                            {formatCurrency(product.retail_selling_price || product.direct_sales_price || 0)}
+                            {formatCurrency(product.retail_selling_price || product.bulk_selling_price || 0)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="font-bold text-green-600">
                             {calculateProfitMargin(
-                              product.retail_selling_price || product.direct_sales_price || 0,
+                              product.retail_selling_price || product.bulk_selling_price || 0,
                               product.cost_price
                             ).toFixed(1)}%
                           </span>
@@ -692,6 +792,18 @@ export default function ProductsPage() {
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {/* Pagination */}
+            {totalCount > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                className="border-t"
+              />
             )}
           </CardContent>
         </Card>
@@ -1356,50 +1468,44 @@ export default function ProductsPage() {
         )}
 
         {/* Delete Confirmation Modal */}
-        {showDeleteModal && selectedProduct && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg max-w-md w-full m-4">
-              <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold text-red-600">Confirm Deletion</h2>
-                <Button variant="ghost" onClick={() => setShowDeleteModal(false)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                    <AlertTriangle className="w-6 h-6 text-red-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Delete Product</h3>
-                    <p className="text-sm text-gray-600">This action cannot be undone</p>
-                  </div>
-                </div>
-                <p className="text-gray-700">
-                  Are you sure you want to delete <strong>{selectedProduct.name}</strong> ({selectedProduct.code})?
-                  This will permanently remove the product and all associated data.
-                </p>
-              </div>
-              <div className="flex justify-end gap-2 p-6 border-t">
-                <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                  onClick={confirmDelete}
-                  disabled={deleteMutation.isPending}
-                >
-                  {deleteMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-4 h-4 mr-2" />
-                  )}
-                  Delete Product
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmDialog
+          open={showDeleteModal && !!selectedProduct}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={confirmDelete}
+          title="Delete Product"
+          message={
+            selectedProduct ? (
+              <>
+                Are you sure you want to delete <strong>{selectedProduct.name}</strong> ({selectedProduct.code})?
+                This will permanently remove the product and all associated data.
+              </>
+            ) : ''
+          }
+          confirmText="Delete Product"
+          variant="danger"
+          isLoading={deleteMutation.isPending}
+        />
+
+        {/* Bulk Delete Confirmation Modal */}
+        <ConfirmDialog
+          open={showBulkDeleteModal}
+          onClose={() => setShowBulkDeleteModal(false)}
+          onConfirm={confirmBulkDelete}
+          title="Delete Multiple Products"
+          message={`Are you sure you want to delete ${selection.selectedCount} product${selection.selectedCount > 1 ? 's' : ''}? This action cannot be undone.`}
+          confirmText={`Delete ${selection.selectedCount} Product${selection.selectedCount > 1 ? 's' : ''}`}
+          variant="danger"
+          isLoading={bulkDeleteMutation.isPending}
+        />
+
+        {/* Bulk Action Bar */}
+        <BulkActionBar
+          selectedCount={selection.selectedCount}
+          onClearSelection={selection.clearSelection}
+          onBulkDelete={handleBulkDelete}
+          isDeleting={bulkDeleteMutation.isPending}
+          entityName="product"
+        />
       </div>
     </AppLayout>
   )

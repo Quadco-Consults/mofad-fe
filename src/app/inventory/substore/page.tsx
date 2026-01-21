@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Pagination } from '@/components/ui/Pagination'
 import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
@@ -116,6 +117,8 @@ export default function SubstoreInventoryPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [warehouseFilter, setWarehouseFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [selectedInventory, setSelectedInventory] = useState<SubstoreInventoryItem | null>(null)
@@ -156,12 +159,17 @@ export default function SubstoreInventoryPage() {
     queryFn: () => apiClient.get<SubstoreInventoryItem[]>('/warehouse-inventory/out-of-stock/'),
   })
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, warehouseFilter])
+
   const warehouses = Array.isArray(warehousesData) ? warehousesData : []
   const allWarehouses = Array.isArray(allWarehousesData) ? allWarehousesData : []
   const inventory = Array.isArray(inventoryData) ? inventoryData : []
 
   // Filter inventory by search and status
-  const filteredInventory = inventory.filter((item: SubstoreInventoryItem) => {
+  const allFilteredInventory = inventory.filter((item: SubstoreInventoryItem) => {
     const matchesSearch =
       (item.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
       (item.product_code?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
@@ -180,6 +188,12 @@ export default function SubstoreInventoryPage() {
 
     return matchesSearch
   })
+
+  // Pagination calculations
+  const totalCount = allFilteredInventory.length
+  const totalPages = Math.ceil(totalCount / pageSize) || 1
+  const startIndex = (currentPage - 1) * pageSize
+  const filteredInventory = allFilteredInventory.slice(startIndex, startIndex + pageSize)
 
   // Stats calculation
   const totalWarehouses = warehouses.length
@@ -515,6 +529,19 @@ export default function SubstoreInventoryPage() {
             ))
           )}
         </div>
+
+        {/* Pagination */}
+        {!isLoading && totalCount > 0 && (
+          <Card>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
+          </Card>
+        )}
 
         {/* View Modal */}
         {showViewModal && selectedInventory && (

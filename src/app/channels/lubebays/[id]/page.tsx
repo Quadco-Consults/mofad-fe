@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { createPortal } from 'react-dom'
+import apiClient from '@/lib/apiClient'
 import {
   ArrowLeft,
   Plus,
@@ -236,10 +238,45 @@ export default function LubebayDashboardPage() {
     notes: ''
   })
 
-  // In a real app, you'd fetch this data based on the lubebayId
-  const lubebay = mockLubebay
-  const lubricantSales = mockLubricantSales
-  const serviceRecords = mockServiceRecords
+  // Fetch lubebay details from API
+  const { data: lubebay, isLoading: lubebayLoading } = useQuery({
+    queryKey: ['lubebay-detail', lubebayId],
+    queryFn: async () => {
+      try {
+        return await apiClient.get(`/lubebays/${lubebayId}/`)
+      } catch (error) {
+        return mockLubebay
+      }
+    },
+  })
+
+  // Fetch lubebay transactions
+  const { data: transactions = [] } = useQuery({
+    queryKey: ['lubebay-transactions', lubebayId],
+    queryFn: async () => {
+      try {
+        return await apiClient.get(`/lubebay-transactions/`, { lubebay: lubebayId })
+      } catch (error) {
+        return []
+      }
+    },
+  })
+
+  // Fetch service transactions
+  const { data: serviceTransactions = [] } = useQuery({
+    queryKey: ['lubebay-service-transactions', lubebayId],
+    queryFn: async () => {
+      try {
+        return await apiClient.get(`/lubebay-service-transactions/`, { lubebay: lubebayId })
+      } catch (error) {
+        return []
+      }
+    },
+  })
+
+  // Use API data or fallback to mock data
+  const lubricantSales = transactions.length > 0 ? transactions : mockLubricantSales
+  const serviceRecords = serviceTransactions.length > 0 ? serviceTransactions : mockServiceRecords
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -400,6 +437,35 @@ export default function LubebayDashboardPage() {
     })
   }
 
+  if (lubebayLoading || !lubebay) {
+    return (
+      <AppLayout>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.back()}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Lubebays
+            </Button>
+          </div>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-center h-48">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading lubebay details...</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </AppLayout>
+    )
+  }
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -427,8 +493,8 @@ export default function LubebayDashboardPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h1 className="text-2xl font-bold text-foreground">{lubebay.name}</h1>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(lubebay.status)}`}>
-                        {lubebay.status.charAt(0).toUpperCase() + lubebay.status.slice(1)}
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(lubebay.status || 'unknown')}`}>
+                        {(lubebay.status || 'Unknown').charAt(0).toUpperCase() + (lubebay.status || 'unknown').slice(1)}
                       </span>
                     </div>
                     <div className="space-y-2 text-sm text-muted-foreground">

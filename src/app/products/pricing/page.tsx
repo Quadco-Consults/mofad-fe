@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency } from '@/lib/utils'
 import {
   Search,
@@ -97,14 +97,14 @@ export default function PricingPage() {
 
   const { data: productsData, isLoading, refetch } = useQuery({
     queryKey: ['products-pricing'],
-    queryFn: () => mockApi.get('/products/'),
+    queryFn: () => apiClient.get('/products/'),
   })
 
   const products = Array.isArray(productsData) ? productsData : []
 
   // CRUD Mutations
   const createProductMutation = useMutation({
-    mutationFn: (data: Partial<Product>) => mockApi.post('/products', data),
+    mutationFn: (data: Partial<Product>) => apiClient.post('/products', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products-pricing'] })
       setShowCreateModal(false)
@@ -114,7 +114,7 @@ export default function PricingPage() {
 
   const updateProductMutation = useMutation({
     mutationFn: ({ id, data }: { id: number, data: Partial<Product> }) =>
-      mockApi.patch(`/products/${id}/`, data),
+      apiClient.patch(`/products/${id}/`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products-pricing'] })
       setShowEditModal(false)
@@ -123,7 +123,7 @@ export default function PricingPage() {
   })
 
   const deleteProductMutation = useMutation({
-    mutationFn: (id: number) => mockApi.delete(`/products/${id}/`),
+    mutationFn: (id: number) => apiClient.delete(`/products/${id}/`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products-pricing'] })
       setShowDeleteModal(false)
@@ -135,7 +135,7 @@ export default function PricingPage() {
   const updateProductsMutation = useMutation({
     mutationFn: async (updates: { id: number, field: string, value: number }[]) => {
       const promises = updates.map(update =>
-        mockApi.patch(`/products/${update.id}/`, { [update.field]: update.value })
+        apiClient.patch(`/products/${update.id}/`, { [update.field]: update.value })
       )
       return Promise.all(promises)
     },

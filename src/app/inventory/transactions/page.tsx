@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import { Pagination } from '@/components/ui/Pagination'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import {
   Plus,
@@ -107,27 +108,51 @@ export default function StockTransactionsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, typeFilter, statusFilter])
 
   const { data: transactionsList, isLoading } = useQuery({
-    queryKey: ['stock-transactions-list'],
-    queryFn: () => mockApi.get('/inventory/transactions'),
+    queryKey: ['stock-transactions-list', currentPage, pageSize],
+    queryFn: () => apiClient.get('/stock-transactions/'),
   })
 
-  const transactions = transactionsList || []
+  const transactions = Array.isArray(transactionsList) ? transactionsList : (transactionsList?.results || [])
+
+  // Calculate stats from actual data
+  const totalTransactions = transactions.length
+  const completedCount = transactions.filter((t: StockTransaction) => t.status === 'completed').length
+  const pendingCount = transactions.filter((t: StockTransaction) => t.status === 'pending').length
+  const inboundValue = transactions
+    .filter((t: StockTransaction) => t.transaction_type === 'Inbound' && t.status === 'completed')
+    .reduce((sum: number, t: StockTransaction) => sum + Math.abs(t.total_cost || 0), 0)
+  const outboundValue = transactions
+    .filter((t: StockTransaction) => t.transaction_type === 'Outbound' && t.status === 'completed')
+    .reduce((sum: number, t: StockTransaction) => sum + Math.abs(t.total_cost || 0), 0)
 
   // Filter transactions
-  const filteredTransactions = transactions.filter((transaction: StockTransaction) => {
-    const matchesSearch = transaction.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.product_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.source.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.destination.toLowerCase().includes(searchTerm.toLowerCase())
+  const allFilteredTransactions = transactions.filter((transaction: StockTransaction) => {
+    const matchesSearch = transaction.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         transaction.product_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         transaction.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         transaction.source?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         transaction.destination?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesType = typeFilter === 'all' || transaction.transaction_type === typeFilter
     const matchesStatus = statusFilter === 'all' || transaction.status === statusFilter
 
     return matchesSearch && matchesType && matchesStatus
   })
+
+  // Pagination calculations
+  const totalCount = allFilteredTransactions.length
+  const totalPages = Math.ceil(totalCount / pageSize) || 1
+  const startIndex = (currentPage - 1) * pageSize
+  const filteredTransactions = allFilteredTransactions.slice(startIndex, startIndex + pageSize)
 
   return (
     <AppLayout>
@@ -157,7 +182,7 @@ export default function StockTransactionsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Transactions</p>
-                  <p className="text-2xl font-bold text-primary">6</p>
+                  <p className="text-2xl font-bold text-primary">{totalTransactions}</p>
                 </div>
                 <FileText className="w-8 h-8 text-primary/60" />
               </div>
@@ -169,7 +194,7 @@ export default function StockTransactionsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Completed</p>
-                  <p className="text-2xl font-bold text-green-600">4</p>
+                  <p className="text-2xl font-bold text-green-600">{completedCount}</p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-green-600/60" />
               </div>
@@ -181,7 +206,7 @@ export default function StockTransactionsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">2</p>
+                  <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
                 </div>
                 <Clock className="w-8 h-8 text-yellow-600/60" />
               </div>
@@ -193,7 +218,7 @@ export default function StockTransactionsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Inbound Value</p>
-                  <p className="text-2xl font-bold text-green-600">₦14.7M</p>
+                  <p className="text-2xl font-bold text-green-600">{formatCurrency(inboundValue)}</p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-green-600/60" />
               </div>
@@ -205,7 +230,7 @@ export default function StockTransactionsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Outbound Value</p>
-                  <p className="text-2xl font-bold text-red-600">₦1.4M</p>
+                  <p className="text-2xl font-bold text-red-600">{formatCurrency(outboundValue)}</p>
                 </div>
                 <TrendingDown className="w-8 h-8 text-red-600/60" />
               </div>
@@ -369,6 +394,19 @@ export default function StockTransactionsPage() {
                 </CardContent>
               </Card>
             ))
+          )}
+
+          {/* Pagination */}
+          {totalCount > 0 && (
+            <Card>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+              />
+            </Card>
           )}
         </div>
       </div>

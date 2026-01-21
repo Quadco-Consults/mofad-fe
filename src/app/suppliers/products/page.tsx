@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Eye, Building, Package, Star, DollarSign, MapPin, Phone, Mail } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import { Pagination } from '@/components/ui/Pagination'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency } from '@/lib/utils'
 
 const getStatusBadge = (status: string) => {
@@ -56,10 +57,17 @@ const getRatingStars = (rating: number) => {
 export default function SupplierProductsPage() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
 
   const { data: suppliersData, isLoading, error } = useQuery({
     queryKey: ['suppliers'],
-    queryFn: () => mockApi.get('/suppliers')
+    queryFn: () => apiClient.get('/suppliers')
   })
 
   // Handle both array and paginated responses
@@ -72,13 +80,19 @@ export default function SupplierProductsPage() {
   const suppliers = extractResults(suppliersData)
 
   // Filter suppliers based on search
-  const filteredSuppliers = suppliers.filter((supplier: any) => {
+  const allFilteredSuppliers = suppliers.filter((supplier: any) => {
     if (!supplier) return false
     const matchesSearch = (supplier.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (supplier.contact_person || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (supplier.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     return matchesSearch
   })
+
+  // Pagination calculations
+  const totalCount = allFilteredSuppliers.length
+  const totalPages = Math.ceil(totalCount / pageSize) || 1
+  const startIndex = (currentPage - 1) * pageSize
+  const filteredSuppliers = allFilteredSuppliers.slice(startIndex, startIndex + pageSize)
 
   const handleViewProducts = (supplier: any) => {
     router.push(`/suppliers/products/${supplier.id}`)
@@ -215,6 +229,19 @@ export default function SupplierProductsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {!isLoading && totalCount > 0 && (
+          <Card>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
+          </Card>
+        )}
       </div>
     </AppLayout>
   )

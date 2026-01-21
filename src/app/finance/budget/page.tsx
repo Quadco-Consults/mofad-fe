@@ -653,8 +653,8 @@ export default function BudgetPage() {
                           <td className="py-3 px-4 text-center">
                             <div className="flex items-center justify-center gap-2">
                               {getStatusIcon(item.status)}
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(item.status)}`}>
-                                {item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('-', ' ')}
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(item.status || 'unknown')}`}>
+                                {(item.status || 'Unknown').charAt(0).toUpperCase() + (item.status || 'unknown').slice(1).replace('-', ' ')}
                               </span>
                             </div>
                           </td>

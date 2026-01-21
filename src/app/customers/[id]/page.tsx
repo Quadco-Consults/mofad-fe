@@ -6,7 +6,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import {
   ArrowLeft,
@@ -74,10 +74,7 @@ export default function CustomerDetailPage() {
   const { data: customer, isLoading: customerLoading } = useQuery({
     queryKey: ['customer-detail', customerId],
     queryFn: async () => {
-      const customers = await mockApi.get('/customers')
-      const customer = customers.find((c: any) => c.id === customerId)
-      if (!customer) throw new Error('Customer not found')
-      return customer
+      return apiClient.get(`/customers/${customerId}/`)
     },
   })
 
@@ -85,105 +82,11 @@ export default function CustomerDetailPage() {
   const { data: transactions = [], isLoading: transactionsLoading } = useQuery({
     queryKey: ['customer-transactions', customerId, filterType, dateRange],
     queryFn: async () => {
-      // Mock customer transactions data
-      return [
-        {
-          id: 1,
-          date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          type: 'purchase',
-          description: 'Premium Motor Spirit (PMS) - 5,000 Litres',
-          reference: 'INV-2024-1001',
-          debit: 3085000,
-          credit: 0,
-          balance: 3085000,
-          payment_method: 'Credit Terms',
-          status: 'completed'
-        },
-        {
-          id: 2,
-          date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-          type: 'payment',
-          description: 'Payment for Invoice INV-2024-0985',
-          reference: 'PAY-2024-0321',
-          debit: 0,
-          credit: 2450000,
-          balance: 635000,
-          payment_method: 'Bank Transfer',
-          status: 'completed'
-        },
-        {
-          id: 3,
-          date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-          type: 'purchase',
-          description: 'Automotive Gas Oil (AGO) - 3,000 Litres',
-          reference: 'INV-2024-0985',
-          debit: 2550000,
-          credit: 0,
-          balance: 3085000,
-          payment_method: 'Credit Terms',
-          status: 'completed'
-        },
-        {
-          id: 4,
-          date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-          type: 'payment',
-          description: 'Payment for Invoice INV-2024-0920',
-          reference: 'PAY-2024-0298',
-          debit: 0,
-          credit: 1850000,
-          balance: 535000,
-          payment_method: 'Cash',
-          status: 'completed'
-        },
-        {
-          id: 5,
-          date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-          type: 'purchase',
-          description: 'Engine Oil SAE 20W-50 - 100 Litres',
-          reference: 'INV-2024-0920',
-          debit: 450000,
-          credit: 0,
-          balance: 2385000,
-          payment_method: 'Credit Terms',
-          status: 'completed'
-        },
-        {
-          id: 6,
-          date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
-          type: 'payment',
-          description: 'Payment for Invoice INV-2024-0875',
-          reference: 'PAY-2024-0267',
-          debit: 0,
-          credit: 3200000,
-          balance: 1935000,
-          payment_method: 'Bank Transfer',
-          status: 'completed'
-        },
-        {
-          id: 7,
-          date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          type: 'purchase',
-          description: 'Premium Motor Spirit (PMS) - 8,000 Litres',
-          reference: 'INV-2024-0875',
-          debit: 4936000,
-          credit: 0,
-          balance: 5135000,
-          payment_method: 'Credit Terms',
-          status: 'completed'
-        },
-        {
-          id: 8,
-          date: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
-          type: 'credit',
-          description: 'Credit Limit Adjustment',
-          reference: 'CRD-2024-0045',
-          debit: 0,
-          credit: 0,
-          balance: 199000,
-          payment_method: 'System Adjustment',
-          status: 'completed'
-        }
-      ]
+      try {
+        return await apiClient.get(`/customer-transactions/`, { customer: customerId })
+      } catch (error) {
+        return []
+      }
     },
   })
 

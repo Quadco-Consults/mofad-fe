@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { useAuthStore } from '@/store/authStore'
 import { LoginForm } from '@/types'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { getRedirectPath } from '@/components/RouteTracker'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -30,16 +31,17 @@ export default function LoginPage() {
       const result = await login(data)
 
       if (result.requiresMfa) {
-        alert('MFA verification required. Please check your email for the OTP code.')
+        router.push('/auth/mfa-verify')
         return
       }
 
       if (result.forcePasswordReset) {
-        alert('Password reset required. Please reset your password.')
+        router.push('/auth/change-password')
         return
       }
 
-      router.push('/dashboard')
+      // Redirect to last visited page or dashboard
+      router.push(getRedirectPath())
     } catch (error) {
       console.error('LoginPage caught error:', error)
       // Error is handled by the store
@@ -141,36 +143,44 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* Remember Me Checkbox */}
-            <div className="flex items-center">
-              <div
-                onClick={() => setRememberMe(!rememberMe)}
-                className={`w-5 h-5 rounded flex items-center justify-center cursor-pointer transition-colors ${
-                  rememberMe
-                    ? 'bg-green-500 border-green-500'
-                    : 'bg-white border-2 border-gray-300'
-                }`}
-              >
-                {rememberMe && (
-                  <svg
-                    className="w-3 h-3 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                )}
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div
+                  onClick={() => setRememberMe(!rememberMe)}
+                  className={`w-5 h-5 rounded flex items-center justify-center cursor-pointer transition-colors ${
+                    rememberMe
+                      ? 'bg-green-500 border-green-500'
+                      : 'bg-white border-2 border-gray-300'
+                  }`}
+                >
+                  {rememberMe && (
+                    <svg
+                      className="w-3 h-3 text-white"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
+                </div>
+                <label
+                  onClick={() => setRememberMe(!rememberMe)}
+                  className="ml-3 text-sm text-gray-600 cursor-pointer select-none"
+                >
+                  Remember me
+                </label>
               </div>
-              <label
-                onClick={() => setRememberMe(!rememberMe)}
-                className="ml-3 text-sm text-gray-600 cursor-pointer select-none"
+              <a
+                href="/auth/forgot-password"
+                className="text-sm text-green-500 hover:text-green-600 font-medium transition-colors"
               >
-                Remember me on this device
-              </label>
+                Forgot password?
+              </a>
             </div>
 
             {/* Submit Button */}

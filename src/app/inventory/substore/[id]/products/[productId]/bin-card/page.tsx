@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import {
   ArrowLeft,
@@ -123,13 +123,13 @@ export default function SubstoreBinCardPage() {
   // Fetch bin card data
   const { data: binCardData, isLoading: binCardLoading } = useQuery({
     queryKey: ['substore-bin-card', substoreId, productId],
-    queryFn: () => mockApi.get(`/inventory/substore/substores/${substoreId}/products/${productId}/bin-card`)
+    queryFn: () => apiClient.get(`/inventory/substore/substores/${substoreId}/products/${productId}/bin-card`)
   })
 
   // Fetch product info from substore
   const { data: substoreProducts } = useQuery({
     queryKey: ['substore-inventory', substoreId],
-    queryFn: () => mockApi.get(`/inventory/substore/substores/${substoreId}`)
+    queryFn: () => apiClient.get(`/inventory/substore/substores/${substoreId}`)
   })
 
   const transactions: BinCardTransaction[] = Array.isArray(binCardData) ? binCardData : []

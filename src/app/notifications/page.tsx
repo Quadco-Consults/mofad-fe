@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import apiClient from '@/lib/apiClient'
 import { useToast } from '@/components/ui/Toast'
+import { Pagination } from '@/components/ui/Pagination'
 import {
   Notification,
   NotificationPreference,
@@ -124,6 +125,8 @@ export default function NotificationsPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [showActionsFor, setShowActionsFor] = useState<number | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
 
   // Fetch notifications
   const { data: notificationsData, isLoading, refetch } = useQuery({
@@ -215,18 +218,29 @@ export default function NotificationsPage() {
     },
   })
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, typeFilter, priorityFilter, searchTerm])
+
   // Data processing
-  const notifications = useMemo(() => extractResults(notificationsData), [notificationsData])
+  const allNotifications = useMemo(() => extractResults(notificationsData), [notificationsData])
   const unreadCount = unreadCountData?.total ?? 0
   const stats = statsData
 
-  // Today's notifications count
+  // Pagination calculations
+  const totalCount = allNotifications.length
+  const totalPages = Math.ceil(totalCount / pageSize) || 1
+  const startIndex = (currentPage - 1) * pageSize
+  const notifications = allNotifications.slice(startIndex, startIndex + pageSize)
+
+  // Today's notifications count (from all data, not paginated)
   const todaysCount = useMemo(() => {
     const today = new Date().toDateString()
-    return notifications.filter(
+    return allNotifications.filter(
       (n: Notification) => new Date(n.created_at).toDateString() === today
     ).length
-  }, [notifications])
+  }, [allNotifications])
 
   // Tab counts
   const tabCounts = useMemo(() => ({
@@ -666,6 +680,19 @@ export default function NotificationsPage() {
             })
           )}
         </div>
+
+        {/* Pagination */}
+        {!isLoading && totalCount > 0 && (
+          <div className="mofad-card mt-6">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
 
         {/* Settings Modal */}
         {showSettings && (

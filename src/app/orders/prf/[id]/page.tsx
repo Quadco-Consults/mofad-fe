@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/Button'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { PRF } from '@/types/api'
 import {
@@ -76,20 +78,26 @@ export default function PRFViewPage() {
   const router = useRouter()
   const params = useParams()
   const printRef = useRef<HTMLDivElement>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [prf, setPrf] = useState<PRF | null>(null)
 
   const prfId = params?.id ? parseInt(params.id as string) : null
 
-  useEffect(() => {
-    if (prfId) {
-      // Load PRF from localStorage
-      const mockPRFs = getMockPRFs()
-      const foundPRF = mockPRFs.find(p => p.id === prfId)
-      setPrf(foundPRF || null)
-      setIsLoading(false)
-    }
-  }, [prfId])
+  // Fetch PRF from API with localStorage fallback
+  const { data: prf, isLoading } = useQuery({
+    queryKey: ['prf-detail', prfId],
+    queryFn: async () => {
+      if (!prfId) return null
+      try {
+        // Try API first using typed method
+        return await apiClient.getPrfById(prfId)
+      } catch (error) {
+        // Fallback to localStorage
+        const mockPRFs = getMockPRFs()
+        const foundPRF = mockPRFs.find(p => p.id === prfId)
+        return foundPRF || null
+      }
+    },
+    enabled: !!prfId,
+  })
 
   const handlePrint = () => {
     if (printRef.current) {

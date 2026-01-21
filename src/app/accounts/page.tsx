@@ -5,6 +5,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Checkbox } from '@/components/ui/Checkbox'
+import { Pagination } from '@/components/ui/Pagination'
+import { BulkActionBar } from '@/components/ui/BulkActionBar'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useSelection } from '@/hooks/useSelection'
 import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
@@ -142,15 +147,47 @@ export default function ExpensesPage() {
   const [formData, setFormData] = useState<ExpenseFormData>(initialFormData)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
+
+  // Selection hook
+  const selection = useSelection<Expense>()
+
+  // Bulk delete modal state
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+
   // Fetch expenses
   const { data: expensesData, isLoading, error, refetch } = useQuery({
-    queryKey: ['expenses', searchTerm, statusFilter, paymentMethodFilter],
-    queryFn: async () => {
-      const params: Record<string, string> = {}
-      if (statusFilter !== 'all') params.status = statusFilter
-      if (paymentMethodFilter !== 'all') params.payment_method = paymentMethodFilter
-      if (searchTerm) params.search = searchTerm
-      return apiClient.get<Expense[]>('/expenses/', params)
+    queryKey: ['expenses', currentPage, pageSize, searchTerm, statusFilter, paymentMethodFilter],
+    queryFn: () => apiClient.getExpenses({
+      page: currentPage,
+      page_size: pageSize,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      payment_method: paymentMethodFilter !== 'all' ? paymentMethodFilter : undefined,
+      search: searchTerm || undefined,
+    }),
+  })
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: (number | string)[]) => apiClient.bulkDeleteExpenses(ids),
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      setShowBulkDeleteModal(false)
+      selection.clearSelection()
+      addToast({
+        type: 'success',
+        title: 'Bulk Delete Complete',
+        message: `Successfully deleted ${response.deleted_count || selection.selectedIds.length} expense(s)`,
+      })
+    },
+    onError: (error: any) => {
+      addToast({
+        type: 'error',
+        title: 'Delete Failed',
+        message: error.message || 'Failed to delete expenses',
+      })
     },
   })
 
@@ -166,13 +203,25 @@ export default function ExpensesPage() {
     queryFn: () => apiClient.get<Account[]>('/accounts/', { account_type: 'expense' }),
   })
 
-  const expenses = Array.isArray(expensesData) ? expensesData : []
-  const expenseTypes = Array.isArray(expenseTypesData) ? expenseTypesData : []
-  const accounts = Array.isArray(accountsData) ? accountsData : []
+  // Helper to extract array from API response (handles paginated and direct array responses)
+  const extractResults = (data: any) => {
+    if (!data) return []
+    if (Array.isArray(data)) return data
+    if (data.results && Array.isArray(data.results)) return data.results
+    return []
+  }
+
+  // Get pagination info
+  const totalCount = expensesData?.paginator?.count ?? (expensesData as any)?.count ?? 0
+  const totalPages = expensesData?.paginator?.total_pages ?? Math.ceil(totalCount / pageSize)
+
+  const expenses = extractResults(expensesData)
+  const expenseTypes = extractResults(expenseTypesData)
+  const accounts = extractResults(accountsData)
 
   // Create expense mutation
   const createMutation = useMutation({
-    mutationFn: (data: ExpenseFormData) => apiClient.post<Expense>('/expenses/', data),
+    mutationFn: (data: ExpenseFormData) => apiClient.createExpense(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       setShowAddModal(false)
@@ -188,7 +237,7 @@ export default function ExpensesPage() {
   // Update expense mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<ExpenseFormData> }) =>
-      apiClient.patch<Expense>(`/expenses/${id}/`, data),
+      apiClient.updateExpense(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       setShowEditModal(false)
@@ -203,7 +252,7 @@ export default function ExpensesPage() {
 
   // Delete expense mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiClient.delete(`/expenses/${id}/`),
+    mutationFn: (id: number) => apiClient.deleteExpense(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       setShowDeleteModal(false)
@@ -217,7 +266,7 @@ export default function ExpensesPage() {
 
   // Approve expense mutation
   const approveMutation = useMutation({
-    mutationFn: (id: number) => apiClient.post<Expense>(`/expenses/${id}/approve/`),
+    mutationFn: (id: number) => apiClient.approveExpense(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       setShowApprovalModal(false)
@@ -231,7 +280,7 @@ export default function ExpensesPage() {
 
   // Reject expense mutation
   const rejectMutation = useMutation({
-    mutationFn: (id: number) => apiClient.post<Expense>(`/expenses/${id}/reject/`),
+    mutationFn: (id: number) => apiClient.rejectExpense(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       setShowApprovalModal(false)
@@ -245,7 +294,7 @@ export default function ExpensesPage() {
 
   // Mark paid mutation
   const markPaidMutation = useMutation({
-    mutationFn: (id: number) => apiClient.post<Expense>(`/expenses/${id}/mark-paid/`),
+    mutationFn: (id: number) => apiClient.markExpensePaid(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       setShowApprovalModal(false)
@@ -342,9 +391,9 @@ export default function ExpensesPage() {
 
   // Stats calculation
   const totalExpenses = expenses.length
-  const pendingExpenses = expenses.filter((e) => e.status === 'pending').length
-  const approvedExpenses = expenses.filter((e) => e.status === 'approved').length
-  const totalAmount = expenses.filter((e) => e.status !== 'rejected').reduce((sum, e) => sum + e.amount, 0)
+  const pendingExpenses = expenses.filter((e: Expense) => e.status === 'pending').length
+  const approvedExpenses = expenses.filter((e: Expense) => e.status === 'approved').length
+  const totalAmount = expenses.filter((e: Expense) => e.status !== 'rejected').reduce((sum: number, e: Expense) => sum + e.amount, 0)
 
   return (
     <AppLayout>
@@ -520,6 +569,13 @@ export default function ExpensesPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
+                      <th className="w-12 py-3 px-4">
+                        <Checkbox
+                          checked={selection.isAllSelected(expenses)}
+                          indeterminate={selection.isPartiallySelected(expenses)}
+                          onChange={() => selection.toggleAll(expenses)}
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Expense #</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Description</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Vendor</th>
@@ -532,7 +588,13 @@ export default function ExpensesPage() {
                   </thead>
                   <tbody>
                     {expenses.map((expense: Expense) => (
-                      <tr key={expense.id} className="border-b border-border hover:bg-muted/50">
+                      <tr key={expense.id} className={`border-b border-border hover:bg-muted/50 ${selection.isSelected(expense.id) ? 'bg-blue-50' : ''}`}>
+                        <td className="py-3 px-4">
+                          <Checkbox
+                            checked={selection.isSelected(expense.id)}
+                            onChange={() => selection.toggle(expense.id)}
+                          />
+                        </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center">
                             {getStatusIcon(expense.status)}
@@ -614,6 +676,42 @@ export default function ExpensesPage() {
           </CardContent>
         </Card>
 
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={(page) => {
+              setCurrentPage(page)
+              selection.clearSelection()
+            }}
+          />
+        )}
+
+        {/* Bulk Action Bar */}
+        <BulkActionBar
+          selectedCount={selection.selectedCount}
+          onClearSelection={selection.clearSelection}
+          onBulkDelete={() => setShowBulkDeleteModal(true)}
+          isDeleting={bulkDeleteMutation.isPending}
+          entityName="expenses"
+        />
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <ConfirmDialog
+          open={showBulkDeleteModal}
+          onClose={() => setShowBulkDeleteModal(false)}
+          onConfirm={() => bulkDeleteMutation.mutate(selection.selectedIds)}
+          title="Delete Selected Expenses"
+          message={`Are you sure you want to delete ${selection.selectedCount} expense(s)? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="danger"
+          isLoading={bulkDeleteMutation.isPending}
+        />
+
         {/* Add Expense Modal */}
         {showAddModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -638,7 +736,7 @@ export default function ExpensesPage() {
                       onChange={(e) => setFormData({ ...formData, expense_type: parseInt(e.target.value) || 0 })}
                     >
                       <option value={0}>Select Type</option>
-                      {expenseTypes.map((type) => (
+                      {expenseTypes.map((type: ExpenseType) => (
                         <option key={type.id} value={type.id}>
                           {type.name}
                         </option>
@@ -658,7 +756,7 @@ export default function ExpensesPage() {
                       onChange={(e) => setFormData({ ...formData, account: parseInt(e.target.value) || 0 })}
                     >
                       <option value={0}>Select Account</option>
-                      {accounts.map((account) => (
+                      {accounts.map((account: Account) => (
                         <option key={account.id} value={account.id}>
                           {account.account_code} - {account.account_name}
                         </option>
@@ -816,7 +914,7 @@ export default function ExpensesPage() {
                       onChange={(e) => setFormData({ ...formData, expense_type: parseInt(e.target.value) || 0 })}
                     >
                       <option value={0}>Select Type</option>
-                      {expenseTypes.map((type) => (
+                      {expenseTypes.map((type: ExpenseType) => (
                         <option key={type.id} value={type.id}>{type.name}</option>
                       ))}
                     </select>
@@ -829,7 +927,7 @@ export default function ExpensesPage() {
                       onChange={(e) => setFormData({ ...formData, account: parseInt(e.target.value) || 0 })}
                     >
                       <option value={0}>Select Account</option>
-                      {accounts.map((account) => (
+                      {accounts.map((account: Account) => (
                         <option key={account.id} value={account.id}>
                           {account.account_code} - {account.account_name}
                         </option>

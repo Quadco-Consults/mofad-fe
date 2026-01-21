@@ -6,7 +6,12 @@ import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import { Checkbox } from '@/components/ui/Checkbox'
+import { Pagination } from '@/components/ui/Pagination'
+import { BulkActionBar } from '@/components/ui/BulkActionBar'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useSelection } from '@/hooks/useSelection'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { Customer, CustomerFormData, CustomerType, PaymentType, State } from '@/types/api'
@@ -80,42 +85,48 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [formData, setFormData] = useState<CustomerFormData>(initialFormData)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
+  // Selection hook for bulk operations
+  const selection = useSelection<Customer>()
+
   // Fetch customers
   const { data: customersData, isLoading, error, refetch } = useQuery({
-    queryKey: ['customers', searchTerm, statusFilter, typeFilter],
+    queryKey: ['customers', searchTerm, statusFilter, typeFilter, currentPage, pageSize],
     queryFn: async () => {
-      const params: Record<string, string> = {}
+      const params: Record<string, any> = { page: currentPage, size: pageSize }
       if (statusFilter !== 'all') params.status = statusFilter
       if (typeFilter !== 'all') params.customer_type = typeFilter
       if (searchTerm) params.search = searchTerm
-      return mockApi.get('/customers', params)
+      return apiClient.get('/customers/', params)
     },
   })
 
   // Fetch customer types for dropdown
   const { data: customerTypesData } = useQuery({
     queryKey: ['customer-types'],
-    queryFn: () => mockApi.get('/customer-types'),
+    queryFn: () => apiClient.get('/customer-types/'),
   })
 
   // Fetch payment types for dropdown
   const { data: paymentTypesData } = useQuery({
     queryKey: ['payment-types'],
-    queryFn: () => mockApi.get('/payment-types'),
+    queryFn: () => apiClient.get('/payment-types/'),
   })
 
   // Fetch states for dropdown
   const { data: statesData } = useQuery({
     queryKey: ['states'],
-    queryFn: () => mockApi.get('/states'),
+    queryFn: () => apiClient.get('/states/'),
   })
 
   // Handle both array and paginated responses
@@ -130,9 +141,13 @@ export default function CustomersPage() {
   const paymentTypes = extractResults(paymentTypesData)
   const states = extractResults(statesData)
 
+  // Extract pagination info
+  const totalCount = customersData?.paginator?.count || customersData?.count || customers.length
+  const totalPages = customersData?.paginator?.total_pages || Math.ceil(totalCount / pageSize) || 1
+
   // Create customer mutation
   const createMutation = useMutation({
-    mutationFn: (data: CustomerFormData) => mockApi.post('/customers', data),
+    mutationFn: (data: CustomerFormData) => apiClient.post('/customers/', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       setShowAddModal(false)
@@ -151,7 +166,7 @@ export default function CustomersPage() {
   // Update customer mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<CustomerFormData> }) =>
-      mockApi.put(`/customers/${id}`, data),
+      apiClient.put(`/customers/${id}/`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       setShowEditModal(false)
@@ -169,7 +184,7 @@ export default function CustomersPage() {
 
   // Delete customer mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => mockApi.delete(`/customers/${id}`),
+    mutationFn: (id: number) => apiClient.delete(`/customers/${id}/`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       setShowDeleteModal(false)
@@ -178,6 +193,34 @@ export default function CustomersPage() {
     },
     onError: (error: any) => {
       const message = error.message || 'Failed to delete customer'
+      addToast({ type: 'error', title: 'Error', message })
+    },
+  })
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: (number | string)[]) => apiClient.bulkDeleteCustomers(ids),
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      setShowBulkDeleteModal(false)
+      selection.clearSelection()
+
+      if (response?.failed_count > 0) {
+        addToast({
+          type: 'warning',
+          title: 'Partial Success',
+          message: `Deleted ${response.deleted_count} customers. ${response.failed_count} failed.`
+        })
+      } else {
+        addToast({
+          type: 'success',
+          title: 'Success',
+          message: `Successfully deleted ${response?.deleted_count || selection.selectedCount} customers`
+        })
+      }
+    },
+    onError: (error: any) => {
+      const message = error.message || 'Failed to delete customers'
       addToast({ type: 'error', title: 'Error', message })
     },
   })
@@ -477,10 +520,18 @@ export default function CustomersPage() {
                 </Button>
               </div>
             ) : (
+              <>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b">
                     <tr>
+                      <th className="w-12 py-3 px-4">
+                        <Checkbox
+                          checked={selection.isAllSelected(customers)}
+                          indeterminate={selection.isPartiallySelected(customers)}
+                          onChange={() => selection.toggleAll(customers)}
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Customer</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Contact</th>
@@ -496,7 +547,16 @@ export default function CustomersPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {customers.map((customer) => (
-                      <tr key={customer.id} className="hover:bg-gray-50">
+                      <tr
+                        key={customer.id}
+                        className={`hover:bg-gray-50 ${selection.isSelected(customer.id) ? 'bg-primary-50' : ''}`}
+                      >
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selection.isSelected(customer.id)}
+                            onChange={() => selection.toggle(customer.id)}
+                          />
+                        </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
@@ -610,6 +670,19 @@ export default function CustomersPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination */}
+              {totalCount > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  className="border-t"
+                />
+              )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -1138,6 +1211,27 @@ export default function CustomersPage() {
             </div>
           </div>
         )}
+
+        {/* Bulk Delete Confirmation Modal */}
+        <ConfirmDialog
+          open={showBulkDeleteModal}
+          onClose={() => setShowBulkDeleteModal(false)}
+          onConfirm={() => bulkDeleteMutation.mutate(selection.selectedIds)}
+          title="Delete Multiple Customers"
+          message={`Are you sure you want to delete ${selection.selectedCount} customer${selection.selectedCount > 1 ? 's' : ''}? This action cannot be undone.`}
+          confirmText={`Delete ${selection.selectedCount} Customer${selection.selectedCount > 1 ? 's' : ''}`}
+          variant="danger"
+          isLoading={bulkDeleteMutation.isPending}
+        />
+
+        {/* Bulk Action Bar */}
+        <BulkActionBar
+          selectedCount={selection.selectedCount}
+          onClearSelection={selection.clearSelection}
+          onBulkDelete={() => setShowBulkDeleteModal(true)}
+          isDeleting={bulkDeleteMutation.isPending}
+          entityName="customer"
+        />
       </div>
     </AppLayout>
   )

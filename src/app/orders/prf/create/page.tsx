@@ -6,7 +6,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import {
   ArrowLeft,
   Save,
@@ -123,13 +123,13 @@ export default function CreateCustomerOrderPage() {
   // Fetch customers
   const { data: customers, isLoading: customersLoading } = useQuery({
     queryKey: ['customers'],
-    queryFn: () => mockApi.get('/customers'),
+    queryFn: () => apiClient.get('/customers/'),
   })
 
   // Fetch MOFAD products
   const { data: mofadProducts, isLoading: productsLoading } = useQuery({
     queryKey: ['mofad-products'],
-    queryFn: () => mockApi.get('/products'),
+    queryFn: () => apiClient.getProducts(),
     enabled: !!selectedCustomer,
   })
 
@@ -145,9 +145,30 @@ export default function CreateCustomerOrderPage() {
   ) || []
 
   const createCustomerOrder = useMutation({
-    mutationFn: (data: CustomerOrderFormData) => mockApi.post('/orders/prf', data),
+    mutationFn: (data: CustomerOrderFormData) => {
+      // Transform form data to match backend API format
+      const apiData = {
+        title: `Customer Order - ${data.customer_name}`,
+        description: data.order_notes || 'Customer purchase order',
+        department: 'Sales',
+        purpose: `Customer order for ${data.customer_name}`,
+        priority: 'medium' as const,
+        expected_delivery_date: data.delivery_date || undefined,
+        estimated_total: data.items.reduce((sum, item) => sum + item.total, 0),
+        client_type: 'customer',
+        client_id: parseInt(data.customer_id) || undefined,
+        items: data.items.map(item => ({
+          product: parseInt(item.product_id),
+          quantity_requested: item.quantity,
+          unit_price_estimate: item.unit_price,
+          specifications: '',
+        }))
+      }
+      return apiClient.createPrf(apiData)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['prfs'] })
       router.push('/orders/prf')
     },
     onError: (error) => {

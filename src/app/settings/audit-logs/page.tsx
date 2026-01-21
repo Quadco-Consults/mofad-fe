@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { AuditLog, AuditLogDetail } from '@/types/api'
+import apiClient from '@/lib/apiClient'
+import { AuditLog, AuditLogDetail, PaginatedResponse } from '@/types/api'
 import {
   Search,
   Download,
@@ -32,95 +34,8 @@ import {
   Settings,
   FileSpreadsheet,
   ChevronDown,
+  AlertCircle,
 } from 'lucide-react'
-
-// Mock data for audit logs - comprehensive user activity tracking
-const generateMockAuditLogs = (): AuditLog[] => {
-  const users = [
-    { id: 1, name: 'Adebayo Johnson', email: 'adebayo.johnson@mofadenergysolutions.com' },
-    { id: 2, name: 'Fatima Usman', email: 'fatima.usman@mofadenergysolutions.com' },
-    { id: 3, name: 'Emeka Okafor', email: 'emeka.okafor@mofadenergysolutions.com' },
-    { id: 4, name: 'Kemi Adebola', email: 'kemi.adebola@mofadenergysolutions.com' },
-    { id: 5, name: 'Ibrahim Musa', email: 'ibrahim.musa@mofadenergysolutions.com' },
-    { id: 6, name: 'Grace Okoro', email: 'grace.okoro@mofadenergysolutions.com' },
-    { id: null, name: 'System', email: 'system@mofadenergysolutions.com' }
-  ]
-
-  const actions = [
-    { action: 'LOGIN_SUCCESS', display: 'Login Success', model: 'User', success: true },
-    { action: 'LOGIN_FAILED', display: 'Login Failed', model: 'User', success: false },
-    { action: 'LOGOUT', display: 'Logout', model: 'User', success: true },
-    { action: 'USER_CREATED', display: 'User Created', model: 'User', success: true },
-    { action: 'USER_UPDATED', display: 'User Updated', model: 'User', success: true },
-    { action: 'USER_DELETED', display: 'User Deleted', model: 'User', success: true },
-    { action: 'ORDER_CREATED', display: 'Order Created', model: 'Order', success: true },
-    { action: 'ORDER_UPDATED', display: 'Order Updated', model: 'Order', success: true },
-    { action: 'ORDER_APPROVED', display: 'Order Approved', model: 'Order', success: true },
-    { action: 'ORDER_REJECTED', display: 'Order Rejected', model: 'Order', success: true },
-    { action: 'PAYMENT_PROCESSED', display: 'Payment Processed', model: 'Payment', success: true },
-    { action: 'PAYMENT_FAILED', display: 'Payment Failed', model: 'Payment', success: false },
-    { action: 'INVENTORY_UPDATED', display: 'Inventory Updated', model: 'Product', success: true },
-    { action: 'CUSTOMER_CREATED', display: 'Customer Created', model: 'Customer', success: true },
-    { action: 'CUSTOMER_UPDATED', display: 'Customer Updated', model: 'Customer', success: true },
-    { action: 'REPORT_GENERATED', display: 'Report Generated', model: 'Report', success: true },
-    { action: 'SETTINGS_CHANGED', display: 'Settings Changed', model: 'Settings', success: true },
-    { action: 'PASSWORD_CHANGED', display: 'Password Changed', model: 'User', success: true },
-    { action: 'ROLE_ASSIGNED', display: 'Role Assigned', model: 'User', success: true },
-    { action: 'PERMISSION_GRANTED', display: 'Permission Granted', model: 'Permission', success: true },
-  ]
-
-  const logs: AuditLog[] = []
-  const now = new Date()
-
-  for (let i = 0; i < 150; i++) {
-    const user = users[Math.floor(Math.random() * users.length)]
-    const actionData = actions[Math.floor(Math.random() * actions.length)]
-    const timestamp = new Date(now.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000) // Random time in last 30 days
-
-    const details: any = {}
-
-    // Generate realistic details based on action type
-    if (actionData.action.includes('LOGIN')) {
-      details.browser = ['Chrome 120.0', 'Safari 17.2', 'Firefox 121.0', 'Edge 120.0'][Math.floor(Math.random() * 4)]
-      details.location = ['Lagos, Nigeria', 'Abuja, Nigeria', 'Port Harcourt, Nigeria'][Math.floor(Math.random() * 3)]
-    } else if (actionData.action.includes('ORDER')) {
-      details.order_value = Math.floor(Math.random() * 1000000) + 50000
-      details.customer_id = Math.floor(Math.random() * 100) + 1
-      details.products_count = Math.floor(Math.random() * 10) + 1
-    } else if (actionData.action.includes('PAYMENT')) {
-      details.amount = Math.floor(Math.random() * 500000) + 10000
-      details.payment_method = ['bank_transfer', 'cash', 'cheque', 'mobile_money'][Math.floor(Math.random() * 4)]
-      details.reference = `PAY-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-    } else if (actionData.action.includes('USER')) {
-      details.role = ['Sales Manager', 'Finance Officer', 'Warehouse Staff', 'Admin'][Math.floor(Math.random() * 4)]
-      details.permissions_count = Math.floor(Math.random() * 15) + 1
-    }
-
-    logs.push({
-      id: i + 1,
-      user: user.id,
-      user_email: user.email,
-      user_name: user.name,
-      action: actionData.action,
-      action_display: actionData.display,
-      timestamp: timestamp.toISOString(),
-      target_model: actionData.model,
-      target_id: String(Math.floor(Math.random() * 1000) + 1),
-      ip_address: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-      user_agent: [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'
-      ][Math.floor(Math.random() * 3)],
-      details,
-      success: actionData.success && Math.random() > 0.05, // 5% chance of failure
-      error_message: !actionData.success || Math.random() < 0.05 ?
-        ['Network timeout', 'Invalid credentials', 'Permission denied', 'Database error'][Math.floor(Math.random() * 4)] : '',
-    })
-  }
-
-  return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-}
 
 // Helper function for action badges
 const getActionBadge = (action: string, success: boolean) => {
@@ -145,6 +60,12 @@ const getActionBadge = (action: string, success: boolean) => {
     PASSWORD_CHANGED: 'bg-blue-100 text-blue-800',
     ROLE_ASSIGNED: 'bg-purple-100 text-purple-800',
     PERMISSION_GRANTED: 'bg-indigo-100 text-indigo-800',
+    CREATE: 'bg-green-100 text-green-800',
+    UPDATE: 'bg-blue-100 text-blue-800',
+    DELETE: 'bg-red-100 text-red-800',
+    VIEW: 'bg-gray-100 text-gray-800',
+    APPROVE: 'bg-emerald-100 text-emerald-800',
+    REJECT: 'bg-red-100 text-red-800',
   }
 
   let color = actionColors[action] || 'bg-gray-100 text-gray-800'
@@ -178,6 +99,12 @@ const getActionIcon = (action: string) => {
     PASSWORD_CHANGED: Shield,
     ROLE_ASSIGNED: User,
     PERMISSION_GRANTED: Shield,
+    CREATE: Plus,
+    UPDATE: Edit,
+    DELETE: Trash2,
+    VIEW: Eye,
+    APPROVE: CheckCircle,
+    REJECT: XCircle,
   }
 
   return iconMap[action] || Activity
@@ -194,23 +121,51 @@ const formatDateTime = (dateString: string) => {
   })
 }
 
+// Available action types for filtering
+const ACTION_TYPES = [
+  { value: 'CREATE', label: 'Create' },
+  { value: 'UPDATE', label: 'Update' },
+  { value: 'DELETE', label: 'Delete' },
+  { value: 'VIEW', label: 'View' },
+  { value: 'APPROVE', label: 'Approve' },
+  { value: 'REJECT', label: 'Reject' },
+  { value: 'LOGIN_SUCCESS', label: 'Login Success' },
+  { value: 'LOGIN_FAILED', label: 'Login Failed' },
+  { value: 'LOGOUT', label: 'Logout' },
+  { value: 'PASSWORD_CHANGED', label: 'Password Changed' },
+  { value: 'ROLE_ASSIGNED', label: 'Role Assigned' },
+]
+
+// Available model types for filtering
+const MODEL_TYPES = [
+  'User', 'Customer', 'Product', 'Order', 'PRF', 'PRO', 'Payment',
+  'Expense', 'Lodgement', 'Warehouse', 'Substore', 'Lubebay',
+  'Inventory', 'StockTransfer', 'Settings', 'Report'
+]
+
 export default function AuditLogsPage() {
   // State
   const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [actionFilter, setActionFilter] = useState('')
   const [modelFilter, setModelFilter] = useState('')
-  const [userFilter, setUserFilter] = useState('')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
   const [successFilter, setSuccessFilter] = useState<string>('')
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedLog, setSelectedLog] = useState<AuditLogDetail | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
   const [showExportDropdown, setShowExportDropdown] = useState(false)
   const exportDropdownRef = useRef<HTMLDivElement>(null)
 
   const pageSize = 25
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -226,122 +181,86 @@ export default function AuditLogsPage() {
     }
   }, [])
 
-  // Generate mock data
-  const allLogs = useMemo(() => generateMockAuditLogs(), [])
-
-  // Filter logs based on search and filters
-  const filteredLogs = useMemo(() => {
-    let filtered = [...allLogs]
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(log =>
-        log.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.user_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.action_display?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.target_model?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+  // Build query params
+  const queryParams = useMemo(() => {
+    const params: Record<string, any> = {
+      page,
+      page_size: pageSize,
+      ordering: '-timestamp',
     }
 
-    // User filter
-    if (userFilter) {
-      filtered = filtered.filter(log => log.user_name === userFilter)
+    if (debouncedSearch) {
+      params.search = debouncedSearch
     }
-
-    // Action filter
     if (actionFilter) {
-      filtered = filtered.filter(log => log.action === actionFilter)
+      params.action = actionFilter
     }
-
-    // Model filter
     if (modelFilter) {
-      filtered = filtered.filter(log => log.target_model === modelFilter)
+      params.target_model = modelFilter
     }
-
-    // Date filters
-    if (dateFrom) {
-      const fromDate = new Date(dateFrom)
-      filtered = filtered.filter(log => new Date(log.timestamp) >= fromDate)
-    }
-
-    if (dateTo) {
-      const toDate = new Date(dateTo)
-      toDate.setHours(23, 59, 59, 999) // End of day
-      filtered = filtered.filter(log => new Date(log.timestamp) <= toDate)
-    }
-
-    // Success filter
     if (successFilter !== '') {
-      const isSuccess = successFilter === 'true'
-      filtered = filtered.filter(log => log.success === isSuccess)
+      params.success = successFilter === 'true'
     }
 
-    return filtered
-  }, [allLogs, searchTerm, userFilter, actionFilter, modelFilter, dateFrom, dateTo, successFilter])
+    return params
+  }, [page, debouncedSearch, actionFilter, modelFilter, successFilter])
 
-  // Paginate results
-  const totalCount = filteredLogs.length
+  // Fetch audit logs
+  const { data, isLoading, error, refetch, isFetching } = useQuery<PaginatedResponse<AuditLog>>({
+    queryKey: ['auditLogs', queryParams],
+    queryFn: () => apiClient.getAuditLogs(queryParams),
+  })
+
+  const logs = data?.results || []
+  const totalCount = data?.count || 0
   const totalPages = Math.ceil(totalCount / pageSize)
-  const startIndex = (page - 1) * pageSize
-  const logs = filteredLogs.slice(startIndex, startIndex + pageSize)
 
-  // Generate available actions and models
-  const availableActions = useMemo(() => {
-    const actions = Array.from(new Set(allLogs.map(log => log.action)))
-    return actions.map(action => ({
-      value: action,
-      label: allLogs.find(log => log.action === action)?.action_display || action
-    }))
-  }, [allLogs])
-
-  const availableModels = useMemo(() => {
-    return Array.from(new Set(allLogs.map(log => log.target_model)))
-  }, [allLogs])
-
-  const availableUsers = useMemo(() => {
-    return Array.from(new Set(allLogs.map(log => log.user_name).filter(Boolean))).sort()
-  }, [allLogs])
-
-  // Generate stats
+  // Calculate stats from current data
   const stats = useMemo(() => {
-    const last30Days = new Date()
-    last30Days.setDate(last30Days.getDate() - 30)
+    if (!logs.length) {
+      return {
+        total_logs: totalCount,
+        failed_actions_count: 0,
+        top_action: null,
+        top_model: null,
+      }
+    }
 
-    const recentLogs = allLogs.filter(log => new Date(log.timestamp) >= last30Days)
+    const failedCount = logs.filter(log => !log.success).length
 
-    const actionCounts = recentLogs.reduce((acc, log) => {
-      acc[log.action] = (acc[log.action] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
+    // Count actions
+    const actionCounts: Record<string, number> = {}
+    const modelCounts: Record<string, number> = {}
 
-    const modelCounts = recentLogs.reduce((acc, log) => {
-      acc[log.target_model] = (acc[log.target_model] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
+    logs.forEach(log => {
+      actionCounts[log.action] = (actionCounts[log.action] || 0) + 1
+      if (log.target_model) {
+        modelCounts[log.target_model] = (modelCounts[log.target_model] || 0) + 1
+      }
+    })
+
+    const topAction = Object.entries(actionCounts).sort((a, b) => b[1] - a[1])[0]
+    const topModel = Object.entries(modelCounts).sort((a, b) => b[1] - a[1])[0]
 
     return {
-      total_logs_30_days: recentLogs.length,
-      failed_actions_count: recentLogs.filter(log => !log.success).length,
-      actions_by_type: Object.entries(actionCounts)
-        .map(([action, count]) => ({ action, count }))
-        .sort((a, b) => b.count - a.count),
-      actions_by_model: Object.entries(modelCounts)
-        .map(([target_model, count]) => ({ target_model, count }))
-        .sort((a, b) => b.count - a.count),
-      daily_activity: [] // Not implemented for mock data
+      total_logs: totalCount,
+      failed_actions_count: failedCount,
+      top_action: topAction ? { action: topAction[0], count: topAction[1] } : null,
+      top_model: topModel ? { model: topModel[0], count: topModel[1] } : null,
     }
-  }, [allLogs])
+  }, [logs, totalCount])
 
   // View details handler
   const handleViewDetails = (log: AuditLog) => {
-    // Convert AuditLog to AuditLogDetail for the modal
     const detailLog: AuditLogDetail = {
       ...log,
-      formatted_changes: Object.entries(log.details?.changes || {}).map(([field, change]: [string, any]) => ({
-        field,
-        old_value: change.old,
-        new_value: change.new
-      }))
+      formatted_changes: log.details?.changes
+        ? Object.entries(log.details.changes).map(([field, change]: [string, any]) => ({
+            field,
+            old_value: change?.old,
+            new_value: change?.new
+          }))
+        : []
     }
     setSelectedLog(detailLog)
     setShowDetailsModal(true)
@@ -349,13 +268,12 @@ export default function AuditLogsPage() {
 
   // Export handlers
   const handleExportCSV = () => {
-    // Create CSV content
     const csvHeaders = ['Timestamp', 'User', 'Email', 'Action', 'Model', 'Target ID', 'Success', 'IP Address', 'Error Message']
-    const csvData = filteredLogs.map(log => [
+    const csvData = logs.map(log => [
       formatDateTime(log.timestamp),
       log.user_name || '',
       log.user_email || '',
-      log.action_display || '',
+      log.action_display || log.action || '',
       log.target_model || '',
       log.target_id || '',
       log.success ? 'Success' : 'Failed',
@@ -379,13 +297,12 @@ export default function AuditLogsPage() {
   }
 
   const handleExportExcel = () => {
-    // Create Excel-compatible CSV with BOM for proper encoding
     const csvHeaders = ['Timestamp', 'User', 'Email', 'Action', 'Model', 'Target ID', 'Success', 'IP Address', 'Error Message', 'Details']
-    const csvData = filteredLogs.map(log => [
+    const csvData = logs.map(log => [
       formatDateTime(log.timestamp),
       log.user_name || '',
       log.user_email || '',
-      log.action_display || '',
+      log.action_display || log.action || '',
       log.target_model || '',
       log.target_id || '',
       log.success ? 'Success' : 'Failed',
@@ -398,7 +315,6 @@ export default function AuditLogsPage() {
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n')
 
-    // Add BOM for Excel compatibility
     const BOM = '\uFEFF'
     const blob = new Blob([BOM + csvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -413,21 +329,18 @@ export default function AuditLogsPage() {
 
   const handleExportPDF = async () => {
     try {
-      // Dynamic import to avoid SSR issues
       const html2pdf = (await import('html2pdf.js')).default
 
-      // Create a temporary element with the audit logs data
       const element = document.createElement('div')
       element.style.padding = '20px'
       element.style.fontFamily = 'Arial, sans-serif'
 
-      // Add header
       element.innerHTML = `
         <div style="margin-bottom: 20px; text-align: center;">
           <h1 style="color: #1f2937; margin-bottom: 5px;">MOFAD Energy Solutions</h1>
           <h2 style="color: #6b7280; margin: 0;">Audit Logs Report</h2>
           <p style="color: #9ca3af; margin: 5px 0;">Generated on ${new Date().toLocaleDateString()}</p>
-          <p style="color: #9ca3af; margin: 0;">Total Records: ${filteredLogs.length}</p>
+          <p style="color: #9ca3af; margin: 0;">Total Records: ${logs.length}</p>
         </div>
         <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
           <thead>
@@ -441,11 +354,11 @@ export default function AuditLogsPage() {
             </tr>
           </thead>
           <tbody>
-            ${filteredLogs.map(log => `
+            ${logs.map(log => `
               <tr>
                 <td style="border: 1px solid #d1d5db; padding: 6px; font-size: 9px;">${formatDateTime(log.timestamp)}</td>
                 <td style="border: 1px solid #d1d5db; padding: 6px;">${log.user_name || '-'}</td>
-                <td style="border: 1px solid #d1d5db; padding: 6px;">${log.action_display || '-'}</td>
+                <td style="border: 1px solid #d1d5db; padding: 6px;">${log.action_display || log.action || '-'}</td>
                 <td style="border: 1px solid #d1d5db; padding: 6px;">${log.target_model || '-'}</td>
                 <td style="border: 1px solid #d1d5db; padding: 6px; color: ${log.success ? '#10b981' : '#ef4444'};">${log.success ? 'Success' : 'Failed'}</td>
                 <td style="border: 1px solid #d1d5db; padding: 6px; font-size: 9px;">${log.ip_address || '-'}</td>
@@ -470,26 +383,17 @@ export default function AuditLogsPage() {
     }
   }
 
-  // Refresh handler
-  const handleRefresh = () => {
-    setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-      // In a real app, this would refetch data
-    }, 1000)
-  }
-
   // Reset filters
   const resetFilters = () => {
     setSearchTerm('')
-    setUserFilter('')
+    setDebouncedSearch('')
     setActionFilter('')
     setModelFilter('')
-    setDateFrom('')
-    setDateTo('')
     setSuccessFilter('')
     setPage(1)
   }
+
+  const hasFilters = searchTerm || actionFilter || modelFilter || successFilter
 
   return (
     <AppLayout>
@@ -516,10 +420,11 @@ export default function AuditLogsPage() {
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
-                onClick={handleRefresh}
+                onClick={() => refetch()}
                 className="flex items-center hover:bg-gray-50"
+                disabled={isFetching}
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
 
@@ -529,6 +434,7 @@ export default function AuditLogsPage() {
                   variant="outline"
                   onClick={() => setShowExportDropdown(!showExportDropdown)}
                   className="flex items-center hover:bg-gray-50"
+                  disabled={logs.length === 0}
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Export Report
@@ -576,14 +482,34 @@ export default function AuditLogsPage() {
           </div>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                <div>
+                  <p className="font-medium text-red-800">Failed to load audit logs</p>
+                  <p className="text-sm text-red-600">{error instanceof Error ? error.message : 'An error occurred'}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => refetch()} className="ml-auto">
+                  Retry
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-700">Total Logs (30d)</p>
-                  <p className="text-3xl font-bold text-blue-900">{stats.total_logs_30_days?.toLocaleString() || 0}</p>
+                  <p className="text-sm font-medium text-blue-700">Total Logs</p>
+                  <p className="text-3xl font-bold text-blue-900">
+                    {isLoading ? '-' : stats.total_logs.toLocaleString()}
+                  </p>
                 </div>
                 <div className="p-3 bg-blue-200 rounded-full">
                   <Activity className="w-6 h-6 text-blue-700" />
@@ -597,7 +523,9 @@ export default function AuditLogsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-red-700">Failed Actions</p>
-                  <p className="text-3xl font-bold text-red-900">{stats.failed_actions_count || 0}</p>
+                  <p className="text-3xl font-bold text-red-900">
+                    {isLoading ? '-' : stats.failed_actions_count}
+                  </p>
                 </div>
                 <div className="p-3 bg-red-200 rounded-full">
                   <AlertTriangle className="w-6 h-6 text-red-700" />
@@ -612,9 +540,11 @@ export default function AuditLogsPage() {
                 <div>
                   <p className="text-sm font-medium text-green-700">Top Action</p>
                   <p className="text-lg font-bold text-green-900 truncate">
-                    {stats.actions_by_type?.[0]?.action || 'N/A'}
+                    {isLoading ? '-' : (stats.top_action?.action || 'N/A')}
                   </p>
-                  <p className="text-sm text-green-600">{stats.actions_by_type?.[0]?.count || 0} times</p>
+                  <p className="text-sm text-green-600">
+                    {stats.top_action?.count || 0} times
+                  </p>
                 </div>
                 <div className="p-3 bg-green-200 rounded-full">
                   <TrendingUp className="w-6 h-6 text-green-700" />
@@ -629,9 +559,11 @@ export default function AuditLogsPage() {
                 <div>
                   <p className="text-sm font-medium text-purple-700">Top Model</p>
                   <p className="text-lg font-bold text-purple-900 truncate">
-                    {stats.actions_by_model?.[0]?.target_model || 'N/A'}
+                    {isLoading ? '-' : (stats.top_model?.model || 'N/A')}
                   </p>
-                  <p className="text-sm text-purple-600">{stats.actions_by_model?.[0]?.count || 0} operations</p>
+                  <p className="text-sm text-purple-600">
+                    {stats.top_model?.count || 0} operations
+                  </p>
                 </div>
                 <div className="p-3 bg-purple-200 rounded-full">
                   <FileText className="w-6 h-6 text-purple-700" />
@@ -644,36 +576,18 @@ export default function AuditLogsPage() {
         {/* Filters */}
         <Card>
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-7 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Search */}
-              <div className="relative lg:col-span-1">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search logs..."
+                  placeholder="Search by user, email, or model..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value)
-                    setPage(1)
-                  }}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-
-              {/* User Filter */}
-              <select
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
-                value={userFilter}
-                onChange={(e) => {
-                  setUserFilter(e.target.value)
-                  setPage(1)
-                }}
-              >
-                <option value="">All Users</option>
-                {availableUsers.map((user) => (
-                  <option key={user} value={user}>{user}</option>
-                ))}
-              </select>
 
               {/* Action Filter */}
               <select
@@ -685,7 +599,7 @@ export default function AuditLogsPage() {
                 }}
               >
                 <option value="">All Actions</option>
-                {availableActions.map((action) => (
+                {ACTION_TYPES.map((action) => (
                   <option key={action.value} value={action.value}>
                     {action.label}
                   </option>
@@ -702,34 +616,10 @@ export default function AuditLogsPage() {
                 }}
               >
                 <option value="">All Models</option>
-                {availableModels.map((model) => (
+                {MODEL_TYPES.map((model) => (
                   <option key={model} value={model}>{model}</option>
                 ))}
               </select>
-
-              {/* Date From */}
-              <input
-                type="date"
-                placeholder="Start Date"
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value)
-                  setPage(1)
-                }}
-              />
-
-              {/* Date To */}
-              <input
-                type="date"
-                placeholder="End Date"
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value)
-                  setPage(1)
-                }}
-              />
 
               {/* Success Filter */}
               <select
@@ -748,16 +638,20 @@ export default function AuditLogsPage() {
 
             <div className="flex justify-between items-center mt-4">
               <div className="text-sm text-gray-600">
-                {totalCount} log{totalCount !== 1 ? 's' : ''} found
-                {(searchTerm || userFilter || actionFilter || modelFilter || dateFrom || dateTo || successFilter) && (
-                  <span className="text-green-600 font-medium ml-1">
-                    (filtered from {allLogs.length})
-                  </span>
+                {isLoading ? 'Loading...' : (
+                  <>
+                    {totalCount} log{totalCount !== 1 ? 's' : ''} found
+                    {hasFilters && (
+                      <span className="text-green-600 font-medium ml-1">(filtered)</span>
+                    )}
+                  </>
                 )}
               </div>
-              <Button variant="outline" size="sm" onClick={resetFilters}>
-                Reset Filters
-              </Button>
+              {hasFilters && (
+                <Button variant="outline" size="sm" onClick={resetFilters}>
+                  Reset Filters
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -823,7 +717,7 @@ export default function AuditLogsPage() {
                         </div>
                         <p className="text-lg font-semibold text-gray-900 mb-2">No audit logs found</p>
                         <p className="text-gray-500 max-w-md">
-                          {searchTerm || actionFilter || modelFilter || dateFrom || dateTo || successFilter
+                          {hasFilters
                             ? 'No activities match your current filters. Try adjusting the search criteria.'
                             : 'Activity logs will appear here as users perform actions in the system.'}
                         </p>
@@ -1032,12 +926,41 @@ export default function AuditLogsPage() {
                 )}
 
                 {/* Additional Details */}
-                <div>
-                  <label className="text-sm font-medium text-gray-500 block mb-2">Additional Details</label>
-                  <pre className="bg-gray-900 text-gray-100 p-4 rounded-md text-sm overflow-x-auto font-mono">
-                    {JSON.stringify(selectedLog.details, null, 2)}
-                  </pre>
-                </div>
+                {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block mb-2">Additional Details</label>
+                    <pre className="bg-gray-900 text-gray-100 p-4 rounded-md text-sm overflow-x-auto font-mono">
+                      {JSON.stringify(selectedLog.details, null, 2)}
+                    </pre>
+                  </div>
+                )}
+
+                {/* Formatted Changes */}
+                {selectedLog.formatted_changes && selectedLog.formatted_changes.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block mb-2">Changes Made</label>
+                    <div className="border rounded-md overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Field</th>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Old Value</th>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">New Value</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {selectedLog.formatted_changes.map((change, index) => (
+                            <tr key={index}>
+                              <td className="px-4 py-2 font-medium text-gray-900">{change.field}</td>
+                              <td className="px-4 py-2 text-red-600">{String(change.old_value ?? '-')}</td>
+                              <td className="px-4 py-2 text-green-600">{String(change.new_value ?? '-')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 p-6 border-t sticky bottom-0 bg-white">

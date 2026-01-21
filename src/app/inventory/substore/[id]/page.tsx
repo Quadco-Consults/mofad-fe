@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import mockApi from '@/lib/mockApi'
+import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import {
   ArrowLeft,
@@ -14,130 +14,189 @@ import {
   Filter,
   Download,
   Eye,
+  Edit,
   Package,
   Building2,
   TrendingUp,
   TrendingDown,
   Droplets,
-  Settings as SettingsIcon,
   AlertTriangle,
   CheckCircle,
   Clock,
   MapPin,
-  Calendar,
   User,
-  Fuel,
-  Power,
+  X,
+  Plus,
+  Minus,
+  RefreshCw,
+  Phone,
+  Mail,
 } from 'lucide-react'
 
-interface SubstoreProduct {
+interface SubstoreInventoryItem {
   id: number
-  substore_id: number
-  substore_name: string
-  location: string
+  product_id: number
   product_name: string
-  product_code: string
-  category: string
-  current_stock: number
-  unit_type: string
-  cost_value: number
-  retail_value: number
-  reorder_level: number
-  max_level: number
-  last_restocked: string
-  stock_status: string
-  manager: string
-  package_size: string
+  quantity_on_hand: number
+  quantity_reserved: number
+  quantity_available: number
+  average_cost: number
+  minimum_level: number
+  maximum_level: number | null
+  is_active: boolean
+  is_low_stock: boolean
 }
 
-const getCategoryIcon = (category: string) => {
-  switch (category?.toLowerCase()) {
-    case 'lubricants':
-      return <Droplets className="w-5 h-5 text-blue-500" />
-    case 'hydraulics':
-      return <Settings className="w-5 h-5 text-purple-500" />
-    case 'transmission':
-      return <Power className="w-5 h-5 text-green-500" />
-    default:
-      return <Package className="w-5 h-5 text-gray-500" />
-  }
+interface SubstoreData {
+  id: number
+  name: string
+  code: string
+  substore_type: string
+  state: number | null
+  state_name: string | null
+  location: number | null
+  location_name: string | null
+  customer: number | null
+  customer_name: string | null
+  manager: number | null
+  manager_name: string | null
+  address: string | null
+  phone: string | null
+  email: string | null
+  current_balance: number | null
+  credit_limit: number | null
+  available_credit: number | null
+  is_active: boolean
+  created_datetime: string
 }
 
-const getStockStatusBadge = (status: string, current_stock: number, reorder_level: number) => {
-  let statusColor = status
-  let statusText = status
-
-  // Determine status based on stock levels
-  if (current_stock === 0) {
-    statusColor = 'critical'
-    statusText = 'out_of_stock'
-  } else if (current_stock <= reorder_level * 0.5) {
-    statusColor = 'critical'
-    statusText = 'critical'
-  } else if (current_stock <= reorder_level) {
-    statusColor = 'low'
-    statusText = 'low'
-  } else {
-    statusColor = 'healthy'
-    statusText = 'healthy'
+const getCategoryIcon = (productName: string) => {
+  const name = productName?.toLowerCase() || ''
+  if (name.includes('lub') || name.includes('oil')) {
+    return <Droplets className="w-5 h-5 text-blue-500" />
   }
+  return <Package className="w-5 h-5 text-gray-500" />
+}
 
+const getStockStatus = (item: SubstoreInventoryItem): 'healthy' | 'low' | 'critical' | 'overstock' => {
+  if (item.maximum_level && item.quantity_on_hand > item.maximum_level) {
+    return 'overstock'
+  }
+  if (item.is_low_stock || (item.minimum_level && item.quantity_on_hand <= item.minimum_level * 0.5)) {
+    return 'critical'
+  }
+  if (item.minimum_level && item.quantity_on_hand <= item.minimum_level) {
+    return 'low'
+  }
+  return 'healthy'
+}
+
+const getStockStatusBadge = (status: string) => {
   const colors = {
     healthy: 'bg-green-100 text-green-800',
     low: 'bg-yellow-100 text-yellow-800',
     critical: 'bg-red-100 text-red-800',
-    out_of_stock: 'bg-red-100 text-red-800'
-  }
-
-  const labels = {
-    healthy: 'Healthy',
-    low: 'Low Stock',
-    critical: 'Critical',
-    out_of_stock: 'Out of Stock'
+    overstock: 'bg-blue-100 text-blue-800'
   }
 
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[statusColor as keyof typeof colors]}`}>
-      {labels[statusText as keyof typeof labels]}
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status as keyof typeof colors] || colors.healthy}`}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   )
+}
+
+const getStockStatusIcon = (status: string) => {
+  switch (status) {
+    case 'healthy':
+      return <CheckCircle className="w-4 h-4 text-green-500" />
+    case 'low':
+      return <AlertTriangle className="w-4 h-4 text-yellow-500" />
+    case 'critical':
+      return <AlertTriangle className="w-4 h-4 text-red-500" />
+    case 'overstock':
+      return <TrendingUp className="w-4 h-4 text-blue-500" />
+    default:
+      return <Package className="w-4 h-4 text-gray-500" />
+  }
 }
 
 export default function SubstoreDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const substoreId = parseInt(params?.id as string)
+  const queryClient = useQueryClient()
+  const substoreId = params?.id as string
+
   const [searchTerm, setSearchTerm] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [stockStatusFilter, setStockStatusFilter] = useState('all')
+  const [showAdjustModal, setShowAdjustModal] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<SubstoreInventoryItem | null>(null)
+  const [adjustmentData, setAdjustmentData] = useState({
+    adjustment_type: 'add' as 'set' | 'add' | 'subtract',
+    quantity: '',
+    reason: ''
+  })
 
-  // Fetch substore products
-  const { data: substoreProducts, isLoading, error } = useQuery({
+  // Fetch substore details
+  const { data: substore, isLoading: substoreLoading } = useQuery({
+    queryKey: ['substore', substoreId],
+    queryFn: () => apiClient.getSubstoreById(substoreId),
+    enabled: !!substoreId,
+  })
+
+  // Fetch substore inventory
+  const { data: inventoryData, isLoading: inventoryLoading, error } = useQuery({
     queryKey: ['substore-inventory', substoreId],
-    queryFn: () => mockApi.get(`/inventory/substore/substores/${substoreId}`)
+    queryFn: () => apiClient.getSubstoreInventory(substoreId),
+    enabled: !!substoreId,
   })
 
-  const products = Array.isArray(substoreProducts) ? substoreProducts : []
-  const substoreInfo = products.length > 0 ? products[0] : null
-
-  // Filter products
-  const filteredProducts = products.filter((product: SubstoreProduct) => {
-    const matchesSearch = product.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.product_code.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesCategory = categoryFilter === 'all' || product.category.toLowerCase() === categoryFilter.toLowerCase()
-
-    return matchesSearch && matchesCategory
+  // Inventory adjustment mutation
+  const adjustMutation = useMutation({
+    mutationFn: (data: {
+      product_id: number
+      quantity: number
+      adjustment_type: 'set' | 'add' | 'subtract'
+      reason: string
+    }) => apiClient.adjustSubstoreInventory(substoreId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['substore-inventory', substoreId] })
+      setShowAdjustModal(false)
+      setSelectedItem(null)
+      setAdjustmentData({ adjustment_type: 'add', quantity: '', reason: '' })
+    }
   })
 
-  const handleViewBinCard = (product: SubstoreProduct) => {
-    router.push(`/inventory/substore/${substoreId}/products/${product.id}/bin-card`)
+  const isLoading = substoreLoading || inventoryLoading
+  const inventory = inventoryData?.inventory || []
+
+  // Filter inventory
+  const filteredInventory = inventory.filter((item: SubstoreInventoryItem) => {
+    const matchesSearch = !searchTerm ||
+      item.product_name?.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const itemStatus = getStockStatus(item)
+    const matchesStatus = stockStatusFilter === 'all' || itemStatus === stockStatusFilter
+
+    return matchesSearch && matchesStatus
+  })
+
+  const handleAdjustClick = (item: SubstoreInventoryItem) => {
+    setSelectedItem(item)
+    setAdjustmentData({ adjustment_type: 'add', quantity: '', reason: '' })
+    setShowAdjustModal(true)
   }
 
-  // Calculate summary stats
-  const totalProducts = filteredProducts.length
-  const totalValue = filteredProducts.reduce((sum: number, p: SubstoreProduct) => sum + p.cost_value, 0)
-  const lowStockCount = filteredProducts.filter((p: SubstoreProduct) => p.current_stock <= p.reorder_level).length
-  const criticalStockCount = filteredProducts.filter((p: SubstoreProduct) => p.current_stock <= p.reorder_level * 0.5).length
+  const handleAdjustSubmit = () => {
+    if (!selectedItem || !adjustmentData.quantity || !adjustmentData.reason) return
+
+    adjustMutation.mutate({
+      product_id: selectedItem.product_id,
+      quantity: parseFloat(adjustmentData.quantity),
+      adjustment_type: adjustmentData.adjustment_type,
+      reason: adjustmentData.reason
+    })
+  }
 
   if (error) {
     return (
@@ -145,7 +204,14 @@ export default function SubstoreDetailPage() {
         <div className="p-6">
           <div className="text-center py-12">
             <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-            <p className="text-red-500">Error loading substore data. Please try again.</p>
+            <p className="text-red-500">Error loading substore inventory. Please try again.</p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => router.push('/inventory/substore')}
+            >
+              Back to Substores
+            </Button>
           </div>
         </div>
       </AppLayout>
@@ -158,14 +224,14 @@ export default function SubstoreDetailPage() {
         <div className="p-6">
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            <p className="mt-2 text-gray-500">Loading substore data...</p>
+            <p className="mt-2 text-gray-500">Loading substore inventory...</p>
           </div>
         </div>
       </AppLayout>
     )
   }
 
-  if (!substoreInfo) {
+  if (!substore) {
     return (
       <AppLayout>
         <div className="p-6">
@@ -185,6 +251,18 @@ export default function SubstoreDetailPage() {
     )
   }
 
+  // Calculate summary stats
+  const totalProducts = inventoryData?.total_products || filteredInventory.length
+  const totalValue = inventoryData?.total_value || 0
+  const lowStockItems = inventoryData?.low_stock_count || filteredInventory.filter((item: SubstoreInventoryItem) => {
+    const status = getStockStatus(item)
+    return status === 'low'
+  }).length
+  const criticalStockItems = filteredInventory.filter((item: SubstoreInventoryItem) => {
+    const status = getStockStatus(item)
+    return status === 'critical'
+  }).length
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -200,26 +278,83 @@ export default function SubstoreDetailPage() {
               Back to Substores
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {substoreInfo.substore_name}
-              </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <MapPin className="w-4 h-4 text-gray-400" />
-                <p className="text-gray-600">{substoreInfo.location}</p>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <User className="w-4 h-4 text-gray-400" />
-                <p className="text-sm text-gray-500">Manager: {substoreInfo.manager}</p>
-              </div>
+              <h1 className="text-2xl font-bold text-gray-900">{substore.name}</h1>
+              <p className="text-gray-600">
+                Inventory management for {substore.location_name || substore.code}
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
             <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
           </div>
         </div>
+
+        {/* Substore Info Card */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Building2 className="w-8 h-8 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">{substore.name}</h3>
+                  <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                    <MapPin className="w-3 h-3" />
+                    {substore.address || substore.location_name || substore.state_name || 'No address'}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Type: {substore.substore_type} • Code: {substore.code}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <User className="w-8 h-8 text-green-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">{substore.manager_name || 'No Manager'}</h4>
+                  <p className="text-sm text-gray-600">Substore Manager</p>
+                  <div className="flex items-center gap-3 mt-1">
+                    {substore.phone && (
+                      <span className="text-sm text-gray-500 flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        {substore.phone}
+                      </span>
+                    )}
+                    {substore.email && (
+                      <span className="text-sm text-gray-500 flex items-center gap-1">
+                        <Mail className="w-3 h-3" />
+                        {substore.email}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
+                  <TrendingUp className="w-8 h-8 text-purple-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Credit Status</h4>
+                  <p className="text-sm text-gray-600">
+                    Balance: {formatCurrency(substore.current_balance || 0)}
+                  </p>
+                  {substore.credit_limit && (
+                    <p className="text-sm text-gray-500">
+                      Available: {formatCurrency(substore.available_credit || 0)} / {formatCurrency(substore.credit_limit)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -245,7 +380,7 @@ export default function SubstoreDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total Value</p>
-                  <p className="text-xl font-bold text-green-600">{formatCurrency(totalValue)}</p>
+                  <p className="text-2xl font-bold text-green-600">{formatCurrency(totalValue)}</p>
                 </div>
               </div>
             </CardContent>
@@ -259,7 +394,7 @@ export default function SubstoreDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Low Stock</p>
-                  <p className="text-2xl font-bold text-yellow-600">{lowStockCount}</p>
+                  <p className="text-2xl font-bold text-yellow-600">{lowStockItems}</p>
                 </div>
               </div>
             </CardContent>
@@ -273,7 +408,7 @@ export default function SubstoreDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Critical Stock</p>
-                  <p className="text-2xl font-bold text-red-600">{criticalStockCount}</p>
+                  <p className="text-2xl font-bold text-red-600">{criticalStockItems}</p>
                 </div>
               </div>
             </CardContent>
@@ -281,50 +416,50 @@ export default function SubstoreDetailPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="flex items-center gap-4">
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search products..."
-                className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <select
+                  className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={stockStatusFilter}
+                  onChange={(e) => setStockStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Stock Status</option>
+                  <option value="healthy">Healthy</option>
+                  <option value="low">Low</option>
+                  <option value="critical">Critical</option>
+                  <option value="overstock">Overstock</option>
+                </select>
+              </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="flex gap-2">
-            <select
-              className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              <option value="all">All Categories</option>
-              <option value="lubricants">Lubricants</option>
-              <option value="hydraulics">Hydraulic Oils</option>
-              <option value="transmission">Transmission Fluids</option>
-            </select>
-
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              More Filters
-            </Button>
-          </div>
-        </div>
-
-        {/* Products Table */}
+        {/* Inventory Table */}
         <Card>
           <CardContent className="p-0">
-            {filteredProducts.length === 0 ? (
+            {filteredInventory.length === 0 ? (
               <div className="p-12 text-center">
                 <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
                 <p className="text-gray-500">
-                  {searchTerm || categoryFilter !== 'all'
+                  {searchTerm || stockStatusFilter !== 'all'
                     ? 'Try adjusting your search or filters'
-                    : 'No products available in this substore'
+                    : `No products available in ${substore.name}`
                   }
                 </p>
               </div>
@@ -334,68 +469,242 @@ export default function SubstoreDetailPage() {
                   <thead className="bg-gray-50 border-b">
                     <tr>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Product</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Category</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Current Stock</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Reserved</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Available</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Min Level</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Avg Cost</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Total Value</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-900">Value</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Last Restocked</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {filteredProducts.map((product: SubstoreProduct) => (
-                      <tr key={product.id} className="hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            {getCategoryIcon(product.category)}
-                            <div>
-                              <div className="font-medium text-gray-900">{product.product_name}</div>
-                              <div className="text-sm text-gray-500 font-mono">{product.product_code}</div>
+                    {filteredInventory.map((item: SubstoreInventoryItem) => {
+                      const stockStatus = getStockStatus(item)
+                      return (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              {getCategoryIcon(item.product_name)}
+                              <div>
+                                <div className="font-medium text-gray-900">{item.product_name}</div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-sm text-gray-700 capitalize">{product.category}</span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="font-medium text-gray-900">
-                            {product.current_stock.toLocaleString()}
-                          </div>
-                          <div className="text-xs text-gray-500">{product.unit_type}</div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {getStockStatusBadge(product.stock_status, product.current_stock, product.reorder_level)}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="font-semibold text-gray-900">
-                            {formatCurrency(product.cost_value)}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="text-sm text-gray-500">
-                            {formatDateTime(product.last_restocked).split(',')[0]}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-3"
-                            title="View Bin Card"
-                            onClick={() => handleViewBinCard(product)}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            Bin Card
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {getStockStatusIcon(stockStatus)}
+                              <span className="font-bold text-gray-900">{item.quantity_on_hand?.toLocaleString() || 0}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="text-gray-700">{item.quantity_reserved?.toLocaleString() || 0}</span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="font-medium text-gray-900">{item.quantity_available?.toLocaleString() || 0}</span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="text-sm">
+                              <div className="font-medium text-gray-900">{item.minimum_level?.toLocaleString() || 0}</div>
+                              {item.maximum_level && (
+                                <div className="text-xs text-gray-500">Max: {item.maximum_level.toLocaleString()}</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="text-gray-900">
+                              {formatCurrency(item.average_cost || 0)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="font-semibold text-green-600">
+                              {formatCurrency((item.quantity_on_hand * item.average_cost) || 0)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {getStockStatusBadge(stockStatus)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="View Bin Card"
+                                onClick={() => router.push(`/inventory/substore/${substoreId}/bincard/${item.product_id}`)}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Adjust Stock"
+                                onClick={() => handleAdjustClick(item)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Inventory Adjustment Modal */}
+        {showAdjustModal && selectedItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div
+              className="fixed inset-0 bg-black/50"
+              onClick={() => setShowAdjustModal(false)}
+            />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">Adjust Inventory</h3>
+                <button
+                  onClick={() => setShowAdjustModal(false)}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 space-y-4">
+                {/* Product Info */}
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {getCategoryIcon(selectedItem.product_name)}
+                    <div>
+                      <div className="font-medium text-gray-900">{selectedItem.product_name}</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-sm text-gray-600">
+                    Current Stock: <span className="font-bold">{selectedItem.quantity_on_hand?.toLocaleString() || 0}</span>
+                  </div>
+                </div>
+
+                {/* Adjustment Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Adjustment Type
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAdjustmentData(prev => ({ ...prev, adjustment_type: 'add' }))}
+                      className={`flex-1 py-2 px-3 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
+                        adjustmentData.adjustment_type === 'add'
+                          ? 'bg-green-50 border-green-300 text-green-700'
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdjustmentData(prev => ({ ...prev, adjustment_type: 'subtract' }))}
+                      className={`flex-1 py-2 px-3 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
+                        adjustmentData.adjustment_type === 'subtract'
+                          ? 'bg-red-50 border-red-300 text-red-700'
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Minus className="w-4 h-4" />
+                      Subtract
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdjustmentData(prev => ({ ...prev, adjustment_type: 'set' }))}
+                      className={`flex-1 py-2 px-3 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
+                        adjustmentData.adjustment_type === 'set'
+                          ? 'bg-blue-50 border-blue-300 text-blue-700'
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Set
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quantity */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {adjustmentData.adjustment_type === 'set' ? 'New Quantity' : 'Adjustment Quantity'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={adjustmentData.quantity}
+                    onChange={(e) => setAdjustmentData(prev => ({ ...prev, quantity: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="Enter quantity"
+                  />
+                  {adjustmentData.quantity && (
+                    <p className="mt-1 text-sm text-gray-600">
+                      New stock will be:{' '}
+                      <span className="font-bold">
+                        {adjustmentData.adjustment_type === 'set'
+                          ? parseFloat(adjustmentData.quantity).toLocaleString()
+                          : adjustmentData.adjustment_type === 'add'
+                          ? ((selectedItem.quantity_on_hand || 0) + parseFloat(adjustmentData.quantity)).toLocaleString()
+                          : ((selectedItem.quantity_on_hand || 0) - parseFloat(adjustmentData.quantity)).toLocaleString()
+                        }
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Reason */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reason for Adjustment <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={adjustmentData.reason}
+                    onChange={(e) => setAdjustmentData(prev => ({ ...prev, reason: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    rows={3}
+                    placeholder="e.g., Physical count discrepancy, Damage write-off, etc."
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 p-4 border-t bg-gray-50">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowAdjustModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 mofad-btn-primary"
+                  onClick={handleAdjustSubmit}
+                  disabled={!adjustmentData.quantity || !adjustmentData.reason || adjustMutation.isPending}
+                >
+                  {adjustMutation.isPending ? 'Adjusting...' : 'Apply Adjustment'}
+                </Button>
+              </div>
+
+              {adjustMutation.isError && (
+                <div className="px-4 pb-4">
+                  <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
+                    {(adjustMutation.error as any)?.message || 'Failed to adjust inventory'}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   )
