@@ -29,10 +29,12 @@ interface CustomerTransaction {
 
 function CustomerTransactionsPage() {
   const router = useRouter()
-  const { data: transactions = [], isLoading, error } = useQuery<CustomerTransaction[]>({
+  const { data: transactionResponse, isLoading, error } = useQuery({
     queryKey: ['customer-transactions'],
     queryFn: () => apiClient.get('/customer-transactions/')
   })
+
+  const transactions = (transactionResponse?.results || []) as CustomerTransaction[]
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
