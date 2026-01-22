@@ -90,17 +90,18 @@ export default function CustomerDetailPage() {
     },
   })
 
-  // Filter transactions
-  const filteredTransactions = transactions.filter((transaction: any) => {
+  // Ensure transactions is an array and filter them
+  const transactionsArray = Array.isArray(transactions) ? transactions : (transactions?.data || [])
+  const filteredTransactions = transactionsArray.filter((transaction: any) => {
     if (filterType !== 'all' && transaction.type !== filterType) return false
     // Add date filtering logic here if needed
     return true
   })
 
   // Calculate summary stats
-  const totalPurchases = transactions.filter((t: any) => t.type === 'purchase').reduce((sum: number, t: any) => sum + t.debit, 0)
-  const totalPayments = transactions.filter((t: any) => t.type === 'payment').reduce((sum: number, t: any) => sum + t.credit, 0)
-  const transactionCount = transactions.length
+  const totalPurchases = transactionsArray.filter((t: any) => t.type === 'purchase').reduce((sum: number, t: any) => sum + t.debit, 0)
+  const totalPayments = transactionsArray.filter((t: any) => t.type === 'payment').reduce((sum: number, t: any) => sum + t.credit, 0)
+  const transactionCount = transactionsArray.length
 
   if (customerLoading) {
     return (

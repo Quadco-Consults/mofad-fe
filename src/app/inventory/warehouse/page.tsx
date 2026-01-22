@@ -104,21 +104,6 @@ const getWarehouseStatusBadge = (isActive: boolean) => {
   )
 }
 
-const getUtilizationPercentage = (totalCapacity: number | string, availableCapacity: number | string) => {
-  const total = typeof totalCapacity === 'string' ? parseFloat(totalCapacity) : totalCapacity
-  const available = typeof availableCapacity === 'string' ? parseFloat(availableCapacity) : availableCapacity
-  if (total <= 0) return 0
-  const used = total - available
-  return Math.round((used / total) * 100)
-}
-
-const getUtilizationColor = (totalCapacity: number | string, availableCapacity: number | string) => {
-  const percentage = getUtilizationPercentage(totalCapacity, availableCapacity)
-  if (percentage >= 90) return 'text-red-600'
-  if (percentage >= 70) return 'text-yellow-600'
-  return 'text-green-600'
-}
-
 export default function WarehousesPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -223,15 +208,6 @@ export default function WarehousesPage() {
   }
 
   // Calculate summary stats
-  const summaryTotalCapacity = filteredWarehouses.reduce((sum: number, w: WarehouseData) => {
-    const capacity = typeof w.total_capacity === 'string' ? parseFloat(w.total_capacity) : w.total_capacity
-    return sum + (capacity || 0)
-  }, 0)
-  const summaryAvailableCapacity = filteredWarehouses.reduce((sum: number, w: WarehouseData) => {
-    const available = typeof w.available_capacity === 'string' ? parseFloat(w.available_capacity) : w.available_capacity
-    return sum + (available || 0)
-  }, 0)
-  const summaryUsedCapacity = summaryTotalCapacity - summaryAvailableCapacity
   const activeWarehouses = filteredWarehouses.filter((w: WarehouseData) => w.is_active).length
 
   return (
@@ -256,7 +232,7 @@ export default function WarehousesPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
@@ -280,36 +256,6 @@ export default function WarehousesPage() {
                 <div>
                   <p className="text-sm text-gray-600">Active Facilities</p>
                   <p className="text-2xl font-bold text-green-600">{activeWarehouses}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <Package className="h-6 w-6 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Total Capacity</p>
-                  <p className="text-2xl font-bold text-orange-600">{summaryTotalCapacity.toLocaleString()} L</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Utilization</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {summaryTotalCapacity > 0 ? Math.round((summaryUsedCapacity / summaryTotalCapacity) * 100) : 0}%
-                  </p>
                 </div>
               </div>
             </CardContent>
@@ -402,8 +348,6 @@ export default function WarehousesPage() {
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Warehouse</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Code</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
-                      <th className="text-center py-3 px-4 font-medium text-gray-900">Capacity (L)</th>
-                      <th className="text-center py-3 px-4 font-medium text-gray-900">Utilization</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Last Updated</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
@@ -411,11 +355,6 @@ export default function WarehousesPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {filteredWarehouses.map((warehouse: WarehouseData) => {
-                      const totalCap = typeof warehouse.total_capacity === 'string' ? parseFloat(warehouse.total_capacity) : warehouse.total_capacity
-                      const availCap = typeof warehouse.available_capacity === 'string' ? parseFloat(warehouse.available_capacity) : warehouse.available_capacity
-                      const usedCap = totalCap - availCap
-                      const utilPercent = totalCap > 0 ? (usedCap / totalCap) * 100 : 0
-
                       return (
                       <tr key={warehouse.id} className={`hover:bg-gray-50 ${selection.isSelected(warehouse.id) ? 'bg-blue-50' : ''}`}>
                         <td className="py-3 px-4">
@@ -443,35 +382,6 @@ export default function WarehousesPage() {
                         </td>
                         <td className="py-3 px-4">
                           {getWarehouseTypeBadge(warehouse.warehouse_type)}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="text-sm">
-                            <div className="font-medium text-gray-900">
-                              {totalCap.toLocaleString()} L
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              Available: {availCap.toLocaleString()} L
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full transition-all ${
-                                  utilPercent >= 90 ? 'bg-red-500' :
-                                  utilPercent >= 70 ? 'bg-yellow-500' :
-                                  'bg-green-500'
-                                }`}
-                                style={{
-                                  width: `${Math.min(utilPercent, 100)}%`
-                                }}
-                              ></div>
-                            </div>
-                            <span className={`text-sm font-medium ${getUtilizationColor(warehouse.total_capacity, warehouse.available_capacity)}`}>
-                              {Math.round(utilPercent)}%
-                            </span>
-                          </div>
                         </td>
                         <td className="py-3 px-4 text-center">
                           {getWarehouseStatusBadge(warehouse.is_active)}

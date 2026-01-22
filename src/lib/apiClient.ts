@@ -2034,7 +2034,10 @@ class ApiClient {
     page?: number
     page_size?: number
   }): Promise<any> {
-    return this.get('/pros/', params)
+    return this.get('/pros/', {
+      ...params,
+      fields: 'status,delivery_status,final_approval,approval_status,current_approval,created_at,submitted_at,approved_at,rejected_at,confirmed_at,delivered_at'
+    })
   }
 
   async getProById(id: number | string): Promise<any> {
@@ -2497,7 +2500,12 @@ class ApiClient {
     department?: string
     ordering?: string
   }): Promise<any> {
-    return this.get('/prfs/', params)
+    // Only fetch essential fields, exclude unnecessary ones like title, department, purpose, priority
+    const requestParams = {
+      ...params,
+      fields: 'id,prf_number,estimated_total,status,requested_by_name,created_at,total_items,customer_name,client_id,client_type'
+    }
+    return this.get('/prfs/', requestParams)
   }
 
   async getPrfById(id: number | string): Promise<any> {

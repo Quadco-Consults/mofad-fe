@@ -14,7 +14,7 @@ import { useSelection } from '@/hooks/useSelection'
 import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
-import { PRF, Warehouse, Product, Customer } from '@/types/api'
+import { PRF, Product, Customer } from '@/types/api'
 import {
   Plus,
   Search,
@@ -321,41 +321,11 @@ export default function PRFPage() {
     },
   })
 
-  // Fetch warehouses for delivery location dropdown
-  const { data: warehousesData, isLoading: isWarehousesLoading, error: warehousesError } = useQuery({
-    queryKey: ['warehouses'],
-    queryFn: async () => {
-      if (!USE_REAL_API) {
-        // Use mock warehouses data directly when mock mode is enabled
-        console.log('🔧 Using mock warehouses data (mock mode enabled)')
-        const mockData = [
-          { id: 1, name: 'Main Warehouse - Lagos', location: 'Lagos', code: 'WH-LG-01' },
-          { id: 2, name: 'Abuja Distribution Center', location: 'Abuja', code: 'WH-AB-01' },
-          { id: 3, name: 'Port Harcourt Depot', location: 'Port Harcourt', code: 'WH-PH-01' }
-        ]
-        return mockData
-      }
+  const prfList = (prfData?.results || prfData || []).filter(Boolean)
 
-      // Only try real API when explicitly enabled
-      try {
-        return await apiClient.get<any[]>('/warehouses/')
-      } catch (error) {
-        // Fallback to mock data if real API fails
-        console.log('🔧 Real warehouse API failed, using mock data')
-        const mockData = [
-          { id: 1, name: 'Main Warehouse - Lagos', location: 'Lagos', code: 'WH-LG-01' },
-          { id: 2, name: 'Abuja Distribution Center', location: 'Abuja', code: 'WH-AB-01' },
-          { id: 3, name: 'Port Harcourt Depot', location: 'Port Harcourt', code: 'WH-PH-01' }
-        ]
-        return mockData
-      }
-    },
-    retry: false,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  })
 
   // Fetch customers for customer selection
-  const { data: customersData, isLoading: isCustomersLoading, error: customersError } = useQuery({
+  const { data: allCustomersData, isLoading: isCustomersLoading, error: customersError } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
       if (!USE_REAL_API) {
@@ -409,7 +379,10 @@ export default function PRFPage() {
 
       // Only try real API when explicitly enabled
       try {
-        return await apiClient.get<any[]>('/customers/')
+        return await apiClient.get<any[]>('/customers/', {
+          page_size: 1000, // Request up to 1000 customers
+          ordering: 'name' // Sort by name for better UX
+        })
       } catch (error) {
         // Fallback to mock data if real API fails
         console.log('🔧 Real customer API failed, using mock data')
@@ -563,8 +536,7 @@ export default function PRFPage() {
   }
 
   const allPrfs = extractResults(prfData)
-  const warehouses = extractResults(warehousesData)
-  const customers = extractResults(customersData)
+  const customers = extractResults(allCustomersData)
   const products = extractResults(productsData)
 
   // Pagination calculations
@@ -578,13 +550,10 @@ export default function PRFPage() {
 
   // Debug logging to help identify issues
   console.log('Dropdown Data Debug:', {
-    warehouses: { count: warehouses.length, data: warehouses },
     customers: { count: customers.length, data: customers },
     products: { count: products.length, data: products },
-    isWarehousesLoading,
     isCustomersLoading,
     isProductsLoading,
-    warehousesError,
     customersError,
     productsError
   })
@@ -596,7 +565,7 @@ export default function PRFPage() {
       description: data.notes || 'Customer purchase order',
       department: 'Sales',
       purpose: `Purchase requisition for customer order ${data.order_reference || ''}`,
-      priority: data.priority,
+      priority: 'medium', // Default priority since field was removed from form
       delivery_location: data.customer_location || undefined,
       expected_delivery_date: data.order_date,
       estimated_total: data.estimated_total,
@@ -630,7 +599,7 @@ export default function PRFPage() {
           description: data.notes || 'Customer purchase order',
           department: 'Sales',
           status: 'draft',
-          priority: data.priority,
+          priority: 'medium', // Default priority since field was removed from form
           estimated_total: data.estimated_total,
           delivery_location: data.customer_location,
           expected_delivery_date: data.order_date,
@@ -671,7 +640,7 @@ export default function PRFPage() {
           description: data.notes || 'Customer purchase order',
           department: 'Sales',
           status: 'draft',
-          priority: data.priority,
+          priority: 'medium', // Default priority since field was removed from form
           estimated_total: data.estimated_total,
           delivery_location: data.customer_location,
           expected_delivery_date: data.order_date,
@@ -727,7 +696,7 @@ export default function PRFPage() {
           purpose: `Purchase requisition for customer order ${data.order_reference || ''}`,
           description: data.notes || existingPRFs[prfIndex].description || '',
           department: 'Sales',
-          priority: data.priority || existingPRFs[prfIndex].priority,
+          priority: 'medium', // Default priority since field was removed from form
           estimated_total: data.estimated_total || existingPRFs[prfIndex].estimated_total,
           delivery_location: data.customer_location || existingPRFs[prfIndex].delivery_location,
           expected_delivery_date: data.order_date || existingPRFs[prfIndex].expected_delivery_date,
@@ -1152,9 +1121,12 @@ export default function PRFPage() {
 
   // Stats calculation
   const totalPRFs = prfs.length
-  const pendingPRFs = prfs.filter((p) => p.status === 'submitted').length
+  const pendingPRFs = prfs.filter((p) => p.status === 'draft' || p.status === 'submitted').length
   const approvedPRFs = prfs.filter((p) => p.status === 'approved').length
-  const totalValue = prfs.reduce((sum, p) => sum + (p.estimated_total || 0), 0)
+  const totalValue = prfs.reduce((sum, p) => {
+    const amount = parseFloat(p.estimated_total) || 0
+    return sum + amount
+  }, 0)
 
   return (
     <AppLayout>
@@ -1338,10 +1310,8 @@ export default function PRFPage() {
                         />
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">PRF Number</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Description</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Customer</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Amount</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Priority</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
@@ -1362,15 +1332,8 @@ export default function PRFPage() {
                             <span className="ml-2 font-medium font-mono">{prf.prf_number}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-4">
-                          <div>
-                            <p className="font-medium">{prf.description || 'No description'}</p>
-                            <p className="text-sm text-muted-foreground">{(prf as any).order_reference || 'Customer Order'}</p>
-                          </div>
-                        </td>
                         <td className="py-3 px-4">{(prf as any).customer_name || 'N/A'}</td>
                         <td className="py-3 px-4 font-medium">{formatCurrency(prf.estimated_total)}</td>
-                        <td className="py-3 px-4">{getPriorityBadge(prf.priority)}</td>
                         <td className="py-3 px-4">{getStatusBadge(prf.status)}</td>
                         <td className="py-3 px-4 text-sm text-muted-foreground">
                           {formatDateTime(prf.created_at)}
@@ -1631,24 +1594,7 @@ export default function PRFPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Priority <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      value={formData.priority}
-                      onChange={(e) =>
-                        setFormData({ ...formData, priority: e.target.value as PRFFormData['priority'] })
-                      }
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
-                    </select>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Customer Location <span className="text-red-500">*</span>

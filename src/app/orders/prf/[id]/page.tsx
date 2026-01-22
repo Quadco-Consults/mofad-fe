@@ -99,6 +99,7 @@ export default function PRFViewPage() {
     enabled: !!prfId,
   })
 
+
   const handlePrint = () => {
     if (printRef.current) {
       const printWindow = window.open('', '_blank')
@@ -398,58 +399,6 @@ export default function PRFViewPage() {
     }, 500)
   }
 
-  // Approval functions
-  const handleApprovePRF = () => {
-    if (!prf || !prfId) return
-
-    try {
-      const stored = localStorage.getItem('mofad_mock_prfs')
-      if (stored) {
-        const prfs = JSON.parse(stored)
-        const updatedPRFs = prfs.map((p: any) =>
-          p.id === prfId ? { ...p, status: 'approved' } : p
-        )
-        localStorage.setItem('mofad_mock_prfs', JSON.stringify(updatedPRFs))
-
-        // Update local state
-        setPrf({ ...prf, status: 'approved' })
-
-        alert(`PRF ${prf.prf_number} has been approved successfully!`)
-      }
-    } catch (error) {
-      console.error('Error approving PRF:', error)
-      alert('Error approving PRF. Please try again.')
-    }
-  }
-
-  const handleRejectPRF = () => {
-    if (!prf || !prfId) return
-
-    const reason = prompt('Please provide a reason for rejection (optional):')
-
-    try {
-      const stored = localStorage.getItem('mofad_mock_prfs')
-      if (stored) {
-        const prfs = JSON.parse(stored)
-        const updatedPRFs = prfs.map((p: any) =>
-          p.id === prfId ? {
-            ...p,
-            status: 'rejected',
-            rejection_reason: reason || 'No reason provided'
-          } : p
-        )
-        localStorage.setItem('mofad_mock_prfs', JSON.stringify(updatedPRFs))
-
-        // Update local state
-        setPrf({ ...prf, status: 'rejected' })
-
-        alert(`PRF ${prf.prf_number} has been rejected.`)
-      }
-    } catch (error) {
-      console.error('Error rejecting PRF:', error)
-      alert('Error rejecting PRF. Please try again.')
-    }
-  }
 
   if (isLoading) {
     return (
@@ -568,7 +517,7 @@ export default function PRFViewPage() {
                 <div className="text-right">
                   <div className="bg-white/20 backdrop-blur-sm px-6 py-3 rounded-xl border border-white/30">
                     <p className="text-xs text-white/80 mb-1">Document Reference</p>
-                    <p className="font-bold text-lg">PRF/{new Date().getFullYear()}/{String(prf?.id || '0001').padStart(4, '0')}</p>
+                    <p className="font-bold text-lg">{prf.prf_number}</p>
                   </div>
                 </div>
               </div>
@@ -605,11 +554,15 @@ export default function PRFViewPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Customer</label>
-                  <p className="text-base font-medium text-gray-900">{(prf as any).customer_name || 'N/A'}</p>
-                  <p className="text-sm text-gray-600 mt-1">Order Ref: {(prf as any).order_reference || 'N/A'}</p>
+                  <p className="text-base font-medium text-gray-900">
+                    {(prf as any).customer_name || 'N/A'}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {`Client Type: ${(prf as any).client_type === "1" ? "Regular" : (prf as any).client_type || 'N/A'}`}
+                  </p>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -628,6 +581,7 @@ export default function PRFViewPage() {
                   <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Status</label>
                   {getStatusBadge(prf.status)}
                 </div>
+
               </div>
             </div>
 
@@ -651,13 +605,12 @@ export default function PRFViewPage() {
                       <th className="px-6 py-4 text-left text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Description of Items/Services</th>
                       <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Code</th>
                       <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Qty</th>
-                      <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Category</th>
                       <th className="px-6 py-4 text-right text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Unit Cost</th>
                       <th className="px-6 py-4 text-right text-sm font-bold text-gray-800 uppercase tracking-wide">Total Cost</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {((prf as any).items || []).map((item: any, index: number) => (
+                    {((prf as any).order_snapshot || []).map((item: any, index: number) => (
                       <tr key={index} className={`border-b border-gray-200 transition-colors ${
                         index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                       } hover:bg-blue-50/30`}>
@@ -677,14 +630,9 @@ export default function PRFViewPage() {
                             {item.product_code || 'N/A'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center font-bold text-lg text-gray-900 border-r border-gray-200">{item.quantity}</td>
-                        <td className="px-6 py-4 text-center border-r border-gray-200">
-                          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                            Equipment
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right font-semibold text-gray-900 border-r border-gray-200">{formatCurrency(item.unit_price)}</td>
-                        <td className="px-6 py-4 text-right font-bold text-lg" style={{ color: '#1B4F3A' }}>{formatCurrency(item.total_amount)}</td>
+                        <td className="px-6 py-4 text-center font-bold text-lg text-gray-900 border-r border-gray-200">{item.product_quantity}</td>
+                        <td className="px-6 py-4 text-right font-semibold text-gray-900 border-r border-gray-200">{formatCurrency(item.product_price)}</td>
+                        <td className="px-6 py-4 text-right font-bold text-lg" style={{ color: '#1B4F3A' }}>{formatCurrency(parseFloat(item.product_price) * parseFloat(item.product_quantity))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -701,7 +649,7 @@ export default function PRFViewPage() {
                           {formatCurrency(prf.estimated_total)}
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
-                          {((prf as any).items || []).length} item(s)
+                          {((prf as any).order_snapshot || []).length} item(s)
                         </div>
                       </td>
                     </tr>
