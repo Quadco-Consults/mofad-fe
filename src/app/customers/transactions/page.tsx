@@ -31,7 +31,7 @@ function CustomerTransactionsPage() {
   const router = useRouter()
   const { data: transactions = [], isLoading, error } = useQuery<CustomerTransaction[]>({
     queryKey: ['customer-transactions'],
-    queryFn: () => apiClient.get('/customers/transactions/')
+    queryFn: () => apiClient.get('/customer-transactions/')
   })
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')

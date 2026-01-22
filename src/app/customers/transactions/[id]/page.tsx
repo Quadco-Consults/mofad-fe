@@ -32,7 +32,7 @@ export default function TransactionViewPage() {
 
   const { data: transactions = [], isLoading, error } = useQuery<CustomerTransaction[]>({
     queryKey: ['customer-transactions'],
-    queryFn: () => apiClient.get('/customers/transactions/')
+    queryFn: () => apiClient.get('/customer-transactions/')
   })
 
   const transaction = transactions.find(t => t.id === transactionId)
