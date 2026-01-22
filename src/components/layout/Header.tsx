@@ -143,63 +143,63 @@ export function Header({ onToggleSidebar }: HeaderProps) {
 
   return (
     <header className="relative">
-      {/* Background with glassmorphism */}
-      <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/90 to-white/95 backdrop-blur-xl border-b border-white/20 shadow-lg"></div>
+      {/* MOFAD Orange Header Background */}
+      <div className="absolute inset-0 bg-gradient-to-r from-orange-600 via-orange-500 to-orange-600 border-b border-orange-700/30 shadow-lg"></div>
 
       {/* Content */}
       <div className="relative px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Left Section */}
           <div className="flex items-center space-x-6">
-            {/* Sidebar Toggle with Modern Design */}
+            {/* Sidebar Toggle with MOFAD Design */}
             <button
               onClick={onToggleSidebar}
-              className="group relative p-2.5 rounded-xl bg-white/60 backdrop-blur-sm border border-white/20 hover:bg-white/80 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+              className="group relative p-2.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
             >
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <Menu className="relative h-5 w-5 text-slate-600 group-hover:text-slate-800 transition-colors" />
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/10 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <Menu className="relative h-5 w-5 text-white group-hover:text-white transition-colors" />
             </button>
 
-            {/* Enhanced Search Bar */}
+            {/* Enhanced Search Bar for MOFAD */}
             <div className="hidden lg:block relative">
               <div className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div className="relative flex items-center bg-white/60 backdrop-blur-sm border border-white/30 rounded-2xl px-4 py-3 w-96 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white/80">
-                  <Search className="h-4 w-4 text-slate-400 mr-3 transition-colors group-hover:text-slate-600" />
+                <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-white/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative flex items-center bg-white/10 backdrop-blur-sm border border-white/30 rounded-2xl px-4 py-3 w-96 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white/20">
+                  <Search className="h-4 w-4 text-white/70 mr-3 transition-colors group-hover:text-white" />
                   <input
                     type="text"
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
                     placeholder="Search anything... ⌘K"
-                    className="flex-1 bg-transparent placeholder-slate-400 text-slate-700 text-sm focus:outline-none font-medium"
+                    className="flex-1 bg-transparent placeholder-white/50 text-white text-sm focus:outline-none font-medium"
                   />
                   {searchValue && (
                     <button
                       onClick={() => setSearchValue('')}
-                      className="ml-2 p-1 rounded-full hover:bg-white/50 transition-colors"
+                      className="ml-2 p-1 rounded-full hover:bg-white/20 transition-colors"
                     >
-                      <X className="h-3 w-3 text-slate-400" />
+                      <X className="h-3 w-3 text-white/70" />
                     </button>
                   )}
-                  <kbd className="hidden xl:inline-flex items-center px-2 py-0.5 ml-2 text-xs font-semibold text-slate-500 bg-white/50 border border-white/30 rounded-lg">
+                  <kbd className="hidden xl:inline-flex items-center px-2 py-0.5 ml-2 text-xs font-semibold text-white/70 bg-white/10 border border-white/30 rounded-lg">
                     ⌘K
                   </kbd>
                 </div>
               </div>
             </div>
 
-            {/* Time and Date Display */}
-            <div className="hidden xl:flex items-center space-x-2 px-4 py-2 bg-white/40 backdrop-blur-sm rounded-xl border border-white/20">
-              <Clock className="h-4 w-4 text-slate-500" />
+            {/* Time and Date Display for MOFAD */}
+            <div className="hidden xl:flex items-center space-x-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+              <Clock className="h-4 w-4 text-white/70" />
               <div className="text-sm">
-                <div className="font-semibold text-slate-700">
+                <div className="font-semibold text-white">
                   {currentTime.toLocaleTimeString('en-US', {
                     hour: '2-digit',
                     minute: '2-digit',
                     hour12: false
                   })}
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-white/70">
                   {currentTime.toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric'
@@ -214,19 +214,19 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             {/* Mobile Search Toggle */}
             <button
               onClick={() => setShowSearch(!showSearch)}
-              className="lg:hidden p-2.5 rounded-xl bg-white/60 backdrop-blur-sm border border-white/20 hover:bg-white/80 transition-all duration-300 shadow-lg"
+              className="lg:hidden p-2.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-lg"
             >
-              <Search className="h-4 w-4 text-slate-600" />
+              <Search className="h-4 w-4 text-white" />
             </button>
 
             {/* Quick Actions */}
             <div className="relative">
               <button
                 onClick={() => setShowQuickActions(!showQuickActions)}
-                className="group relative p-2.5 rounded-xl bg-white/60 backdrop-blur-sm border border-white/20 hover:bg-white/80 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                className="group relative p-2.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
               >
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <Command className="relative h-4 w-4 text-slate-600 group-hover:text-slate-800 transition-colors" />
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/10 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <Command className="relative h-4 w-4 text-white group-hover:text-white transition-colors" />
               </button>
 
               {showQuickActions && (
@@ -275,10 +275,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="group relative p-2.5 rounded-xl bg-white/60 backdrop-blur-sm border border-white/20 hover:bg-white/80 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                className="group relative p-2.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
               >
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/10 to-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <Bell className="relative h-4 w-4 text-slate-600 group-hover:text-slate-800 transition-colors" />
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/10 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <Bell className="relative h-4 w-4 text-white group-hover:text-white transition-colors" />
                 {unreadCount > 0 && (
                   <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center shadow-lg animate-pulse">
                     <span className="text-xs font-bold text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>
@@ -352,10 +352,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="group flex items-center space-x-3 px-4 py-2.5 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/20 hover:bg-white/80 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                className="group flex items-center space-x-3 px-4 py-2.5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
               >
                 <div className="relative">
-                  <div className="w-9 h-9 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+                  <div className="w-9 h-9 bg-gradient-to-r from-orange-700 to-orange-800 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
                     <User className="h-4 w-4 text-white" />
                   </div>
                   <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
@@ -363,10 +363,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                   </div>
                 </div>
                 <div className="hidden sm:block text-left">
-                  <p className="text-sm font-semibold text-slate-800">{user?.name || 'Admin User'}</p>
-                  <p className="text-xs text-slate-500">{user?.email || 'admin@mofad.com'}</p>
+                  <p className="text-sm font-semibold text-white">{user?.name || 'Admin User'}</p>
+                  <p className="text-xs text-white/70">{user?.email || 'admin@mofad.com'}</p>
                 </div>
-                <ChevronDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                <ChevronDown className="h-4 w-4 text-white/70 group-hover:text-white transition-colors" />
               </button>
 
               {showUserMenu && (
@@ -436,22 +436,22 @@ export function Header({ onToggleSidebar }: HeaderProps) {
         {showSearch && (
           <div className="lg:hidden mt-4 animate-in slide-in-from-top-2 duration-300">
             <div className="relative">
-              <div className="flex items-center bg-white/60 backdrop-blur-sm border border-white/30 rounded-2xl px-4 py-3 shadow-lg">
-                <Search className="h-4 w-4 text-slate-400 mr-3" />
+              <div className="flex items-center bg-white/10 backdrop-blur-sm border border-white/30 rounded-2xl px-4 py-3 shadow-lg">
+                <Search className="h-4 w-4 text-white/70 mr-3" />
                 <input
                   type="text"
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
                   placeholder="Search anything..."
-                  className="flex-1 bg-transparent placeholder-slate-400 text-slate-700 text-sm focus:outline-none"
+                  className="flex-1 bg-transparent placeholder-white/50 text-white text-sm focus:outline-none"
                   autoFocus
                 />
                 {searchValue && (
                   <button
                     onClick={() => setSearchValue('')}
-                    className="ml-2 p-1 rounded-full hover:bg-white/50 transition-colors"
+                    className="ml-2 p-1 rounded-full hover:bg-white/20 transition-colors"
                   >
-                    <X className="h-3 w-3 text-slate-400" />
+                    <X className="h-3 w-3 text-white/70" />
                   </button>
                 )}
               </div>

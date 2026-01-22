@@ -35,7 +35,38 @@ import {
   CheckCircle,
   Power,
   PowerOff,
+  ArrowUp,
+  ArrowDown,
+  RotateCcw,
+  FileText,
+  Calendar,
+  User,
 } from 'lucide-react'
+
+// Real API bin card transaction interface (matches backend response)
+interface BinCardTransaction {
+  id: number
+  transaction_date: string
+  transaction_type: 'receipt' | 'issue' | 'transfer_out' | 'transfer_in' | 'adjustment' | 'return' | 'loss' | 'cycle_count'
+  reference_number: string | null
+  description: string
+  quantity_in: number
+  quantity_out: number
+  balance_after: number
+  unit_cost: number | null
+  value: number | null
+  created_by_name: string | null
+}
+
+// Real API bin card response interface
+interface BinCardData {
+  warehouse_id: number
+  warehouse_name: string
+  product_id: number
+  product_name: string
+  current_quantity: number
+  transactions: BinCardTransaction[]
+}
 
 const getCategoryIcon = (category: string) => {
   switch (category?.toLowerCase()) {
@@ -128,6 +159,8 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [formData, setFormData] = useState<ProductFormData>(initialFormData)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [activeViewTab, setActiveViewTab] = useState<'details' | 'bincard'>('details')
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<number | null>(null)
 
   // Selection hook for bulk operations
   const selection = useSelection<Product>()
@@ -142,6 +175,22 @@ export default function ProductsPage() {
       page: currentPage,
       size: pageSize, // Backend uses 'size' not 'page_size'
     }),
+  })
+
+  // Fetch warehouses for bin card functionality
+  const { data: warehousesData } = useQuery({
+    queryKey: ['warehouses-for-bincard'],
+    queryFn: () => apiClient.getWarehouses({ is_active: true }),
+  })
+
+  // Fetch bin card data when warehouse is selected and view modal is shown for bin card tab
+  const { data: binCardData, isLoading: binCardLoading, error: binCardError } = useQuery({
+    queryKey: ['bincard', selectedWarehouseId, selectedProduct?.id],
+    queryFn: () => {
+      if (!selectedWarehouseId || !selectedProduct?.id) return null
+      return apiClient.getWarehouseBinCard(selectedWarehouseId, selectedProduct.id)
+    },
+    enabled: !!(selectedWarehouseId && selectedProduct?.id && showViewModal && activeViewTab === 'bincard'),
   })
 
   // Reset to first page when filters change
@@ -196,6 +245,9 @@ export default function ProductsPage() {
 
   // Extract and filter products data
   const allProducts = extractResults(productsData)
+
+  // Extract warehouses data
+  const warehouses = warehousesData?.results || (Array.isArray(warehousesData) ? warehousesData : [])
 
   // Calculate low stock from the same products data
   const lowStockProducts = allProducts.filter((product: any) => {
@@ -346,9 +398,54 @@ export default function ProductsPage() {
     setShowAddModal(true)
   }
 
+  // Helper to get transaction type icon based on real API transaction types
+  const getTransactionTypeIcon = (type: BinCardTransaction['transaction_type']) => {
+    switch (type) {
+      case 'receipt':
+        return <ArrowUp className="w-4 h-4 text-green-600" />
+      case 'issue':
+        return <ArrowDown className="w-4 h-4 text-red-600" />
+      case 'transfer_out':
+        return <ArrowDown className="w-4 h-4 text-blue-600" />
+      case 'transfer_in':
+        return <ArrowUp className="w-4 h-4 text-blue-600" />
+      case 'return':
+        return <ArrowUp className="w-4 h-4 text-orange-600" />
+      case 'adjustment':
+        return <Settings className="w-4 h-4 text-purple-600" />
+      case 'loss':
+        return <ArrowDown className="w-4 h-4 text-red-600" />
+      case 'cycle_count':
+        return <Settings className="w-4 h-4 text-gray-600" />
+      default:
+        return <Package className="w-4 h-4 text-gray-600" />
+    }
+  }
+
+  const getTransactionTypeBadge = (type: BinCardEntry['type']) => {
+    const colors = {
+      receipt: 'bg-green-100 text-green-800',
+      issue: 'bg-red-100 text-red-800',
+      transfer: 'bg-blue-100 text-blue-800',
+      return: 'bg-orange-100 text-orange-800',
+      adjustment: 'bg-purple-100 text-purple-800'
+    }
+
+    return (
+      <span className={`px-2 py-1 text-xs font-medium rounded-full ${colors[type]}`}>
+        {type.charAt(0).toUpperCase() + type.slice(1)}
+      </span>
+    )
+  }
+
   const handleView = (product: Product) => {
     setSelectedProduct(product)
+    setActiveViewTab('details')
     setShowViewModal(true)
+    // Set default warehouse for bin card if warehouses are available
+    if (warehouses.length > 0 && !selectedWarehouseId) {
+      setSelectedWarehouseId(warehouses[0].id)
+    }
   }
 
   const handleEdit = (product: Product) => {
@@ -1313,145 +1410,305 @@ export default function ProductsPage() {
         {/* View Product Modal */}
         {showViewModal && selectedProduct && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold">Product Details</h2>
+            <div className="bg-white rounded-lg max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                    {getCategoryIcon(selectedProduct.category)}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold">{selectedProduct.name}</h2>
+                    <p className="text-muted-foreground font-mono">{selectedProduct.code}</p>
+                  </div>
+                </div>
                 <Button variant="ghost" onClick={() => setShowViewModal(false)}>
                   <X className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="p-6 space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                    {getCategoryIcon(selectedProduct.category)}
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold">{selectedProduct.name}</h3>
-                    <p className="text-muted-foreground font-mono">{selectedProduct.code}</p>
-                    {getStatusBadge(selectedProduct.is_active)}
-                  </div>
-                </div>
 
-                {selectedProduct.description && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Description</label>
-                    <p className="text-gray-900 mt-1">{selectedProduct.description}</p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Category</label>
-                      <p className="text-gray-900">{getCategoryLabel(selectedProduct.category)}</p>
+              {/* Tab Navigation */}
+              <div className="bg-white border-b">
+                <nav className="flex space-x-8 px-6" aria-label="Tabs">
+                  <button
+                    onClick={() => setActiveViewTab('details')}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                      activeViewTab === 'details'
+                        ? 'border-orange-500 text-orange-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Product Details
                     </div>
-                    {selectedProduct.subcategory && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Subcategory</label>
-                        <p className="text-gray-900">{selectedProduct.subcategory}</p>
-                      </div>
-                    )}
-                    {selectedProduct.brand && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Brand</label>
-                        <p className="text-gray-900">{selectedProduct.brand}</p>
-                      </div>
-                    )}
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Unit of Measure</label>
-                      <p className="text-gray-900 capitalize">{selectedProduct.unit_of_measure}</p>
+                  </button>
+                  <button
+                    onClick={() => setActiveViewTab('bincard')}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                      activeViewTab === 'bincard'
+                        ? 'border-orange-500 text-orange-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      Bin Card
                     </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Cost Price</label>
-                      <p className="text-gray-900 font-semibold">{formatCurrency(selectedProduct.cost_price)}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Direct Sales Price</label>
-                      <p className="text-primary font-bold text-lg">{formatCurrency(selectedProduct.direct_sales_price)}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Profit Margin</label>
-                      <p className="text-green-600 font-bold">
-                        {calculateProfitMargin(selectedProduct.direct_sales_price, selectedProduct.cost_price).toFixed(1)}%
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Tax Rate</label>
-                      <p className="text-gray-900">
-                        {selectedProduct.tax_rate}%
-                        {selectedProduct.tax_inclusive && ' (Inclusive)'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <h4 className="font-medium text-gray-900 mb-3">Inventory Settings</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <label className="text-sm text-gray-500">Minimum Stock</label>
-                      <p className="font-semibold">{selectedProduct.minimum_stock_level}</p>
-                    </div>
-                    {selectedProduct.maximum_stock_level && (
-                      <div>
-                        <label className="text-sm text-gray-500">Maximum Stock</label>
-                        <p className="font-semibold">{selectedProduct.maximum_stock_level}</p>
-                      </div>
-                    )}
-                    {selectedProduct.reorder_point && (
-                      <div>
-                        <label className="text-sm text-gray-500">Reorder Point</label>
-                        <p className="font-semibold">{selectedProduct.reorder_point}</p>
-                      </div>
-                    )}
-                    <div>
-                      <label className="text-sm text-gray-500">Track Inventory</label>
-                      <p className="font-semibold">{selectedProduct.track_inventory ? 'Yes' : 'No'}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <h4 className="font-medium text-gray-900 mb-3">Status Flags</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedProduct.is_sellable && (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">Sellable</span>
-                    )}
-                    {selectedProduct.is_purchasable && (
-                      <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">Purchasable</span>
-                    )}
-                    {selectedProduct.is_service && (
-                      <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs">Service</span>
-                    )}
-                    {selectedProduct.requires_batch_tracking && (
-                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Batch Tracking</span>
-                    )}
-                  </div>
-                </div>
-
-                {selectedProduct.primary_supplier && (
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium text-gray-900 mb-2">Supplier</h4>
-                    <p className="text-gray-900">{selectedProduct.primary_supplier}</p>
-                  </div>
-                )}
-
-                <div className="border-t pt-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <label className="text-gray-500">Created</label>
-                      <p className="text-gray-900">{formatDateTime(selectedProduct.created_at)}</p>
-                    </div>
-                    <div>
-                      <label className="text-gray-500">Last Updated</label>
-                      <p className="text-gray-900">{formatDateTime(selectedProduct.updated_at)}</p>
-                    </div>
-                  </div>
-                </div>
+                  </button>
+                </nav>
               </div>
-              <div className="flex justify-end gap-2 p-6 border-t">
+
+              {/* Tab Content */}
+              <div className="p-6">
+                {activeViewTab === 'details' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(selectedProduct.is_active)}
+                      <span className="text-sm text-gray-500">•</span>
+                      <span className="text-sm text-gray-600">Last updated: {formatDateTime(selectedProduct.updated_at)}</span>
+                    </div>
+
+                    {selectedProduct.description && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Description</label>
+                        <p className="text-gray-900 mt-1">{selectedProduct.description}</p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Category</label>
+                          <p className="text-gray-900">{getCategoryLabel(selectedProduct.category)}</p>
+                        </div>
+                        {selectedProduct.subcategory && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-500">Subcategory</label>
+                            <p className="text-gray-900">{selectedProduct.subcategory}</p>
+                          </div>
+                        )}
+                        {selectedProduct.brand && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-500">Brand</label>
+                            <p className="text-gray-900">{selectedProduct.brand}</p>
+                          </div>
+                        )}
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Unit of Measure</label>
+                          <p className="text-gray-900 capitalize">{selectedProduct.unit_of_measure}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Cost Price</label>
+                          <p className="text-gray-900 font-semibold">{formatCurrency(selectedProduct.cost_price)}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Direct Sales Price</label>
+                          <p className="text-primary font-bold text-lg">{formatCurrency(selectedProduct.direct_sales_price)}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Profit Margin</label>
+                          <p className="text-green-600 font-bold">
+                            {calculateProfitMargin(selectedProduct.direct_sales_price, selectedProduct.cost_price).toFixed(1)}%
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Tax Rate</label>
+                          <p className="text-gray-900">
+                            {selectedProduct.tax_rate}%
+                            {selectedProduct.tax_inclusive && ' (Inclusive)'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium text-gray-900 mb-3">Inventory Settings</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <label className="text-sm text-gray-500">Minimum Stock</label>
+                          <p className="font-semibold">{selectedProduct.minimum_stock_level}</p>
+                        </div>
+                        {selectedProduct.maximum_stock_level && (
+                          <div>
+                            <label className="text-sm text-gray-500">Maximum Stock</label>
+                            <p className="font-semibold">{selectedProduct.maximum_stock_level}</p>
+                          </div>
+                        )}
+                        {selectedProduct.reorder_point && (
+                          <div>
+                            <label className="text-sm text-gray-500">Reorder Point</label>
+                            <p className="font-semibold">{selectedProduct.reorder_point}</p>
+                          </div>
+                        )}
+                        <div>
+                          <label className="text-sm text-gray-500">Track Inventory</label>
+                          <p className="font-semibold">{selectedProduct.track_inventory ? 'Yes' : 'No'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium text-gray-900 mb-3">Status Flags</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedProduct.is_sellable && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">Sellable</span>
+                        )}
+                        {selectedProduct.is_purchasable && (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">Purchasable</span>
+                        )}
+                        {selectedProduct.is_service && (
+                          <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs">Service</span>
+                        )}
+                        {selectedProduct.requires_batch_tracking && (
+                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Batch Tracking</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedProduct.primary_supplier && (
+                      <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-2">Supplier</h4>
+                        <p className="text-gray-900">{selectedProduct.primary_supplier}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeViewTab === 'bincard' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Bin Card - Product Movement</h3>
+                        <p className="text-sm text-gray-600">Track all inventory transactions for {selectedProduct.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-gray-500">Current Stock Balance</div>
+                        <div className="text-2xl font-bold text-primary">
+                          {binCardData?.current_quantity || 0} {selectedProduct.unit_of_measure}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Warehouse Selection */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Warehouse
+                      </label>
+                      <select
+                        value={selectedWarehouseId || ''}
+                        onChange={(e) => setSelectedWarehouseId(Number(e.target.value) || null)}
+                        className="w-full max-w-sm rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                      >
+                        <option value="">Select warehouse...</option>
+                        {warehouses.map((warehouse: any) => (
+                          <option key={warehouse.id} value={warehouse.id}>
+                            {warehouse.name} ({warehouse.code})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                          <thead className="bg-gradient-to-r from-orange-500 to-amber-500">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Ref. No</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Description</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Type</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Received</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Issued</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Balance</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Performed By</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {generateMockBinCardData(selectedProduct.code).map((entry, index) => (
+                              <tr key={entry.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <Calendar className="w-4 h-4 text-gray-400 mr-2" />
+                                    <span className="text-sm text-gray-900">{entry.date}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="text-sm font-mono text-gray-900">{entry.refNo}</span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="text-sm text-gray-900">{entry.description}</div>
+                                  <div className="text-xs text-gray-500">{entry.location}</div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="flex items-center gap-2">
+                                    {getTransactionTypeIcon(entry.type)}
+                                    {getTransactionTypeBadge(entry.type)}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  {entry.received > 0 ? (
+                                    <span className="text-green-600 font-medium">+{entry.received.toLocaleString()}</span>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  {entry.issued > 0 ? (
+                                    <span className="text-red-600 font-medium">-{entry.issued.toLocaleString()}</span>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  <div className="text-sm">
+                                    <div className="font-bold text-gray-900">{entry.balance.toLocaleString()}</div>
+                                    <div className="text-xs text-gray-500">{formatCurrency(entry.totalValue)}</div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <User className="w-4 h-4 text-gray-400 mr-2" />
+                                    <span className="text-sm text-gray-900">{entry.performedBy}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <div className="text-sm text-green-800 font-medium">Total Received</div>
+                        <div className="text-2xl font-bold text-green-600">
+                          {generateMockBinCardData(selectedProduct.code)
+                            .reduce((sum, entry) => sum + entry.received, 0)
+                            .toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="bg-red-50 p-4 rounded-lg">
+                        <div className="text-sm text-red-800 font-medium">Total Issued</div>
+                        <div className="text-2xl font-bold text-red-600">
+                          {generateMockBinCardData(selectedProduct.code)
+                            .reduce((sum, entry) => sum + entry.issued, 0)
+                            .toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <div className="text-sm text-blue-800 font-medium">Current Balance</div>
+                        <div className="text-2xl font-bold text-blue-600">
+                          {generateMockBinCardData(selectedProduct.code)[0]?.balance || 0} {selectedProduct.unit_of_measure}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 p-6 border-t sticky bottom-0 bg-white">
                 <Button variant="outline" onClick={() => setShowViewModal(false)}>
                   Close
                 </Button>

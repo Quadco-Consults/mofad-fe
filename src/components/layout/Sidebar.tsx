@@ -67,135 +67,158 @@ const navigation: NavItem[] = [
     label: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
-    color: 'from-emerald-600 to-green-600',
-    roles: PRIVILEGED_ROLES, // Only privileged users see dashboard
-  },
-  {
-    label: 'Orders',
-    href: '/orders',
-    icon: FileText,
-    color: 'from-emerald-500 to-teal-500',
+    color: 'from-orange-600 to-orange-700',
     roles: PRIVILEGED_ROLES,
-    children: [
-      { label: 'Purchase Requisitions', href: '/orders/prf', icon: FileText, badge: '12' },
-      { label: 'Purchase Orders', href: '/orders/pro', icon: ClipboardList, badge: '8' },
-      { label: 'Pending Approvals', href: '/orders/approvals', icon: ClipboardList, badge: '5' },
-    ],
+  },
+]
+
+// Navigation sections based on MOFAD screenshot
+const navigationSections = [
+  {
+    title: 'APPLICATIONS',
+    items: [
+      {
+        label: 'PRO',
+        href: '/orders/pro',
+        icon: ShoppingCart,
+        color: 'from-gray-500 to-gray-600',
+        roles: PRIVILEGED_ROLES,
+      },
+      {
+        label: 'PRF',
+        href: '/orders/prf',
+        icon: FileText,
+        color: 'from-gray-500 to-gray-600',
+        roles: PRIVILEGED_ROLES,
+      },
+      {
+        label: 'Lodgement',
+        href: '/accounts/lodgements',
+        icon: DollarSign,
+        color: 'from-gray-500 to-gray-600',
+        roles: PRIVILEGED_ROLES,
+      },
+      {
+        label: 'WH Stock Transfer',
+        href: '/inventory/transfers',
+        icon: Truck,
+        color: 'from-gray-500 to-gray-600',
+        roles: PRIVILEGED_ROLES,
+      },
+      {
+        label: 'Lubebay',
+        href: '/channels/lubebays',
+        icon: Car,
+        color: 'from-gray-500 to-gray-600',
+        roles: PRIVILEGED_ROLES,
+      },
+      {
+        label: 'Store Keeper',
+        href: '/inventory/warehouse',
+        icon: Package,
+        color: 'from-gray-500 to-gray-600',
+        roles: ['admin', 'manager', 'storekeeper'],
+      },
+      {
+        label: 'Accounts',
+        href: '/accounts',
+        icon: Calculator,
+        color: 'from-gray-500 to-gray-600',
+        roles: ['admin', 'manager', 'accountant'],
+      },
+      {
+        label: 'Product Inventory',
+        href: '/products',
+        icon: Box,
+        color: 'from-gray-500 to-gray-600',
+        roles: PRIVILEGED_ROLES,
+      },
+      {
+        label: 'Customers',
+        href: '/customers',
+        icon: Users,
+        color: 'from-gray-500 to-gray-600',
+        roles: PRIVILEGED_ROLES,
+      },
+      {
+        label: 'Reports',
+        href: '/reports',
+        icon: TrendingUp,
+        color: 'from-gray-500 to-gray-600',
+        roles: ['admin', 'manager', 'accountant'],
+      },
+    ]
   },
   {
-    label: 'Customers',
-    href: '/customers',
-    icon: Users,
-    color: 'from-purple-500 to-violet-500',
-    roles: PRIVILEGED_ROLES,
-    children: [
-      { label: 'All Customers', href: '/customers', icon: Users },
-      { label: 'Customer Types', href: '/customers/types', icon: Users },
-      { label: 'Customer Transactions', href: '/customers/transactions', icon: DollarSign },
-    ],
+    title: 'INCIDENT AND EXPENSE MANAGEMENT',
+    items: [
+      {
+        label: 'Payroll Management',
+        href: '/hr/payroll',
+        icon: Users,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+      },
+      {
+        label: 'Reversal/Return',
+        href: '/accounts/reversals',
+        icon: ArrowUpRight,
+        color: 'from-gray-500 to-gray-600',
+        roles: ['admin', 'manager', 'accountant'],
+      },
+      {
+        label: 'Leakages',
+        href: '/incidents/leakages',
+        icon: AlertTriangle,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+      },
+      {
+        label: 'Expenses',
+        href: '/expenses',
+        icon: Receipt,
+        color: 'from-gray-500 to-gray-600',
+        roles: ['admin', 'manager', 'accountant'],
+      },
+      {
+        label: 'Damages',
+        href: '/incidents/damages',
+        icon: AlertTriangle,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+      },
+    ]
   },
   {
-    label: 'Suppliers',
-    href: '/suppliers',
-    icon: Truck,
-    color: 'from-blue-500 to-indigo-500',
-    roles: PRIVILEGED_ROLES,
-    children: [
-      { label: 'All Suppliers', href: '/suppliers', icon: Truck },
-      { label: 'Supplier Products', href: '/suppliers/products', icon: Package },
-      { label: 'Supplier Transactions', href: '/suppliers/transactions', icon: DollarSign },
-    ],
+    title: 'FINANCE & ACCOUNTING',
+    items: [
+      {
+        label: 'Finance (SAGE)',
+        href: '/finance',
+        icon: Calculator,
+        color: 'from-gray-500 to-gray-600',
+        isNew: true,
+        roles: ['admin', 'manager', 'accountant'],
+        children: [
+          { label: 'Financial Dashboard', href: '/finance', icon: Calculator },
+          { label: 'General Ledger', href: '/finance/general-ledger', icon: BookOpen },
+          { label: 'Accounts Receivable', href: '/finance/receivables', icon: Receipt },
+          { label: 'Accounts Payable', href: '/finance/payables', icon: CreditCard },
+          { label: 'Cash Flow Analysis', href: '/finance/cash-flow', icon: TrendingUp },
+          { label: 'Budget Management', href: '/finance/budget', icon: DollarSign },
+        ],
+      },
+    ]
   },
   {
-    label: 'Products',
-    href: '/products',
-    icon: Package,
-    color: 'from-orange-500 to-red-500',
-    roles: PRIVILEGED_ROLES,
-    children: [
-      { label: 'All Products', href: '/products', icon: Package },
-      { label: 'Price Schemes', href: '/products/pricing', icon: DollarSign },
-      { label: 'Services', href: '/products/services', icon: Settings },
-    ],
-  },
-  {
-    label: 'Inventory',
-    href: '/inventory',
-    icon: Warehouse,
-    color: 'from-indigo-500 to-purple-500',
-    roles: ['admin', 'manager', 'storekeeper'],
-    children: [
-      { label: 'Warehouse Inventory', href: '/inventory/warehouse', icon: Warehouse },
-      { label: 'Substore Inventory', href: '/inventory/substore', icon: Building2 },
-      { label: 'Stock Transactions', href: '/inventory/transactions', icon: TrendingUp },
-      { label: 'Stock Transfers', href: '/inventory/transfers', icon: ShoppingCart },
-    ],
-  },
-  {
-    label: 'Sales Channels',
-    href: '/channels',
-    icon: Building2,
-    color: 'from-pink-500 to-rose-500',
-    roles: PRIVILEGED_ROLES,
-    children: [
-      { label: 'Substores', href: '/channels/substores', icon: Building2 },
-      { label: 'Substore Transactions', href: '/channels/substores/transactions', icon: ShoppingCart },
-      { label: 'Lubebays', href: '/channels/lubebays', icon: Car },
-      { label: 'Lubebay Services', href: '/channels/lubebays/services', icon: Settings },
-    ],
-  },
-  {
-    label: 'Accounts',
-    href: '/accounts',
-    icon: DollarSign,
-    color: 'from-green-500 to-emerald-500',
-    roles: ['admin', 'manager', 'accountant'],
-    children: [
-      { label: 'All Accounts', href: '/accounts', icon: DollarSign },
-      { label: 'Account Transactions', href: '/accounts/transactions', icon: TrendingUp },
-      { label: 'Lodgements', href: '/accounts/lodgements', icon: DollarSign },
-    ],
-  },
-  {
-    label: 'Finance (SAGE)',
-    href: '/finance',
-    icon: Calculator,
-    color: 'from-amber-500 to-yellow-500',
-    isNew: true,
-    roles: ['admin', 'manager', 'accountant'],
-    children: [
-      { label: 'Financial Dashboard', href: '/finance', icon: Calculator },
-      { label: 'General Ledger', href: '/finance/general-ledger', icon: BookOpen },
-      { label: 'Accounts Receivable', href: '/finance/receivables', icon: Receipt },
-      { label: 'Accounts Payable', href: '/finance/payables', icon: CreditCard },
-      { label: 'Cash Flow Analysis', href: '/finance/cash-flow', icon: TrendingUp },
-      { label: 'Budget Management', href: '/finance/budget', icon: DollarSign },
-    ],
-  },
-  {
-    label: 'Reports',
-    href: '/reports',
-    icon: TrendingUp,
-    color: 'from-cyan-500 to-blue-500',
-    roles: ['admin', 'manager', 'accountant'],
-    children: [
-      { label: 'Sales Reports', href: '/reports/sales', icon: TrendingUp },
-      { label: 'Inventory Reports', href: '/reports/inventory', icon: Warehouse },
-      { label: 'Financial Reports', href: '/reports/financial', icon: DollarSign },
-      { label: 'Customer Reports', href: '/reports/customers', icon: Users },
-    ],
-  },
-  {
-    label: 'Admin',
-    href: '/admin',
-    icon: Shield,
-    color: 'from-red-500 to-rose-500',
-    roles: ADMIN_ROLES,
-    children: [
+    title: 'ADMIN MODULES',
+    items: [
       {
         label: 'Inventory Management',
         href: '/admin/inventory-management',
         icon: Box,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
         children: [
           { label: 'Assets', href: '/admin/inventory-management/assets', icon: Box },
           { label: 'Consumables', href: '/admin/inventory-management/consumables', icon: Coffee },
@@ -206,6 +229,8 @@ const navigation: NavItem[] = [
         label: 'Fleet Management',
         href: '/admin/fleet-management',
         icon: Truck,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
         children: [
           { label: 'Vehicle Registry', href: '/admin/fleet-management/vehicles', icon: Truck },
           { label: 'Fuel Management', href: '/admin/fleet-management/fuel', icon: Fuel },
@@ -218,6 +243,8 @@ const navigation: NavItem[] = [
         label: 'Maintenance',
         href: '/admin/maintenance',
         icon: Wrench,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
         children: [
           { label: 'Maintenance Schedule', href: '/admin/maintenance/schedule', icon: Calendar },
           { label: 'Work Orders', href: '/admin/maintenance/work-orders', icon: ClipboardList },
@@ -226,41 +253,46 @@ const navigation: NavItem[] = [
           { label: 'Service Providers', href: '/admin/maintenance/providers', icon: Users },
         ],
       },
-      { label: 'Memo', href: '/admin/memo', icon: FileCheck },
-    ],
+      {
+        label: 'Memo',
+        href: '/admin/memo',
+        icon: FileCheck,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+      },
+    ]
   },
   {
-    label: 'Settings',
-    href: '/settings',
-    icon: Settings,
-    color: 'from-slate-500 to-gray-500',
-    roles: ADMIN_ROLES,
-    children: [
-      { label: 'User Management', href: '/settings/users', icon: Users },
-      { label: 'Roles', href: '/settings/roles', icon: Shield },
-      { label: 'Permissions', href: '/settings/permissions', icon: ClipboardCheck },
-      { label: 'System Settings', href: '/settings/system', icon: Settings },
-      { label: 'Audit Logs', href: '/settings/audit-logs', icon: ClipboardCheck },
-      { label: 'Warehouses', href: '/settings/warehouses', icon: Warehouse },
-      { label: 'States', href: '/settings/states', icon: Building2 },
-      { label: 'Locations', href: '/settings/locations', icon: MapPin },
-      { label: 'Price Schemes', href: '/settings/price-schemes', icon: DollarSign },
-      { label: 'Expense Types', href: '/settings/expense-types', icon: Receipt },
-    ],
-  },
-  {
-    label: 'My Profile',
-    href: '/profile',
-    icon: Users,
-    color: 'from-green-500 to-emerald-500',
-    // No roles specified - all authenticated users can see this
-  },
-  {
-    label: 'Notifications',
-    href: '/notifications',
-    icon: Bell,
-    color: 'from-blue-500 to-indigo-500',
-    // No roles specified - all authenticated users can see this
+    title: 'CONFIGURATIONS',
+    items: [
+      {
+        label: 'User Management',
+        href: '/settings/users',
+        icon: Users,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+        children: [
+          { label: 'Employees', href: '/settings/employees', icon: Users },
+          { label: 'Roles and Permissions', href: '/settings/roles', icon: Shield },
+          { label: 'Departments', href: '/settings/departments', icon: Building2 },
+        ],
+      },
+      {
+        label: 'System Settings',
+        href: '/settings/system',
+        icon: Settings,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+        children: [
+          { label: 'Warehouses', href: '/settings/warehouses', icon: Warehouse },
+          { label: 'States', href: '/settings/states', icon: Building2 },
+          { label: 'Locations', href: '/settings/locations', icon: MapPin },
+          { label: 'Price Schemes', href: '/settings/price-schemes', icon: DollarSign },
+          { label: 'Expense Types', href: '/settings/expense-types', icon: Receipt },
+          { label: 'Audit Logs', href: '/settings/audit-logs', icon: ClipboardCheck },
+        ],
+      },
+    ]
   },
 ]
 
@@ -288,6 +320,19 @@ const filterNavigation = (items: NavItem[], userRole: string | undefined): NavIt
     }))
 }
 
+// Helper function to filter navigation sections based on user role
+const filterNavigationSections = (sections: any[], userRole: string | undefined) => {
+  return sections.map(section => ({
+    ...section,
+    items: section.items
+      .filter((item: NavItem) => hasAccess(item, userRole))
+      .map((item: NavItem) => ({
+        ...item,
+        children: item.children ? filterNavigation(item.children, userRole) : undefined
+      }))
+  })).filter(section => section.items.length > 0)
+}
+
 export function Sidebar({ collapsed }: SidebarProps) {
   const pathname = usePathname()
   const { user } = useAuthStore()
@@ -309,6 +354,11 @@ export function Sidebar({ collapsed }: SidebarProps) {
     return filterNavigation(navigation, userRole)
   }, [userRole])
 
+  // Filter navigation sections based on user role
+  const filteredNavigationSections = useMemo(() => {
+    return filterNavigationSections(navigationSections, userRole)
+  }, [userRole])
+
   const toggleExpanded = (href: string) => {
     setExpandedItems(prev =>
       prev.includes(href)
@@ -319,6 +369,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
 
   // Auto-expand active parent
   useEffect(() => {
+    // Check main navigation
     filteredNavigation.forEach(item => {
       if (item.children) {
         const hasActiveChild = item.children.some(child =>
@@ -329,7 +380,21 @@ export function Sidebar({ collapsed }: SidebarProps) {
         }
       }
     })
-  }, [pathname, filteredNavigation])
+
+    // Check navigation sections
+    filteredNavigationSections.forEach(section => {
+      section.items.forEach((item: NavItem) => {
+        if (item.children) {
+          const hasActiveChild = item.children.some(child =>
+            pathname === child.href || pathname.startsWith(child.href + '/')
+          )
+          if (hasActiveChild && !expandedItems.includes(item.href)) {
+            setExpandedItems(prev => [...prev, item.href])
+          }
+        }
+      })
+    })
+  }, [pathname, filteredNavigation, filteredNavigationSections])
 
   const renderNavItem = (item: NavItem, depth = 0) => {
     const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
@@ -355,7 +420,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
           <div className={cn(
             "absolute inset-0 rounded-2xl transition-all duration-500 ease-out",
             isActive
-              ? `bg-gradient-to-r ${item.color || 'from-green-600 to-emerald-600'} shadow-lg shadow-green-500/25 border border-green-400/20`
+              ? `bg-gradient-to-r ${item.color || 'from-orange-600 to-orange-700'} shadow-lg shadow-orange-500/25 border border-orange-400/20`
               : isHovered
                 ? "bg-gradient-to-r from-white to-slate-50 shadow-md shadow-slate-200/50 border border-slate-200/40 backdrop-blur-sm"
                 : "hover:bg-gradient-to-r hover:from-slate-50/70 hover:to-white hover:shadow-sm hover:border hover:border-slate-200/30"
@@ -499,7 +564,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
                     alt="MOFAD Energy Solutions"
                     className="h-14 w-auto drop-shadow-sm"
                   />
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
                 </div>
                 <div className="ml-4">
                   <h1 className="text-xl font-bold text-slate-900 leading-tight">MOFAD Energy</h1>
@@ -515,7 +580,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
                   alt="MOFAD"
                   className="h-10 w-auto drop-shadow-sm"
                 />
-                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white shadow-sm animate-pulse"></div>
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full border border-white shadow-sm animate-pulse"></div>
               </div>
             )}
           </div>
@@ -527,22 +592,40 @@ export function Sidebar({ collapsed }: SidebarProps) {
             "space-y-1",
             collapsed ? "px-3" : "px-5"
           )}>
+            {/* Render main navigation (Dashboard) */}
             {filteredNavigation.map((item) => renderNavItem(item))}
+
+            {/* Render sectioned navigation */}
+            {!collapsed && filteredNavigationSections.map((section, sectionIndex) => (
+              <div key={section.title} className={cn("mt-8", sectionIndex === 0 && "mt-6")}>
+                {/* Section Header */}
+                <div className="px-3 mb-4">
+                  <h3 className="text-xs font-bold text-orange-600 uppercase tracking-wider">
+                    {section.title}
+                  </h3>
+                </div>
+
+                {/* Section Items */}
+                <div className="space-y-1">
+                  {section.items.map((item: NavItem) => renderNavItem(item))}
+                </div>
+              </div>
+            ))}
           </div>
         </nav>
 
         {/* Enhanced Footer with better design */}
         {!collapsed && (
           <div className="p-5 border-t border-slate-200/50">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-600/10 border border-green-200/50 backdrop-blur-sm">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5"></div>
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500/10 via-orange-600/10 to-orange-700/10 border border-orange-200/50 backdrop-blur-sm">
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-orange-600/5"></div>
               <div className="relative flex items-center gap-4 p-4">
                 <div className="flex-shrink-0">
                   <div className="relative">
-                    <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
                       <Activity className="w-5 h-5 text-white" />
                     </div>
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow-sm animate-ping"></div>
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-400 rounded-full border-2 border-white shadow-sm animate-ping"></div>
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">

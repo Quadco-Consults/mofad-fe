@@ -1299,6 +1299,247 @@ class ApiClient {
     })
   }
 
+  // Customer Management
+  async getCustomers(params?: {
+    search?: string;
+    customer_type?: string;
+    status?: string;
+    is_verified?: boolean;
+    page?: number;
+    page_size?: number;
+  }): Promise<any> {
+    let endpoint = '/customers/'
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        endpoint += `?${queryString}`
+      }
+    }
+    return this.request(endpoint)
+  }
+
+  async getCustomer(id: number | string): Promise<any> {
+    return this.request(`/customers/${id}/`)
+  }
+
+  async createCustomer(data: {
+    name: string;
+    email?: string;
+    phone_number?: string;
+    address?: string;
+    customer_type: number;
+    tax_number?: string;
+    contact_person?: string;
+    credit_limit?: number;
+    payment_terms?: number;
+    notes?: string;
+  }): Promise<any> {
+    return this.request('/customers/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async updateCustomer(id: number | string, data: {
+    name?: string;
+    email?: string;
+    phone_number?: string;
+    address?: string;
+    customer_type?: number;
+    tax_number?: string;
+    contact_person?: string;
+    credit_limit?: number;
+    payment_terms?: number;
+    notes?: string;
+    status?: string;
+  }): Promise<any> {
+    return this.request(`/customers/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async deleteCustomer(id: number | string): Promise<void> {
+    await this.request(`/customers/${id}/`, {
+      method: 'DELETE'
+    })
+  }
+
+  // Customer verification
+  async verifyCustomer(id: number | string): Promise<any> {
+    return this.request(`/customers/${id}/verify/`, {
+      method: 'POST'
+    })
+  }
+
+  async unverifyCustomer(id: number | string): Promise<any> {
+    return this.request(`/customers/${id}/unverify/`, {
+      method: 'POST'
+    })
+  }
+
+  // Customer status management
+  async activateCustomer(id: number | string): Promise<any> {
+    return this.request(`/customers/${id}/activate/`, {
+      method: 'POST'
+    })
+  }
+
+  async deactivateCustomer(id: number | string): Promise<any> {
+    return this.request(`/customers/${id}/deactivate/`, {
+      method: 'POST'
+    })
+  }
+
+  async suspendCustomer(id: number | string): Promise<any> {
+    return this.request(`/customers/${id}/suspend/`, {
+      method: 'POST'
+    })
+  }
+
+  // Customer payments
+  async recordCustomerPayment(id: number | string, data: {
+    amount: number;
+    payment_method: string;
+    reference_number?: string;
+    notes?: string;
+  }): Promise<any> {
+    return this.request(`/customers/${id}/record_payment/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async getCustomerPayments(id: number | string, params?: {
+    page?: number;
+    page_size?: number;
+  }): Promise<any> {
+    let endpoint = `/customers/${id}/payments/`
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        endpoint += `?${queryString}`
+      }
+    }
+    return this.request(endpoint)
+  }
+
+  // Customer balance and credit
+  async getCustomerBalance(id: number | string): Promise<any> {
+    return this.request(`/customers/${id}/balance/`)
+  }
+
+  async getCustomerCreditLimit(id: number | string): Promise<any> {
+    return this.request(`/customers/${id}/credit_limit/`)
+  }
+
+  async updateCustomerCreditLimit(id: number | string, data: {
+    credit_limit: number;
+    notes?: string;
+  }): Promise<any> {
+    return this.request(`/customers/${id}/update_credit_limit/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  // Customer orders and sales history
+  async getCustomerOrders(id: number | string, params?: {
+    status?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<any> {
+    let endpoint = `/customers/${id}/orders/`
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        endpoint += `?${queryString}`
+      }
+    }
+    return this.request(endpoint)
+  }
+
+  async getCustomerSalesHistory(id: number | string, params?: {
+    start_date?: string;
+    end_date?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<any> {
+    let endpoint = `/customers/${id}/sales_history/`
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        endpoint += `?${queryString}`
+      }
+    }
+    return this.request(endpoint)
+  }
+
+  // Customer analytics
+  async getCustomerAnalytics(id: number | string): Promise<any> {
+    return this.request(`/customers/${id}/analytics/`)
+  }
+
+  // Bulk operations
+  async bulkUpdateCustomers(data: {
+    customer_ids: number[];
+    updates: {
+      status?: string;
+      customer_type?: number;
+      credit_limit?: number;
+    };
+  }): Promise<any> {
+    return this.request('/customers/bulk_update/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async exportCustomers(params?: {
+    format?: 'csv' | 'excel';
+    customer_type?: string;
+    status?: string;
+  }): Promise<any> {
+    let endpoint = '/customers/export/'
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        endpoint += `?${queryString}`
+      }
+    }
+    return this.request(endpoint)
+  }
+
   // Customer Type Management
   async getCustomerTypes(params?: { search?: string; is_active?: boolean }): Promise<any> {
     let endpoint = '/customer-types/'

@@ -8,21 +8,27 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import apiClient from '@/lib/apiClient'
 
 interface CustomerTransaction {
-  id: string
-  transactionId: string
-  customerId: string
-  customerName: string
-  customerType: string
-  date: string
-  type: 'sale' | 'payment' | 'credit' | 'refund'
-  description: string
+  id: number
+  customer: number
+  customer_name: string
+  transaction_type: 'sale' | 'payment' | 'credit' | 'refund' | 'debit' | 'adjustment'
+  reference_number: string
+  reference_type: string
+  reference_id: number
   amount: number
-  balance: number
-  paymentMethod: string
-  status: 'completed' | 'pending' | 'cancelled'
-  reference: string
-  salesRep: string
-  location: string
+  balance_before: number
+  balance_after: number
+  payment_method: string
+  payment_reference: string
+  description: string
+  notes: string
+  status: 'completed' | 'pending' | 'cancelled' | 'failed'
+  created_by: number
+  created_by_name: string
+  approved_by: number
+  created_at: string
+  updated_at: string
+  approved_at: string
 }
 
 export default function TransactionViewPage() {
@@ -37,7 +43,7 @@ export default function TransactionViewPage() {
 
   const transactions = (transactionResponse?.results || []) as CustomerTransaction[]
 
-  const transaction = transactions.find(t => t.id === transactionId)
+  const transaction = transactions.find(t => t.id === parseInt(transactionId))
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
@@ -177,17 +183,17 @@ export default function TransactionViewPage() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${getTypeBadge(transaction.type).replace('text-', 'text-').replace('bg-', 'bg-')}`}>
-                  {getTypeIcon(transaction.type)}
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${getTypeBadge(transaction.transaction_type).replace('text-', 'text-').replace('bg-', 'bg-')}`}>
+                  {getTypeIcon(transaction.transaction_type)}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{transaction.transactionId}</h2>
+                  <h2 className="text-xl font-bold text-gray-900">{transaction.reference_number}</h2>
                   <p className="text-gray-600">{transaction.description}</p>
                 </div>
               </div>
               <div className="text-right">
-                <div className={`text-2xl font-bold ${getAmountColor(transaction.type)}`}>
-                  {transaction.type === 'payment' || transaction.type === 'credit' ? '+' : '-'}
+                <div className={`text-2xl font-bold ${getAmountColor(transaction.transaction_type)}`}>
+                  {transaction.transaction_type === 'payment' || transaction.transaction_type === 'credit' ? '+' : '-'}
                   {formatCurrency(transaction.amount)}
                 </div>
                 <span className={`inline-flex px-3 py-1 text-sm leading-5 font-semibold rounded-full border ${getStatusBadge(transaction.status || 'unknown')}`}>
@@ -205,9 +211,9 @@ export default function TransactionViewPage() {
                 <span className="text-sm font-medium">Customer</span>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">{transaction.customerName}</p>
-                <p className="text-sm text-gray-600">{transaction.customerType}</p>
-                <p className="text-xs text-gray-400">{transaction.customerId}</p>
+                <p className="font-semibold text-gray-900">{transaction.customer_name}</p>
+                <p className="text-sm text-gray-600">Customer</p>
+                <p className="text-xs text-gray-400">ID: {transaction.customer}</p>
               </div>
             </div>
 
@@ -218,8 +224,8 @@ export default function TransactionViewPage() {
                 <span className="text-sm font-medium">Date & Time</span>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">{formatDateTime(transaction.date)}</p>
-                <p className="text-sm text-gray-600">by {transaction.salesRep}</p>
+                <p className="font-semibold text-gray-900">{formatDateTime(transaction.created_at)}</p>
+                <p className="text-sm text-gray-600">by {transaction.created_by_name}</p>
               </div>
             </div>
 
@@ -230,19 +236,19 @@ export default function TransactionViewPage() {
                 <span className="text-sm font-medium">Payment Method</span>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">{transaction.paymentMethod}</p>
-                <p className="text-sm text-gray-600">{transaction.reference}</p>
+                <p className="font-semibold text-gray-900">{transaction.payment_method}</p>
+                <p className="text-sm text-gray-600">{transaction.payment_reference}</p>
               </div>
             </div>
 
-            {/* Location */}
+            {/* Transaction Type */}
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-gray-600">
                 <MapPin className="h-4 w-4" />
-                <span className="text-sm font-medium">Location</span>
+                <span className="text-sm font-medium">Transaction Type</span>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">{transaction.location}</p>
+                <p className="font-semibold text-gray-900 capitalize">{transaction.transaction_type}</p>
               </div>
             </div>
           </div>
@@ -257,8 +263,8 @@ export default function TransactionViewPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Transaction Amount</p>
-                <p className={`text-xl font-bold ${getAmountColor(transaction.type)}`}>
-                  {transaction.type === 'payment' || transaction.type === 'credit' ? '+' : '-'}
+                <p className={`text-xl font-bold ${getAmountColor(transaction.transaction_type)}`}>
+                  {transaction.transaction_type === 'payment' || transaction.transaction_type === 'credit' ? '+' : '-'}
                   {formatCurrency(transaction.amount)}
                 </p>
               </div>
@@ -267,16 +273,16 @@ export default function TransactionViewPage() {
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${transaction.balance >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                <DollarSign className={`h-5 w-5 ${transaction.balance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${transaction.balance_after >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                <DollarSign className={`h-5 w-5 ${transaction.balance_after >= 0 ? 'text-green-600' : 'text-red-600'}`} />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Customer Balance</p>
-                <p className={`text-xl font-bold ${transaction.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(Math.abs(transaction.balance))}
+                <p className="text-sm text-gray-600">Balance After Transaction</p>
+                <p className={`text-xl font-bold ${transaction.balance_after >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(Math.abs(transaction.balance_after))}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {transaction.balance >= 0 ? 'Credit Balance' : 'Outstanding Amount'}
+                  {transaction.balance_after >= 0 ? 'Credit Balance' : 'Outstanding Amount'}
                 </p>
               </div>
             </div>
@@ -284,14 +290,14 @@ export default function TransactionViewPage() {
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getTypeBadge(transaction.type).split(' ')[0]}`}>
-                {getTypeIcon(transaction.type)}
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getTypeBadge(transaction.transaction_type).split(' ')[0]}`}>
+                {getTypeIcon(transaction.transaction_type)}
               </div>
               <div>
                 <p className="text-sm text-gray-600">Transaction Type</p>
-                <p className="text-xl font-bold text-gray-900 capitalize">{transaction.type}</p>
-                <span className={`inline-flex px-2 py-1 text-xs leading-4 font-medium rounded-full border ${getTypeBadge(transaction.type || 'unknown')}`}>
-                  {(transaction.type || 'Unknown').charAt(0).toUpperCase() + (transaction.type || 'unknown').slice(1)}
+                <p className="text-xl font-bold text-gray-900 capitalize">{transaction.transaction_type}</p>
+                <span className={`inline-flex px-2 py-1 text-xs leading-4 font-medium rounded-full border ${getTypeBadge(transaction.transaction_type || 'unknown')}`}>
+                  {(transaction.transaction_type || 'Unknown').charAt(0).toUpperCase() + (transaction.transaction_type || 'unknown').slice(1)}
                 </span>
               </div>
             </div>
@@ -307,19 +313,19 @@ export default function TransactionViewPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Reference Number</label>
-                <p className="text-gray-900 font-mono">{transaction.reference}</p>
+                <p className="text-gray-900 font-mono">{transaction.reference_number}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sales Representative</label>
-                <p className="text-gray-900">{transaction.salesRep}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Created By</label>
+                <p className="text-gray-900">{transaction.created_by_name}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Transaction Description</label>
                 <p className="text-gray-900">{transaction.description}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Processing Location</label>
-                <p className="text-gray-900">{transaction.location}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <p className="text-gray-900">{transaction.notes || 'No additional notes'}</p>
               </div>
             </div>
           </div>

@@ -35,7 +35,12 @@ import {
   CreditCard,
   ArrowRight,
   ChevronRight,
+  MapPin,
+  Download,
+  Filter,
+  Plus,
 } from 'lucide-react'
+import { RevenueAreaChart, DonutChart, SalesLineChart } from '@/components/dashboard/EnhancedCharts'
 
 interface DashboardStats {
   total_sales_ytd?: number
@@ -84,9 +89,19 @@ interface StatCardProps {
   value: string | number
   change?: number
   icon: React.ComponentType<{ className?: string }>
-  color: 'blue' | 'green' | 'yellow' | 'red' | 'purple'
+  color: 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'orange'
   isCurrency?: boolean
   link?: string
+}
+
+interface WarehouseRevenueCard {
+  id: string
+  name: string
+  location: string
+  revenue: number
+  change: number
+  orders: number
+  status: 'active' | 'inactive'
 }
 
 const formatNumber = (num: number | undefined | null, isCurrency: boolean = true): string => {
@@ -113,27 +128,30 @@ const formatDate = (dateStr: string): string => {
 
 function StatCard({ title, value, change, icon: Icon, color, isCurrency = true, link }: StatCardProps) {
   const colorStyles = {
-    blue: 'from-blue-50 to-blue-100/50',
-    green: 'from-green-50 to-green-100/50',
-    yellow: 'from-yellow-50 to-yellow-100/50',
-    red: 'from-red-50 to-red-100/50',
-    purple: 'from-purple-50 to-purple-100/50',
+    blue: 'from-blue-50 to-blue-100/80',
+    green: 'from-emerald-50 to-emerald-100/80',
+    yellow: 'from-amber-50 to-amber-100/80',
+    red: 'from-red-50 to-red-100/80',
+    purple: 'from-purple-50 to-purple-100/80',
+    orange: 'from-orange-50 to-orange-100/80',
   }
 
   const iconColors = {
     blue: 'from-blue-500 to-blue-600',
-    green: 'from-green-500 to-green-600',
-    yellow: 'from-yellow-500 to-yellow-600',
+    green: 'from-emerald-500 to-emerald-600',
+    yellow: 'from-amber-500 to-amber-600',
     red: 'from-red-500 to-red-600',
     purple: 'from-purple-500 to-purple-600',
+    orange: 'from-orange-500 to-orange-600',
   }
 
   const ringColors = {
     blue: 'ring-blue-200/50',
-    green: 'ring-green-200/50',
-    yellow: 'ring-yellow-200/50',
+    green: 'ring-emerald-200/50',
+    yellow: 'ring-amber-200/50',
     red: 'ring-red-200/50',
     purple: 'ring-purple-200/50',
+    orange: 'ring-orange-200/50',
   }
 
   const CardWrapper = link ? Link : 'div'
@@ -183,6 +201,62 @@ function StatCard({ title, value, change, icon: Icon, color, isCurrency = true, 
   )
 }
 
+function WarehouseRevenueCard({ warehouse }: { warehouse: WarehouseRevenueCard }) {
+  return (
+    <Card className="bg-white border border-orange-200 hover:shadow-lg transition-all duration-300">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <Building2 className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">{warehouse.name}</h3>
+              <p className="text-sm text-gray-500 flex items-center">
+                <MapPin className="h-3 w-3 mr-1" />
+                {warehouse.location}
+              </p>
+            </div>
+          </div>
+          <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+            warehouse.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+          }`}>
+            {warehouse.status}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{formatNumber(warehouse.revenue, true)}</p>
+            <div className="flex items-center space-x-2 mt-1">
+              <div className={`flex items-center px-2 py-1 rounded-full ${
+                warehouse.change >= 0 ? 'bg-green-100' : 'bg-red-100'
+              }`}>
+                {warehouse.change >= 0 ? (
+                  <ArrowUpRight className="h-3 w-3 text-green-600 mr-1" />
+                ) : (
+                  <ArrowDownRight className="h-3 w-3 text-red-600 mr-1" />
+                )}
+                <span className={`text-xs font-medium ${
+                  warehouse.change >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {warehouse.change >= 0 ? '+' : ''}{warehouse.change}%
+                </span>
+              </div>
+              <span className="text-xs text-gray-500">vs last month</span>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+            <span className="text-sm text-gray-600">Orders</span>
+            <span className="text-sm font-semibold text-gray-900">{warehouse.orders.toLocaleString()}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function SalesChart({ data, isLoading }: { data: SalesAnalytics; isLoading: boolean }) {
   const monthlyData = data?.monthly_sales || []
   const maxSales = Math.max(...monthlyData.map(m => m.total_sales || 0), 1)
@@ -190,20 +264,20 @@ function SalesChart({ data, isLoading }: { data: SalesAnalytics; isLoading: bool
   if (isLoading) {
     return (
       <div className="h-80 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
       </div>
     )
   }
 
   if (monthlyData.length === 0) {
     return (
-      <div className="h-80 flex items-center justify-center bg-white rounded-xl border-2 border-dashed border-blue-200">
-        <div className="text-center text-blue-600">
-          <div className="p-4 bg-blue-100 rounded-full w-fit mx-auto mb-4">
+      <div className="h-80 flex items-center justify-center bg-white rounded-xl border-2 border-dashed border-orange-200">
+        <div className="text-center text-orange-600">
+          <div className="p-4 bg-orange-100 rounded-full w-fit mx-auto mb-4">
             <BarChart3 className="h-12 w-12" />
           </div>
           <p className="text-lg font-semibold mb-2">No Sales Data Available</p>
-          <p className="text-sm text-blue-500 max-w-sm">
+          <p className="text-sm text-orange-500 max-w-sm">
             Sales data will appear here once transactions are recorded
           </p>
         </div>
@@ -212,7 +286,7 @@ function SalesChart({ data, isLoading }: { data: SalesAnalytics; isLoading: bool
   }
 
   return (
-    <div className="h-80 bg-white rounded-xl border border-blue-100 p-4">
+    <div className="h-80 bg-white rounded-xl border border-orange-100 p-4">
       <div className="h-full flex flex-col">
         {/* Chart header */}
         <div className="flex items-center justify-between mb-4">
@@ -248,7 +322,7 @@ function SalesChart({ data, isLoading }: { data: SalesAnalytics; isLoading: bool
                     <span className="text-gray-400">{month.transaction_count} orders</span>
                   </div>
                   <div
-                    className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t transition-all duration-300 group-hover:from-blue-600 group-hover:to-blue-500"
+                    className="w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t transition-all duration-300 group-hover:from-orange-600 group-hover:to-orange-500"
                     style={{ height: `${Math.max(height, 5)}%`, minHeight: '4px' }}
                   ></div>
                 </div>
@@ -395,7 +469,8 @@ function PendingApprovalsList({ approvals, isLoading }: { approvals: PendingAppr
 }
 
 export default function Dashboard() {
-  const [analyticsPeriod, setAnalyticsPeriod] = useState('ytd')
+  const [selectedWarehouse, setSelectedWarehouse] = useState('all')
+  const [selectedPeriod, setSelectedPeriod] = useState('last_30_days')
 
   // Fetch dashboard stats
   const { data: dashboardStats, isLoading: statsLoading, refetch: refetchStats } = useQuery<DashboardStats>({
@@ -405,8 +480,8 @@ export default function Dashboard() {
 
   // Fetch sales analytics
   const { data: salesAnalytics, isLoading: salesLoading } = useQuery<SalesAnalytics>({
-    queryKey: ['salesAnalytics', analyticsPeriod],
-    queryFn: () => apiClient.getSalesAnalytics(analyticsPeriod),
+    queryKey: ['salesAnalytics', selectedPeriod],
+    queryFn: () => apiClient.getSalesAnalytics(selectedPeriod),
   })
 
   // Fetch recent transactions
@@ -425,362 +500,248 @@ export default function Dashboard() {
   const transactions: RecentTransaction[] = recentTransactions || []
   const approvals: PendingApproval[] = pendingApprovals || []
 
+  // Mock warehouse data for the design
+  const warehouseData: WarehouseRevenueCard[] = [
+    {
+      id: '1',
+      name: 'Abuja Main Warehouse',
+      location: 'Abuja, FCT',
+      revenue: 12500000,
+      change: 12.3,
+      orders: 234,
+      status: 'active'
+    },
+    {
+      id: '2',
+      name: 'Kano Main Warehouse',
+      location: 'Kano, KN',
+      revenue: 8750000,
+      change: 8.7,
+      orders: 187,
+      status: 'active'
+    },
+    {
+      id: '3',
+      name: 'Wuse Warehouse',
+      location: 'Wuse, Abuja',
+      revenue: 6200000,
+      change: -2.1,
+      orders: 156,
+      status: 'active'
+    }
+  ]
+
+  // Mock data for charts
+  const revenueChartData = [
+    { month: 'Jan', revenue: 8500000, profit: 1700000 },
+    { month: 'Feb', revenue: 9200000, profit: 1840000 },
+    { month: 'Mar', revenue: 10800000, profit: 2160000 },
+    { month: 'Apr', revenue: 11500000, profit: 2300000 },
+    { month: 'May', revenue: 12200000, profit: 2440000 },
+    { month: 'Jun', revenue: 13100000, profit: 2620000 },
+  ]
+
+  const salesChartData = [
+    { month: 'Jan', sales: 8500000, growth: 12 },
+    { month: 'Feb', sales: 9200000, growth: 8 },
+    { month: 'Mar', sales: 10800000, growth: 17 },
+    { month: 'Apr', sales: 11500000, growth: 6 },
+    { month: 'May', sales: 12200000, growth: 6 },
+    { month: 'Jun', sales: 13100000, growth: 7 },
+  ]
+
+  const lubebayPerformanceData = [
+    { name: 'LubeBay A', value: 2800000, color: '#ea580c' },
+    { name: 'LubeBay B', value: 2100000, color: '#fb923c' },
+    { name: 'LubeBay C', value: 1900000, color: '#fed7aa' },
+    { name: 'LubeBay D', value: 1700000, color: '#fdba74' },
+    { name: 'Others', value: 1500000, color: '#f59e0b' },
+  ]
+
   const handleRefresh = () => {
     refetchStats()
   }
 
   return (
     <AppLayout>
-      <div className="space-y-8 pb-8">
-        {/* Enhanced MOFAD Header */}
-        <div className="bg-gradient-to-r from-green-50 via-white to-green-50 rounded-2xl shadow-sm border border-green-100 p-4 md:p-8 relative overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-green-100/30 to-transparent rounded-full transform translate-x-32 -translate-y-32"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-green-100/20 to-transparent rounded-full transform -translate-x-24 translate-y-24"></div>
-
-          <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0">
-            <div className="flex items-center space-x-4 md:space-x-6">
-              <div className="p-2 md:p-3 bg-white rounded-2xl shadow-lg ring-1 ring-green-100">
-                <img
-                  src="/modah_logo-removebg-preview.png"
-                  alt="MOFAD Energy Solutions"
-                  className="h-12 md:h-16 w-auto"
-                />
-              </div>
-              <div>
-                <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">MOFAD Energy Solutions</h1>
-                <h2 className="text-base md:text-lg font-semibold text-green-700 mb-1">Enterprise ERP Dashboard</h2>
-                <p className="text-sm text-gray-600 flex items-center">
-                  <Zap className="h-4 w-4 text-green-500 mr-1" />
-                  Powering Nigeria's Energy Distribution Network
-                </p>
-              </div>
-            </div>
-            <div className="text-left md:text-right w-full md:w-auto">
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-green-600">System Online</span>
-              </div>
-              <p className="text-sm text-gray-500 flex items-center">
-                <Calendar className="h-4 w-4 mr-1" />
-                Last updated: {new Date().toLocaleDateString()}
-              </p>
-              <button
-                onClick={handleRefresh}
-                className="mt-2 flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Refresh data
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Page Header with Actions */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
+      <div className="space-y-6 pb-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Dashboard</h1>
-            <p className="text-gray-600 flex items-center text-sm md:text-base">
-              <Activity className="h-4 w-4 mr-2 text-green-500" />
-              Real-time insights into your distribution network performance
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-600">Welcome back! Here's what's happening with your warehouses today.</p>
           </div>
           <div className="flex items-center space-x-3">
-            <Link
-              href="/reports/sales"
-              className="flex items-center px-3 md:px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Eye className="h-4 w-4 mr-1 md:mr-2" />
-              <span className="hidden sm:inline">View </span>Reports
-            </Link>
-            <Link
-              href="/orders/approvals"
-              className="flex items-center px-3 md:px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-lg"
-            >
-              <Clock className="h-4 w-4 mr-1 md:mr-2" />
-              <span className="hidden sm:inline">Pending </span>Approvals
-            </Link>
+            <button className="flex items-center px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+              <Filter className="h-4 w-4 mr-2" />
+              Filter
+            </button>
+            <button className="flex items-center px-3 py-2 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Add New
+            </button>
           </div>
         </div>
 
-        {/* Key Performance Indicators */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Key Performance Indicators</h2>
-            <div className="flex items-center text-sm text-gray-500">
-              <div className="h-2 w-2 bg-green-500 rounded-full mr-2"></div>
-              Live data
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            <StatCard
-              title="Total Sales (YTD)"
-              value={stats.total_sales_ytd || 0}
-              change={12.5}
-              icon={DollarSign}
-              color="green"
-              link="/reports/sales"
-            />
-            <StatCard
-              title="Total Orders"
-              value={stats.total_orders || 0}
-              change={-3.2}
-              icon={ShoppingCart}
-              color="blue"
-              isCurrency={false}
-              link="/orders/prf"
-            />
-            <StatCard
-              title="Pending Approvals"
-              value={stats.pending_approvals || 0}
-              change={8.1}
-              icon={Clock}
-              color="yellow"
-              isCurrency={false}
-              link="/orders/approvals"
-            />
-            <StatCard
-              title="Total Customers"
-              value={stats.customer_count || 0}
-              change={4.7}
-              icon={Users}
-              color="purple"
-              isCurrency={false}
-              link="/customers"
-            />
-          </div>
-        </div>
-
-        {/* Network Overview */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Network Overview</h2>
-            <Link href="/channels/substores" className="text-sm text-green-600 hover:text-green-700 font-medium">
-              View All Locations →
-            </Link>
-          </div>
+        {/* Top Warehouse Revenue Cards */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900">Top Warehouse Revenue</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard
-              title="Active Substores"
-              value={stats.substore_count || 0}
-              icon={Building2}
-              color="blue"
-              isCurrency={false}
-              link="/channels/substores"
-            />
-            <StatCard
-              title="Operating Lubebays"
-              value={stats.lubebay_count || 0}
-              icon={Car}
-              color="green"
-              isCurrency={false}
-              link="/channels/lubebays"
-            />
-            <StatCard
-              title="Low Stock Alerts"
-              value={stats.low_stock_items || 0}
-              icon={AlertTriangle}
-              color={(stats.low_stock_items || 0) > 5 ? 'red' : 'green'}
-              isCurrency={false}
-              link="/inventory/warehouse"
-            />
+            {warehouseData.map((warehouse) => (
+              <WarehouseRevenueCard key={warehouse.id} warehouse={warehouse} />
+            ))}
           </div>
         </div>
 
-        {/* User Management Overview */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">User Management</h2>
-            <Link href="/settings/users" className="text-sm text-green-600 hover:text-green-700 font-medium">
-              Manage Users →
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard
-              title="Total Users"
-              value={stats.total_users || 0}
-              icon={Users}
-              color="blue"
-              isCurrency={false}
-              link="/settings/users"
-            />
-            <StatCard
-              title="Active Users"
-              value={stats.active_users || 0}
-              icon={UserCheck}
-              color="green"
-              isCurrency={false}
-              link="/settings/users"
-            />
-            <StatCard
-              title="Inactive Users"
-              value={stats.inactive_users || 0}
-              icon={UserX}
-              color="red"
-              isCurrency={false}
-              link="/settings/users"
-            />
-          </div>
-        </div>
-
-        {/* Analytics & Insights */}
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
-            <h2 className="text-xl font-semibold text-gray-900">Analytics & Insights</h2>
-            <div className="flex items-center space-x-2">
-              <select
-                value={analyticsPeriod}
-                onChange={(e) => setAnalyticsPeriod(e.target.value)}
-                className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
-              >
-                <option value="last_30_days">Last 30 days</option>
-                <option value="last_7_days">Last 7 days</option>
-                <option value="last_90_days">Last 90 days</option>
-                <option value="ytd">This year</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Sales Analytics */}
-            <Card className="lg:col-span-2 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-blue-900">Sales Performance</CardTitle>
-                  <div className="flex items-center space-x-2">
-                    <Link href="/reports/sales" className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
-                      <BarChart3 className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <SalesChart data={salesAnalytics || {}} isLoading={salesLoading} />
-              </CardContent>
-            </Card>
-
-            {/* Recent Transactions */}
-            <Card className="bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-gray-900">Recent Transactions</CardTitle>
-                  <Link
-                    href="/channels/substores/transactions"
-                    className="text-sm text-green-600 hover:text-green-700 flex items-center"
-                  >
-                    View All <ArrowRight className="h-3 w-3 ml-1" />
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <RecentTransactionsList
-                  transactions={transactions}
-                  isLoading={transactionsLoading}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Pending Approvals & System Health */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Pending Approvals */}
-          <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200">
+        {/* Revenue Chart and Performance Insights */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Revenue Line Chart */}
+          <Card className="lg:col-span-2">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-yellow-900">Pending Approvals</CardTitle>
-                <Link
-                  href="/orders/approvals"
-                  className="text-sm text-yellow-700 hover:text-yellow-800 flex items-center"
+                <CardTitle className="text-gray-900">Revenue Trends</CardTitle>
+                <select
+                  value={selectedWarehouse}
+                  onChange={(e) => setSelectedWarehouse(e.target.value)}
+                  className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
                 >
-                  View All <ArrowRight className="h-3 w-3 ml-1" />
-                </Link>
+                  <option value="all">All Warehouses</option>
+                  <option value="abuja">Abuja Main</option>
+                  <option value="kano">Kano Main</option>
+                  <option value="wuse">Wuse</option>
+                </select>
               </div>
             </CardHeader>
             <CardContent>
-              <PendingApprovalsList
-                approvals={approvals}
-                isLoading={approvalsLoading}
-              />
+              <RevenueAreaChart data={revenueChartData} isLoading={false} />
             </CardContent>
           </Card>
 
-          {/* System Health */}
-          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          {/* Top Performing LubeBays */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-gray-900">Top Performing LubeBays</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DonutChart
+                data={lubebayPerformanceData}
+                centerValue="₦10.0M"
+                centerLabel="Total Revenue"
+                isLoading={false}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Expenses and Transactions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Expenses */}
+          <Card>
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-green-900">System Health</CardTitle>
-                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                <CardTitle className="text-gray-900">Recent Expenses</CardTitle>
+                <Link href="/expenses" className="text-sm text-orange-600 hover:text-orange-700 font-medium">
+                  View All
+                </Link>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {[
-                  { label: 'API Server', status: 'Online', uptime: '99.9%', color: 'green', icon: CheckCircle },
-                  { label: 'Database', status: 'Connected', uptime: '100%', color: 'green', icon: CheckCircle },
-                  { label: 'Payment Gateway', status: 'Active', uptime: '99.7%', color: 'green', icon: CheckCircle },
-                  { label: 'Backup System', status: 'Synced', uptime: '99.8%', color: 'green', icon: CheckCircle },
-                ].map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-4 bg-white rounded-xl border border-green-100 shadow-sm hover:shadow-md transition-shadow group"
-                  >
+                  { name: 'Fuel Transportation', amount: 450000, date: '2024-01-20', category: 'Logistics' },
+                  { name: 'Equipment Maintenance', amount: 125000, date: '2024-01-19', category: 'Maintenance' },
+                  { name: 'Staff Salaries', amount: 2800000, date: '2024-01-18', category: 'Personnel' },
+                  { name: 'Utility Bills', amount: 85000, date: '2024-01-17', category: 'Utilities' },
+                  { name: 'Security Services', amount: 180000, date: '2024-01-16', category: 'Security' }
+                ].map((expense, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
-                        <item.icon className="h-4 w-4 text-green-600" />
+                      <div className="p-2 bg-orange-100 rounded-lg">
+                        <Package className="h-4 w-4 text-orange-600" />
                       </div>
                       <div>
-                        <span className="text-sm font-medium text-gray-900">{item.label}</span>
-                        <p className="text-xs text-gray-500">Uptime: {item.uptime}</p>
+                        <p className="text-sm font-medium text-gray-900">{expense.name}</p>
+                        <p className="text-xs text-gray-500">{expense.category} • {expense.date}</p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {formatNumber(expense.amount, true)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* LubeBay Services Transactions */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-gray-900">LubeBay Services</CardTitle>
+                <Link href="/lubebays" className="text-sm text-orange-600 hover:text-orange-700 font-medium">
+                  View All
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[
+                  { id: 'LB001', service: 'Oil Change Service', amount: 25000, status: 'Completed', customer: 'Ahmed Ibrahim' },
+                  { id: 'LB002', service: 'Engine Diagnostics', amount: 15000, status: 'In Progress', customer: 'Sarah Mohammed' },
+                  { id: 'LB003', service: 'Brake Service', amount: 35000, status: 'Completed', customer: 'John Okafor' },
+                  { id: 'LB004', service: 'Transmission Service', amount: 45000, status: 'Pending', customer: 'Fatima Ali' },
+                  { id: 'LB005', service: 'Air Filter Replacement', amount: 8000, status: 'Completed', customer: 'David Okoro' }
+                ].map((transaction, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-orange-100 rounded-lg">
+                        <Car className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{transaction.service}</p>
+                        <p className="text-xs text-gray-500">{transaction.id} • {transaction.customer}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {item.status}
+                      <p className="text-sm font-semibold text-gray-900">
+                        {formatNumber(transaction.amount, true)}
+                      </p>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        transaction.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                        transaction.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {transaction.status}
                       </span>
                     </div>
                   </div>
                 ))}
               </div>
-
-              <div className="mt-6 p-4 bg-white rounded-xl border border-green-100">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-700">Overall Health Score</span>
-                  <span className="text-xl font-bold text-green-600">98.5%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full" style={{width: '98.5%'}}></div>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Quick Actions</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: 'New PRF', icon: ShoppingCart, color: 'blue', href: '/orders/prf/create' },
-              { label: 'Add Customer', icon: Users, color: 'green', href: '/customers' },
-              { label: 'Inventory Check', icon: Package, color: 'yellow', href: '/inventory/warehouse' },
-              { label: 'Generate Report', icon: BarChart3, color: 'purple', href: '/reports/sales' },
-            ].map((action, index) => (
-              <Link
-                key={index}
-                href={action.href}
-                className="p-4 bg-white rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200 hover:-translate-y-1 group"
+        {/* Bottom Section - Sales Performance Chart */}
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-gray-900">Sales Performance</CardTitle>
+              <select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
               >
-                <div className={`p-3 rounded-lg bg-${action.color}-100 w-fit mb-3 group-hover:bg-${action.color}-200 transition-colors`}>
-                  <action.icon className={`h-5 w-5 text-${action.color}-600`} />
-                </div>
-                <p className="text-sm font-medium text-gray-900">{action.label}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
+                <option value="last_7_days">Last 7 days</option>
+                <option value="last_30_days">Last 30 days</option>
+                <option value="last_90_days">Last 90 days</option>
+                <option value="ytd">This year</option>
+              </select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <SalesLineChart data={salesChartData} isLoading={false} />
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   )

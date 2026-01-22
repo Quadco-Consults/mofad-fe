@@ -110,3 +110,6 @@ export function AppLayout({ children }: AppLayoutProps) {
     </div>
   )
 }
+
+// Add default export for compatibility
+export default AppLayout

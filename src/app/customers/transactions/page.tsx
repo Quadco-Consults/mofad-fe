@@ -9,32 +9,39 @@ import { Pagination } from '@/components/ui/Pagination'
 import { AppLayout } from '@/components/layout/AppLayout'
 import apiClient from '@/lib/apiClient'
 
-interface CustomerTransaction {
-  id: string
-  transactionId: string
-  customerId: string
-  customerName: string
-  customerType: string
-  date: string
-  type: 'sale' | 'payment' | 'credit' | 'refund'
+interface CustomerLodgement {
+  id: number
+  lodgement_number: string
+  lodgement_type: string
+  entity_name: string
+  customer: number
+  customer_name: string
+  prf: number | null
+  prf_number: string | null
+  prf_total: string | null
+  amount_lodged: string
+  expected_amount: string
+  variance: string
+  lodgement_date: string
+  payment_method: string
+  bank_name: string
+  deposit_slip_number: string
+  reference_number: string
+  transaction_reference: string
   description: string
-  amount: number
-  balance: number
-  paymentMethod: string
-  status: 'completed' | 'pending' | 'cancelled'
-  reference: string
-  salesRep: string
-  location: string
+  approval_status: 'pending' | 'awaiting_approval' | 'approved' | 'rejected' | 'cancelled'
+  lodged_by_name: string
+  created_at: string
 }
 
 function CustomerTransactionsPage() {
   const router = useRouter()
-  const { data: transactionResponse, isLoading, error } = useQuery({
-    queryKey: ['customer-transactions'],
-    queryFn: () => apiClient.get('/customer-transactions/')
+  const { data: lodgementResponse, isLoading, error } = useQuery({
+    queryKey: ['customer-lodgements'],
+    queryFn: () => apiClient.get('/lodgements/', { params: { lodgement_type: 'customer' } })
   })
 
-  const transactions = (transactionResponse?.results || []) as CustomerTransaction[]
+  const lodgements = (lodgementResponse?.results || []) as CustomerLodgement[]
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -49,28 +56,29 @@ function CustomerTransactionsPage() {
     setCurrentPage(1)
   }, [searchTerm, typeFilter, statusFilter, customerTypeFilter])
 
-  const transactionTypes = Array.from(new Set(transactions.filter(t => t?.type).map(t => t.type)))
-  const customerTypes = Array.from(new Set(transactions.filter(t => t?.customerType).map(t => t.customerType)))
+  const paymentMethods = Array.from(new Set(lodgements.filter(l => l?.payment_method).map(l => l.payment_method)))
+  const customerTypes = Array.from(new Set(lodgements.filter(l => l?.customer_name).map(l => l.customer_name)))
 
-  const allFilteredTransactions = transactions.filter(transaction => {
-    if (!transaction) return false
+  const allFilteredLodgements = lodgements.filter(lodgement => {
+    if (!lodgement) return false
 
-    const matchesSearch = (transaction.transactionId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (transaction.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (transaction.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = (lodgement.lodgement_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (lodgement.customer_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (lodgement.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (lodgement.reference_number || '').toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesType = typeFilter === 'all' || transaction.type === typeFilter
-    const matchesStatus = statusFilter === 'all' || transaction.status === statusFilter
-    const matchesCustomerType = customerTypeFilter === 'all' || transaction.customerType === customerTypeFilter
+    const matchesType = typeFilter === 'all' || lodgement.payment_method === typeFilter
+    const matchesStatus = statusFilter === 'all' || lodgement.approval_status === statusFilter
+    const matchesCustomerType = customerTypeFilter === 'all' || lodgement.customer_name?.toLowerCase().includes(customerTypeFilter.toLowerCase())
 
     return matchesSearch && matchesType && matchesStatus && matchesCustomerType
   })
 
   // Pagination calculations
-  const totalCount = allFilteredTransactions.length
+  const totalCount = allFilteredLodgements.length
   const totalPages = Math.ceil(totalCount / pageSize) || 1
   const startIndex = (currentPage - 1) * pageSize
-  const filteredTransactions = allFilteredTransactions.slice(startIndex, startIndex + pageSize)
+  const filteredLodgements = allFilteredLodgements.slice(startIndex, startIndex + pageSize)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
@@ -90,60 +98,68 @@ function CustomerTransactionsPage() {
     })
   }
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'sale': return <TrendingUp className="h-4 w-4" />
-      case 'payment': return <CreditCard className="h-4 w-4" />
-      case 'credit': return <Clock className="h-4 w-4" />
-      case 'refund': return <TrendingUp className="h-4 w-4 rotate-180" />
-      default: return <TrendingUp className="h-4 w-4" />
-    }
-  }
-
-  const getTypeBadge = (type: string) => {
-    const styles = {
-      sale: 'bg-green-100 text-green-800',
-      payment: 'bg-blue-100 text-blue-800',
-      credit: 'bg-yellow-100 text-yellow-800',
-      refund: 'bg-red-100 text-red-800'
-    }
-    return styles[type as keyof typeof styles] || 'bg-gray-100 text-gray-800'
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-NG', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
   }
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      completed: 'bg-green-100 text-green-800',
       pending: 'bg-yellow-100 text-yellow-800',
-      cancelled: 'bg-red-100 text-red-800'
+      awaiting_approval: 'bg-blue-100 text-blue-800',
+      approved: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800',
+      cancelled: 'bg-gray-100 text-gray-800'
     }
     return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800'
   }
 
-  const getAmountColor = (type: string, amount: number) => {
-    if (type === 'payment' || type === 'credit') return 'text-green-600'
-    if (type === 'refund') return 'text-red-600'
-    return 'text-gray-900'
+  const getStatusDisplay = (status: string) => {
+    const displays = {
+      pending: 'Pending',
+      awaiting_approval: 'Awaiting Approval',
+      approved: 'Approved',
+      rejected: 'Rejected',
+      cancelled: 'Cancelled'
+    }
+    return displays[status as keyof typeof displays] || status
   }
 
   // Calculate summary stats
-  const totalTransactions = transactions?.length || 0
-  const completedTransactions = transactions.filter(t => t?.status === 'completed').length
-  const totalSales = transactions.filter(t => t?.type === 'sale' && t?.status === 'completed').reduce((sum, t) => sum + (t?.amount || 0), 0)
-  const totalPayments = transactions.filter(t => t?.type === 'payment' && t?.status === 'completed').reduce((sum, t) => sum + (t?.amount || 0), 0)
+  const totalLodgements = lodgements?.length || 0
+  const approvedLodgements = lodgements.filter(l => l?.approval_status === 'approved').length
+  const pendingLodgements = lodgements.filter(l => l?.approval_status === 'pending' || l?.approval_status === 'awaiting_approval').length
+  const totalAmountLodged = lodgements.filter(l => l?.approval_status === 'approved').reduce((sum, l) => sum + (parseFloat(l?.amount_lodged || '0')), 0)
 
-  const handleView = (transaction: CustomerTransaction) => {
-    router.push(`/customers/transactions/${transaction.id}`)
+  const handleView = (lodgement: CustomerLodgement) => {
+    router.push(`/customers/transactions/${lodgement.id}`)
   }
 
-  const handleEdit = (transaction: CustomerTransaction) => {
-    // TODO: Implement edit functionality
-    console.log('Edit transaction:', transaction.id)
+  const handleApprove = async (lodgement: CustomerLodgement) => {
+    try {
+      await apiClient.post(`/lodgements/${lodgement.id}/approve/`)
+      // Refetch data to update UI
+      window.location.reload()
+    } catch (error) {
+      console.error('Failed to approve lodgement:', error)
+      alert('Failed to approve lodgement. Please try again.')
+    }
   }
 
-  const handleDelete = (transactionId: string) => {
-    if (confirm('Are you sure you want to delete this transaction?')) {
-      // Handle delete logic here
-      console.log('Deleting transaction:', transactionId)
+  const handleReject = async (lodgement: CustomerLodgement) => {
+    const reason = prompt('Please provide a reason for rejection:')
+    if (reason) {
+      try {
+        await apiClient.post(`/lodgements/${lodgement.id}/reject/`, { reason })
+        // Refetch data to update UI
+        window.location.reload()
+      } catch (error) {
+        console.error('Failed to reject lodgement:', error)
+        alert('Failed to reject lodgement. Please try again.')
+      }
     }
   }
 
@@ -152,7 +168,7 @@ function CustomerTransactionsPage() {
       <AppLayout>
         <div className="p-6">
           <div className="text-center py-12">
-            <p className="text-red-500">Error loading customer transactions. Please try again.</p>
+            <p className="text-red-500">Error loading customer lodgements. Please try again.</p>
           </div>
         </div>
       </AppLayout>
@@ -165,8 +181,8 @@ function CustomerTransactionsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Customer Transactions</h1>
-            <p className="text-gray-600">Track all customer financial activities and payments</p>
+            <h1 className="text-2xl font-bold text-gray-900">Customer Lodgements</h1>
+            <p className="text-gray-600">Track and approve customer deposits against PRF orders</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline">
@@ -175,7 +191,7 @@ function CustomerTransactionsPage() {
             </Button>
             <Button className="mofad-btn-primary" onClick={() => setShowAddModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Transaction
+              Add Lodgement
             </Button>
           </div>
         </div>
@@ -185,8 +201,8 @@ function CustomerTransactionsPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Transactions</p>
-                <p className="text-2xl font-bold text-gray-900">{totalTransactions}</p>
+                <p className="text-sm text-gray-600">Total Lodgements</p>
+                <p className="text-2xl font-bold text-gray-900">{totalLodgements}</p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                 <TrendingUp className="h-5 w-5 text-blue-600" />
@@ -197,8 +213,8 @@ function CustomerTransactionsPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Completed</p>
-                <p className="text-2xl font-bold text-green-600">{completedTransactions}</p>
+                <p className="text-sm text-gray-600">Approved</p>
+                <p className="text-2xl font-bold text-green-600">{approvedLodgements}</p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                 <TrendingUp className="h-5 w-5 text-green-600" />
@@ -209,11 +225,11 @@ function CustomerTransactionsPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Sales</p>
-                <p className="text-2xl font-bold text-primary-600">{formatCurrency(totalSales)}</p>
+                <p className="text-sm text-gray-600">Pending Approval</p>
+                <p className="text-2xl font-bold text-yellow-600">{pendingLodgements}</p>
               </div>
-              <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-primary-600" />
+              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <Clock className="h-5 w-5 text-yellow-600" />
               </div>
             </div>
           </div>
@@ -221,8 +237,8 @@ function CustomerTransactionsPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Payments</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(totalPayments)}</p>
+                <p className="text-sm text-gray-600">Total Amount Lodged</p>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(totalAmountLodged)}</p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                 <CreditCard className="h-5 w-5 text-green-600" />
@@ -237,7 +253,7 @@ function CustomerTransactionsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search transactions..."
+              placeholder="Search lodgements..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -249,10 +265,10 @@ function CustomerTransactionsPage() {
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
           >
-            <option value="all">All Types</option>
-            {transactionTypes.map(type => (
-              <option key={type} value={type}>
-                {type.charAt(0).toUpperCase() + type.slice(1)}
+            <option value="all">All Payment Methods</option>
+            {paymentMethods.map(method => (
+              <option key={method} value={method}>
+                {method.charAt(0).toUpperCase() + method.slice(1).replace('_', ' ')}
               </option>
             ))}
           </select>
@@ -263,8 +279,10 @@ function CustomerTransactionsPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="all">All Status</option>
-            <option value="completed">Completed</option>
             <option value="pending">Pending</option>
+            <option value="awaiting_approval">Awaiting Approval</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
             <option value="cancelled">Cancelled</option>
           </select>
 
@@ -290,7 +308,7 @@ function CustomerTransactionsPage() {
           {isLoading ? (
             <div className="p-12 text-center">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-              <p className="mt-2 text-gray-500">Loading customer transactions...</p>
+              <p className="mt-2 text-gray-500">Loading customer lodgements...</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -298,101 +316,99 @@ function CustomerTransactionsPage() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Transaction
+                      ID
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Customer
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
+                      Total Lodged
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
+                      Lodged By
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Balance
+                      Teller No/Bank ref
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Confirm
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
+                      Action
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
+                  {filteredLodgements.map((lodgement) => (
+                    <tr key={lodgement.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-primary-600">{transaction.transactionId}</div>
-                        <div className="text-sm text-gray-500">{transaction.description}</div>
-                        <div className="text-xs text-gray-400">{transaction.reference}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{transaction.customerName}</div>
-                        <div className="text-sm text-gray-500">{transaction.customerType}</div>
-                        <div className="text-xs text-gray-400">{transaction.customerId}</div>
+                        <div className="text-sm font-medium text-primary-600">{lodgement.lodgement_number}</div>
+                        <div className="text-xs text-gray-400">PRF: {lodgement.prf_number || 'N/A'}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(transaction.type)}`}>
-                            {getTypeIcon(transaction.type)}
-                            <span className="ml-1">{(transaction.type || 'Unknown').charAt(0).toUpperCase() + (transaction.type || 'unknown').slice(1)}</span>
-                          </span>
-                        </div>
+                        <div className="text-sm font-medium text-gray-900">{lodgement.customer_name}</div>
+                        <div className="text-xs text-gray-400">ID: {lodgement.customer}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{formatDateTime(transaction.date)}</div>
-                        <div className="text-xs text-gray-500">by {transaction.salesRep}</div>
+                        <div className="text-sm font-bold text-green-600">
+                          {formatCurrency(parseFloat(lodgement.amount_lodged))}
+                        </div>
+                        <div className="text-xs text-gray-500">{lodgement.payment_method?.replace('_', ' ')}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`text-sm font-bold ${getAmountColor(transaction.type, transaction.amount)}`}>
-                          {transaction.type === 'payment' || transaction.type === 'credit' ? '+' : '-'}
-                          {formatCurrency(transaction.amount)}
-                        </div>
-                        <div className="text-xs text-gray-500">{transaction.paymentMethod}</div>
+                        <div className="text-sm text-gray-900">{formatDate(lodgement.lodgement_date)}</div>
+                        <div className="text-xs text-gray-500">{formatDateTime(lodgement.created_at)}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{lodgement.lodged_by_name}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{lodgement.deposit_slip_number || lodgement.reference_number}</div>
+                        <div className="text-xs text-gray-500">{lodgement.bank_name}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`text-sm font-medium ${transaction.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatCurrency(Math.abs(transaction.balance))}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {transaction.balance >= 0 ? 'Credit' : 'Outstanding'}
-                        </div>
+                        {lodgement.approval_status === 'pending' || lodgement.approval_status === 'awaiting_approval' ? (
+                          <div className="flex space-x-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleApprove(lodgement)}
+                              className="text-green-600 hover:text-green-700 text-xs px-2 py-1"
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReject(lodgement)}
+                              className="text-red-600 hover:text-red-700 text-xs px-2 py-1"
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-500">-</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(transaction.status || 'unknown')}`}>
-                          {(transaction.status || 'Unknown').charAt(0).toUpperCase() + (transaction.status || 'unknown').slice(1)}
+                        <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusBadge(lodgement.approval_status || 'unknown')}`}>
+                          {getStatusDisplay(lodgement.approval_status || 'unknown')}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleView(transaction)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(transaction)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(transaction.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleView(lodgement)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -414,17 +430,17 @@ function CustomerTransactionsPage() {
           )}
         </div>
 
-        {!isLoading && filteredTransactions.length === 0 && (
+        {!isLoading && filteredLodgements.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No transactions found matching your criteria.</p>
+            <p className="text-gray-500">No lodgements found matching your criteria.</p>
           </div>
         )}
 
-        {/* Add Transaction Modal */}
+        {/* Add Lodgement Modal */}
         {showAddModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-bold mb-4">Add New Transaction</h3>
+              <h3 className="text-lg font-bold mb-4">Add New Customer Lodgement</h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -436,38 +452,46 @@ function CustomerTransactionsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">PRF</label>
                     <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
-                      <option>Sale</option>
-                      <option>Payment</option>
-                      <option>Credit</option>
-                      <option>Refund</option>
+                      <option>Select PRF</option>
                     </select>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" rows={3}></textarea>
-                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                    <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount Lodged</label>
+                    <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" placeholder="0.00" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                     <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
                       <option>Bank Transfer</option>
                       <option>Cash</option>
-                      <option>Credit</option>
                       <option>Cheque</option>
+                      <option>POS</option>
+                      <option>Mobile Money</option>
                     </select>
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Deposit Slip Number</label>
+                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" rows={3}></textarea>
                 </div>
               </div>
               <div className="flex gap-2 justify-end mt-6">
                 <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
-                <Button className="mofad-btn-primary">Create Transaction</Button>
+                <Button className="mofad-btn-primary">Create Lodgement</Button>
               </div>
             </div>
           </div>
