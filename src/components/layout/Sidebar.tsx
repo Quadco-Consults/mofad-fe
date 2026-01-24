@@ -274,13 +274,13 @@ const navigationSections = [
     title: 'CONFIGURATIONS',
     items: [
       {
-        label: 'User Management',
+        label: 'User & Employee Management',
         href: '/settings/users',
         icon: Users,
         color: 'from-gray-500 to-gray-600',
         roles: ADMIN_ROLES,
         children: [
-          { label: 'Employees', href: '/settings/employees', icon: Users },
+          { label: 'Users', href: '/settings/users', icon: Users },
           { label: 'Roles and Permissions', href: '/settings/roles', icon: Shield },
           { label: 'Departments', href: '/settings/departments', icon: Building2 },
         ],

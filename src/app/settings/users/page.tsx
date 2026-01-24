@@ -103,6 +103,7 @@ function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [departmentFilter, setDepartmentFilter] = useState<string>('all')
+  const [employeeTypeFilter, setEmployeeTypeFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
 
@@ -152,6 +153,8 @@ function UsersPage() {
       if (roleFilter !== 'all') params.role = roleFilter
       if (statusFilter !== 'all') params.is_active = statusFilter === 'active'
       if (departmentFilter !== 'all') params.department = departmentFilter
+      if (employeeTypeFilter === 'employees') params.has_employee_id = 'true'
+      if (employeeTypeFilter === 'non-employees') params.has_employee_id = 'false'
 
       const response = await api.getUsers(params)
 
@@ -194,7 +197,7 @@ function UsersPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [searchTerm, roleFilter, statusFilter, departmentFilter, currentPage, pageSize])
+  }, [searchTerm, roleFilter, statusFilter, departmentFilter, employeeTypeFilter, currentPage, pageSize])
 
   useEffect(() => {
     fetchUsers()
@@ -203,7 +206,7 @@ function UsersPage() {
   // Debounce search and reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, roleFilter, statusFilter, departmentFilter])
+  }, [searchTerm, roleFilter, statusFilter, departmentFilter, employeeTypeFilter])
 
   const showSuccess = (message: string) => {
     setSuccessMessage(message)
@@ -216,7 +219,12 @@ function UsersPage() {
   }
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-NG', {
+    if (!dateString || dateString === 'null' || dateString === '') return 'Not set'
+
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'Date not available'
+
+    return date.toLocaleString('en-NG', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -246,17 +254,34 @@ function UsersPage() {
     setShowViewModal(true)
   }
 
+  const splitFullName = (fullName: string) => {
+    const parts = fullName.trim().split(' ')
+    if (parts.length === 1) {
+      return { first_name: parts[0], last_name: '' }
+    }
+    const first_name = parts[0]
+    const last_name = parts.slice(1).join(' ')
+    return { first_name, last_name }
+  }
+
   const handleEdit = (user: User) => {
+    console.log('Edit user:', user) // Debug log
     setSelectedUser(user)
-    setEditForm({
-      first_name: user.first_name,
-      last_name: user.last_name,
+
+    // Split full_name into first_name and last_name since API doesn't provide them separately
+    const { first_name, last_name } = splitFullName(user.full_name || '')
+
+    const formData = {
+      first_name: first_name,
+      last_name: last_name,
       phone: user.phone || '',
-      role: user.role,
+      role: user.role || '',
       department: user.department || '',
       employee_id: user.employee_id || '',
       is_active: user.is_active,
-    })
+    }
+    console.log('Edit form data:', formData) // Debug log
+    setEditForm(formData)
     setShowEditModal(true)
   }
 
@@ -498,8 +523,8 @@ function UsersPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-            <p className="text-gray-600">Manage system users, roles, and permissions</p>
+            <h1 className="text-2xl font-bold text-gray-900">User & Employee Management</h1>
+            <p className="text-gray-600">Manage system users, company employees, roles, and access permissions</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={fetchUsers} disabled={isLoading}>
@@ -609,6 +634,16 @@ function UsersPage() {
             {departments.map(dept => (
               <option key={dept} value={dept}>{dept}</option>
             ))}
+          </select>
+
+          <select
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            value={employeeTypeFilter}
+            onChange={(e) => setEmployeeTypeFilter(e.target.value)}
+          >
+            <option value="all">All Users</option>
+            <option value="employees">Employees Only</option>
+            <option value="non-employees">System Users Only</option>
           </select>
 
           <Button variant="outline" disabled>
@@ -1042,6 +1077,7 @@ function UsersPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-bold mb-4">Edit User - {selectedUser.full_name}</h3>
+              {console.log('Modal editForm:', editForm)} {/* Debug log */}
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
