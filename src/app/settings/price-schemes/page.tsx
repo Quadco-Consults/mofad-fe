@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Search, Plus, Edit, Trash2, Eye, DollarSign, Percent, Calendar, Users, MapPin, X, Save, Loader2, CheckCircle, Power, PowerOff, RefreshCw, Package } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -52,6 +53,14 @@ interface Product {
   id: number
   name: string
   code: string
+  cost_price?: number
+}
+
+interface ProductPricing {
+  product: Product
+  cost_price: number
+  direct_price: number | null
+  retail_price: number | null
 }
 
 interface PriceSchemeFormData {
@@ -152,6 +161,42 @@ function PriceSchemesPage() {
   const products: Product[] = Array.isArray(productsData)
     ? productsData
     : productsData?.results || productsData?.data?.results || []
+
+  // Transform schemes data into product pricing format
+  const productPricingData: ProductPricing[] = React.useMemo(() => {
+    const productMap = new Map<number, ProductPricing>()
+
+    schemes.forEach(scheme => {
+      if (!scheme.product || !scheme.customer_type_name) return
+
+      const productId = scheme.product
+      const product = products.find(p => p.id === productId)
+      if (!product) return
+
+      if (!productMap.has(productId)) {
+        productMap.set(productId, {
+          product,
+          cost_price: scheme.product_name ? 0 : 0, // Will be updated below
+          direct_price: null,
+          retail_price: null,
+        })
+      }
+
+      const pricing = productMap.get(productId)!
+
+      // Get cost price from the product object (assuming it has cost_price)
+      // We'll need to fetch this from the backend product data
+      if (scheme.customer_type_name === 'Direct Customer') {
+        pricing.direct_price = scheme.price || 0
+        // Calculate cost price from direct price (reverse 25% markup)
+        pricing.cost_price = scheme.price ? (scheme.price / 1.25) : 0
+      } else if (scheme.customer_type_name === 'Station') {
+        pricing.retail_price = scheme.price || 0
+      }
+    })
+
+    return Array.from(productMap.values())
+  }, [schemes, products])
 
   // Create mutation
   const createMutation = useMutation({
@@ -350,13 +395,28 @@ function PriceSchemesPage() {
     return true
   }
 
+  // Product handlers
+  const handleViewProduct = (product: Product) => {
+    showToast(`Viewing details for ${product.name}`, 'info')
+    // TODO: Implement product view modal or navigate to product detail page
+  }
+
+  const handleEditProduct = (product: Product) => {
+    showToast(`Editing pricing for ${product.name}`, 'info')
+    // TODO: Implement product pricing edit modal
+  }
+
   // Calculate summary stats
-  const totalSchemes = schemes.length
-  const activeSchemes = schemes.filter(s => s.is_active).length
-  const validSchemes = schemes.filter(s => isSchemeValid(s)).length
-  const avgMarkup = schemes.length > 0
-    ? schemes.reduce((sum, s) => sum + (s.markup_percentage || 0), 0) / schemes.length
+  const totalProducts = productPricingData.length
+  const productsWithDirectPrice = productPricingData.filter(p => p.direct_price !== null).length
+  const productsWithRetailPrice = productPricingData.filter(p => p.retail_price !== null).length
+  const avgMarkupPercentage = productsWithDirectPrice > 0
+    ? productPricingData.filter(p => p.direct_price !== null).reduce((sum, p) => {
+        const markup = p.cost_price > 0 ? ((p.direct_price! - p.cost_price) / p.cost_price * 100) : 0
+        return sum + markup
+      }, 0) / productsWithDirectPrice
     : 0
+
 
   return (
     <AppLayout>
@@ -388,11 +448,11 @@ function PriceSchemesPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Schemes</p>
-                <p className="text-2xl font-bold text-gray-900">{totalSchemes}</p>
+                <p className="text-sm text-gray-600">Total Products</p>
+                <p className="text-2xl font-bold text-gray-900">{totalProducts}</p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-blue-600" />
+                <Package className="h-5 w-5 text-blue-600" />
               </div>
             </div>
           </div>
@@ -400,11 +460,11 @@ function PriceSchemesPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Active Schemes</p>
-                <p className="text-2xl font-bold text-green-600">{activeSchemes}</p>
+                <p className="text-sm text-gray-600">With Direct Price</p>
+                <p className="text-2xl font-bold text-green-600">{productsWithDirectPrice}</p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                <DollarSign className="h-5 w-5 text-green-600" />
               </div>
             </div>
           </div>
@@ -412,11 +472,11 @@ function PriceSchemesPage() {
           <div className="mofad-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Currently Valid</p>
-                <p className="text-2xl font-bold text-primary-600">{validSchemes}</p>
+                <p className="text-sm text-gray-600">With Retail Price</p>
+                <p className="text-2xl font-bold text-primary-600">{productsWithRetailPrice}</p>
               </div>
               <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-primary-600" />
+                <Users className="h-5 w-5 text-primary-600" />
               </div>
             </div>
           </div>
@@ -425,7 +485,7 @@ function PriceSchemesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Avg Markup</p>
-                <p className="text-2xl font-bold text-purple-600">{avgMarkup.toFixed(1)}%</p>
+                <p className="text-2xl font-bold text-purple-600">{avgMarkupPercentage.toFixed(1)}%</p>
               </div>
               <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                 <Percent className="h-5 w-5 text-purple-600" />
@@ -500,117 +560,69 @@ function PriceSchemesPage() {
                   <tr>
                     <th className="w-12 py-3 px-4">
                       <Checkbox
-                        checked={selection.isAllSelected(schemes)}
-                        indeterminate={selection.isPartiallySelected(schemes)}
-                        onChange={() => selection.toggleAll(schemes)}
+                        checked={selection.isAllSelected(productPricingData.map(p => ({ id: p.product.id })))}
+                        indeterminate={selection.isPartiallySelected(productPricingData.map(p => ({ id: p.product.id })))}
+                        onChange={() => selection.toggleAll(productPricingData.map(p => ({ id: p.product.id })))}
                       />
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Scheme Name</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Customer Type</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Location</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-900">Markup %</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-900">Discount %</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Valid Period</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Product Name</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Product Code</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-900">Cost Price</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-900">Direct Sales Price</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-900">Retail Price</th>
                     <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {schemes.map((scheme) => (
+                  {productPricingData.map((pricing) => (
                     <tr
-                      key={scheme.id}
-                      className={`hover:bg-gray-50 ${selection.isSelected(scheme.id) ? 'bg-primary-50' : ''}`}
+                      key={pricing.product.id}
+                      className={`hover:bg-gray-50 ${selection.isSelected(pricing.product.id) ? 'bg-primary-50' : ''}`}
                     >
                       <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
-                          checked={selection.isSelected(scheme.id)}
-                          onChange={() => selection.toggle(scheme.id)}
+                          checked={selection.isSelected(pricing.product.id)}
+                          onChange={() => selection.toggle(pricing.product.id)}
                         />
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                            <DollarSign className="h-5 w-5 text-primary-600" />
+                            <Package className="h-5 w-5 text-primary-600" />
                           </div>
                           <div>
-                            <div className="font-medium text-gray-900">{scheme.name || 'Unnamed Scheme'}</div>
-                            {scheme.description && (
-                              <div className="text-sm text-gray-500 truncate max-w-xs">{scheme.description}</div>
-                            )}
+                            <div className="font-medium text-gray-900">
+                              {pricing.product.name && pricing.product.name.trim()
+                                ? pricing.product.name
+                                : pricing.product.code || `Product ${pricing.product.id}`}
+                            </div>
+                            <div className="text-sm text-gray-500">Product ID: {pricing.product.id}</div>
                           </div>
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        {scheme.customer_type_name ? (
-                          <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4 text-gray-400" />
-                            <span className="text-gray-900">{scheme.customer_type_name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">All Types</span>
-                        )}
+                        <span className="text-gray-900 font-mono">{pricing.product.code}</span>
                       </td>
-                      <td className="py-3 px-4">
-                        {scheme.location_name ? (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4 text-gray-400" />
-                            <span className="text-gray-900">{scheme.location_name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">All Locations</span>
-                        )}
+                      <td className="py-3 px-4 text-right">
+                        <span className="font-medium text-gray-900">{formatCurrency(pricing.cost_price)}</span>
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`font-medium ${Number(scheme.markup_percentage) > 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                          +{Number(scheme.markup_percentage || 0).toFixed(1)}%
+                      <td className="py-3 px-4 text-right">
+                        <span className="font-medium text-green-600">
+                          {pricing.direct_price ? formatCurrency(pricing.direct_price) : '-'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`font-medium ${Number(scheme.discount_percentage) > 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                          -{Number(scheme.discount_percentage || 0).toFixed(1)}%
+                      <td className="py-3 px-4 text-right">
+                        <span className="font-medium text-blue-600">
+                          {pricing.retail_price ? formatCurrency(pricing.retail_price) : '-'}
                         </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="text-sm">
-                          <div className="text-gray-900">{formatDate(scheme.effective_from)}</div>
-                          {scheme.effective_to && (
-                            <div className="text-gray-500">to {formatDate(scheme.effective_to)}</div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          {getStatusBadge(scheme.is_active)}
-                          {isSchemeValid(scheme) && scheme.is_active && (
-                            <span className="text-xs text-green-600">Currently Valid</span>
-                          )}
-                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => handleView(scheme)} title="View">
+                          <Button variant="ghost" size="sm" onClick={() => handleViewProduct(pricing.product)} title="View Product">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(scheme)} title="Edit">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditProduct(pricing.product)} title="Edit Pricing">
                             <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleActive(scheme)}
-                            title={scheme.is_active ? 'Deactivate' : 'Activate'}
-                            className={scheme.is_active ? 'text-yellow-600' : 'text-green-600'}
-                          >
-                            {scheme.is_active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteClick(scheme)}
-                            className="text-red-600"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </td>
@@ -635,7 +647,7 @@ function PriceSchemesPage() {
         )}
 
         {/* Empty State */}
-        {!isLoading && !error && schemes.length === 0 && (
+        {!isLoading && !error && productPricingData.length === 0 && (
           <div className="text-center py-12">
             <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No price schemes found</h3>

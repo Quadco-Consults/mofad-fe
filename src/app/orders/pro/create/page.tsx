@@ -40,6 +40,15 @@ interface Product {
   category_name?: string
 }
 
+interface Supplier {
+  id: number
+  name: string
+  contact_person?: string
+  phone?: string
+  email?: string
+  address?: string
+}
+
 interface PROItem {
   id?: number
   product: number
@@ -57,6 +66,7 @@ interface PROFormData {
   title: string
   description?: string
   supplier: string
+  supplier_id?: number
   supplier_contact?: string
   supplier_email?: string
   supplier_phone?: string
@@ -78,6 +88,50 @@ function CreatePROPageContent() {
   const [memoData, setMemoData] = useState<any>(null)
   const [productSearch, setProductSearch] = useState('')
   const [showProductDropdown, setShowProductDropdown] = useState(false)
+
+  // Mock suppliers data - this should come from an API in the future
+  const mockSuppliers: Supplier[] = [
+    {
+      id: 1,
+      name: 'Ardova Plc',
+      contact_person: 'Ahmed Hassan',
+      phone: '+234 801 234 5678',
+      email: 'ahmed.hassan@ardovaplc.com',
+      address: '2, Ajose Adeogun Street, Victoria Island, Lagos'
+    },
+    {
+      id: 2,
+      name: 'Eterna Plc',
+      contact_person: 'Fatima Ibrahim',
+      phone: '+234 802 345 6789',
+      email: 'fatima.ibrahim@eternaplc.com',
+      address: 'Eterna House, Saka Tinubu Street, Victoria Island, Lagos'
+    },
+    {
+      id: 3,
+      name: 'Conoil Plc',
+      contact_person: 'Kemi Adebayo',
+      phone: '+234 803 456 7890',
+      email: 'kemi.adebayo@conoilplc.com',
+      address: 'Bull Plaza, 35 Marina, Lagos Island, Lagos'
+    },
+    {
+      id: 4,
+      name: 'MRS Oil Nigeria Plc',
+      contact_person: 'Yusuf Mohammed',
+      phone: '+234 804 567 8901',
+      email: 'yusuf.mohammed@mrsoilnigeria.com',
+      address: '16 Creek Road, Apapa, Lagos'
+    },
+    {
+      id: 5,
+      name: 'Forte Oil Plc',
+      contact_person: 'Grace Okafor',
+      phone: '+234 805 678 9012',
+      email: 'grace.okafor@forteoil.com',
+      address: '26 Wharf Road, Apapa, Lagos'
+    }
+  ]
 
   const [formData, setFormData] = useState<PROFormData>({
     title: '',
@@ -219,6 +273,32 @@ function CreatePROPageContent() {
     }))
   }
 
+  const handleSupplierChange = (supplierId: string) => {
+    if (!supplierId) {
+      setFormData(prev => ({
+        ...prev,
+        supplier: '',
+        supplier_id: undefined,
+        supplier_contact: '',
+        supplier_email: '',
+        supplier_phone: ''
+      }))
+      return
+    }
+
+    const selectedSupplier = mockSuppliers.find(s => s.id === parseInt(supplierId))
+    if (selectedSupplier) {
+      setFormData(prev => ({
+        ...prev,
+        supplier: selectedSupplier.name,
+        supplier_id: selectedSupplier.id,
+        supplier_contact: selectedSupplier.contact_person || '',
+        supplier_email: selectedSupplier.email || '',
+        supplier_phone: selectedSupplier.phone || ''
+      }))
+    }
+  }
+
   const handleRemoveItem = (id: number) => {
     setFormData(prev => ({
       ...prev,
@@ -231,9 +311,9 @@ function CreatePROPageContent() {
       return
     }
 
-    if (!formData.supplier.trim()) {
+    if (!formData.supplier_id) {
       addToast({
-        title: 'Please enter supplier name',
+        title: 'Please select a supplier',
         type: 'error'
       })
       return
@@ -250,8 +330,8 @@ function CreatePROPageContent() {
     isSubmittingRef.current = true
 
     const submitData = {
-      title: formData.title || `PRO for ${formData.supplier}`,
-      description: formData.description,
+      title: `PRO for ${formData.supplier} - ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
+      description: `Purchase order for ${formData.supplier}`,
       supplier: formData.supplier,
       supplier_contact: formData.supplier_contact,
       supplier_email: formData.supplier_email,
@@ -278,7 +358,7 @@ function CreatePROPageContent() {
     })
   }, [formData, createMutation, addToast])
 
-  const isButtonDisabled = !formData.supplier.trim() || formData.items.length === 0 || createMutation.isPending
+  const isButtonDisabled = !formData.supplier_id || formData.items.length === 0 || createMutation.isPending
 
   return (
     <AppLayout>
@@ -336,31 +416,6 @@ function CreatePROPageContent() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
-                    placeholder="e.g., Lubricants Order - January 2026"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    rows={2}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
-                    placeholder="Optional description..."
-                  />
-                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -414,14 +469,19 @@ function CreatePROPageContent() {
                   </label>
                   <div className="relative">
                     <Building className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      value={formData.supplier}
-                      onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
+                    <select
+                      value={formData.supplier_id || ''}
+                      onChange={(e) => handleSupplierChange(e.target.value)}
                       className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
-                      placeholder="Enter supplier name"
                       required
-                    />
+                    >
+                      <option value="">Select a supplier...</option>
+                      {mockSuppliers.map((supplier) => (
+                        <option key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -435,8 +495,8 @@ function CreatePROPageContent() {
                       <input
                         type="text"
                         value={formData.supplier_contact || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, supplier_contact: e.target.value }))}
-                        className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                        readOnly
+                        className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 text-gray-600 cursor-not-allowed"
                         placeholder="Contact person name"
                       />
                     </div>
@@ -451,8 +511,8 @@ function CreatePROPageContent() {
                       <input
                         type="tel"
                         value={formData.supplier_phone || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, supplier_phone: e.target.value }))}
-                        className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                        readOnly
+                        className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 text-gray-600 cursor-not-allowed"
                         placeholder="+234 800 123 4567"
                       />
                     </div>
@@ -468,8 +528,8 @@ function CreatePROPageContent() {
                     <input
                       type="email"
                       value={formData.supplier_email || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, supplier_email: e.target.value }))}
-                      className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                      readOnly
+                      className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 text-gray-600 cursor-not-allowed"
                       placeholder="supplier@example.com"
                     />
                   </div>

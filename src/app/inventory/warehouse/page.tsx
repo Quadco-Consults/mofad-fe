@@ -74,6 +74,104 @@ interface PendingIssue {
   status: 'pending' | 'partial' | 'approved'
 }
 
+// Mock data for pending receipts (fallback)
+const mockPendingReceipts: PendingReceipt[] = [
+  {
+    id: 'PR001',
+    proNumber: 'PRO-2024-001',
+    supplierName: 'ExxonMobil Nigeria',
+    productCode: 'MOB-5W30',
+    productName: 'Mobil 1 Advanced 5W-30',
+    orderedQty: 500,
+    receivedQty: 300,
+    pendingQty: 200,
+    unitPrice: 15000,
+    totalValue: 7500000,
+    orderDate: '2024-01-15',
+    expectedDate: '2024-01-25',
+    status: 'partial'
+  },
+  {
+    id: 'PR002',
+    proNumber: 'PRO-2024-002',
+    supplierName: 'Shell Nigeria',
+    productCode: 'SHL-HX8',
+    productName: 'Shell Helix Ultra 5W-40',
+    orderedQty: 300,
+    receivedQty: 0,
+    pendingQty: 300,
+    unitPrice: 18000,
+    totalValue: 5400000,
+    orderDate: '2024-01-18',
+    expectedDate: '2024-01-24',
+    status: 'overdue'
+  },
+  {
+    id: 'PR003',
+    proNumber: 'PRO-2024-003',
+    supplierName: 'TotalEnergies Nigeria',
+    productCode: 'TOT-GEAR',
+    productName: 'Total Transmission Gear 8 75W-80',
+    orderedQty: 150,
+    receivedQty: 0,
+    pendingQty: 150,
+    unitPrice: 14500,
+    totalValue: 2175000,
+    orderDate: '2024-01-20',
+    expectedDate: '2024-01-28',
+    status: 'pending'
+  }
+]
+
+// Mock data for pending issues from PRF
+const mockPendingIssues: PendingIssue[] = [
+  {
+    id: 'PI001',
+    prfNumber: 'PRF-2024-045',
+    department: 'Lube Bay Operations',
+    requestedBy: 'Ahmed Musa',
+    productCode: 'MOB-15W40',
+    productName: 'Mobil Super 15W-40',
+    requestedQty: 100,
+    issuedQty: 60,
+    pendingQty: 40,
+    unitPrice: 8500,
+    requestDate: '2024-01-22',
+    urgency: 'high',
+    status: 'partial'
+  },
+  {
+    id: 'PI002',
+    prfNumber: 'PRF-2024-046',
+    department: 'Station Operations',
+    requestedBy: 'Fatima Ibrahim',
+    productCode: 'SHL-HX7',
+    productName: 'Shell Helix HX7 10W-30',
+    requestedQty: 50,
+    issuedQty: 0,
+    pendingQty: 50,
+    unitPrice: 12500,
+    requestDate: '2024-01-23',
+    urgency: 'medium',
+    status: 'approved'
+  },
+  {
+    id: 'PI003',
+    prfNumber: 'PRF-2024-047',
+    department: 'Maintenance',
+    requestedBy: 'Kemi Adebayo',
+    productCode: 'TOT-5000',
+    productName: 'Total Quartz 5000 20W-50',
+    requestedQty: 25,
+    issuedQty: 0,
+    pendingQty: 25,
+    unitPrice: 9800,
+    requestDate: '2024-01-23',
+    urgency: 'low',
+    status: 'pending'
+  }
+]
+
 export default function WarehouseInventoryPage() {
   const queryClient = useQueryClient()
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
@@ -140,104 +238,6 @@ export default function WarehouseInventoryPage() {
   })
 
   const inventoryItems = inventoryResponse?.results || []
-
-  // Mock data for pending receipts (fallback)
-  const mockPendingReceipts: PendingReceipt[] = [
-    {
-      id: 'PR001',
-      proNumber: 'PRO-2024-001',
-      supplierName: 'ExxonMobil Nigeria',
-      productCode: 'MOB-5W30',
-      productName: 'Mobil 1 Advanced 5W-30',
-      orderedQty: 500,
-      receivedQty: 300,
-      pendingQty: 200,
-      unitPrice: 15000,
-      totalValue: 7500000,
-      orderDate: '2024-01-15',
-      expectedDate: '2024-01-25',
-      status: 'partial'
-    },
-    {
-      id: 'PR002',
-      proNumber: 'PRO-2024-002',
-      supplierName: 'Shell Nigeria',
-      productCode: 'SHL-HX8',
-      productName: 'Shell Helix Ultra 5W-40',
-      orderedQty: 300,
-      receivedQty: 0,
-      pendingQty: 300,
-      unitPrice: 18000,
-      totalValue: 5400000,
-      orderDate: '2024-01-18',
-      expectedDate: '2024-01-24',
-      status: 'overdue'
-    },
-    {
-      id: 'PR003',
-      proNumber: 'PRO-2024-003',
-      supplierName: 'TotalEnergies Nigeria',
-      productCode: 'TOT-GEAR',
-      productName: 'Total Transmission Gear 8 75W-80',
-      orderedQty: 150,
-      receivedQty: 0,
-      pendingQty: 150,
-      unitPrice: 14500,
-      totalValue: 2175000,
-      orderDate: '2024-01-20',
-      expectedDate: '2024-01-28',
-      status: 'pending'
-    }
-  ]
-
-  // Mock data for pending issues from PRF
-  const mockPendingIssues: PendingIssue[] = [
-    {
-      id: 'PI001',
-      prfNumber: 'PRF-2024-045',
-      department: 'Lube Bay Operations',
-      requestedBy: 'Ahmed Musa',
-      productCode: 'MOB-15W40',
-      productName: 'Mobil Super 15W-40',
-      requestedQty: 100,
-      issuedQty: 60,
-      pendingQty: 40,
-      unitPrice: 8500,
-      requestDate: '2024-01-22',
-      urgency: 'high',
-      status: 'partial'
-    },
-    {
-      id: 'PI002',
-      prfNumber: 'PRF-2024-046',
-      department: 'Station Operations',
-      requestedBy: 'Fatima Ibrahim',
-      productCode: 'SHL-HX7',
-      productName: 'Shell Helix HX7 10W-30',
-      requestedQty: 50,
-      issuedQty: 0,
-      pendingQty: 50,
-      unitPrice: 12500,
-      requestDate: '2024-01-23',
-      urgency: 'medium',
-      status: 'approved'
-    },
-    {
-      id: 'PI003',
-      prfNumber: 'PRF-2024-047',
-      department: 'Maintenance',
-      requestedBy: 'Kemi Adebayo',
-      productCode: 'TOT-5000',
-      productName: 'Total Quartz 5000 20W-50',
-      requestedQty: 25,
-      issuedQty: 0,
-      pendingQty: 25,
-      unitPrice: 9800,
-      requestDate: '2024-01-23',
-      urgency: 'low',
-      status: 'pending'
-    }
-  ]
 
   const handleSuccess = () => {
     if (selectedItem) {
@@ -579,7 +579,7 @@ export default function WarehouseInventoryPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {mockPendingReceipts.map((receipt, index) => (
+                    {pendingReceipts.map((receipt, index) => (
                       <tr key={receipt.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{receipt.proNumber}</td>
                         <td className="px-6 py-4">
@@ -645,7 +645,7 @@ export default function WarehouseInventoryPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {mockPendingIssues.map((issue, index) => (
+                    {pendingIssues.map((issue, index) => (
                       <tr key={issue.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{issue.prfNumber}</td>
                         <td className="px-6 py-4">

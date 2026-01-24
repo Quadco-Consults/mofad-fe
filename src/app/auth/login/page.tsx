@@ -51,28 +51,30 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left side - Login Form */}
-      <div className="w-full lg:w-[45%] flex flex-col justify-center px-8 sm:px-12 lg:px-16 xl:px-24 bg-green-50">
+      <div className="w-full lg:w-[45%] flex flex-col justify-center px-8 sm:px-12 lg:px-16 xl:px-24 bg-orange-50">
         <div className="max-w-md w-full">
           {/* Header */}
-          <div className="mb-12">
+          <div className="mb-8">
             {/* Logo */}
-            <div className="mb-6 flex justify-center lg:justify-start">
+            <div className="mb-8 flex justify-center lg:justify-start">
               <img
                 src="/modah_logo-removebg-preview.png"
                 alt="MOFAD Energy Solutions"
-                className="h-16 w-auto"
+                className="h-20 w-auto"
               />
             </div>
-            {/* Company Branding */}
-            <div className="text-center lg:text-left">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                MOFAD Energy Solutions
+            {/* Welcome Message */}
+            <div className="text-center lg:text-left mb-6">
+              <h1 className="text-3xl font-bold text-gray-900 mb-3">
+                Welcome Back
               </h1>
-              <p className="text-lg font-semibold text-gray-700 mb-1">
-                Enterprise ERP
-              </p>
-              <p className="text-green-600 font-medium text-base">
-                Powering Nigeria's Energy Future
+              <h2 className="text-xl font-semibold text-orange-600 mb-2">
+                Unlock Efficiency with EMMS Today!
+              </h2>
+              <p className="text-gray-600 font-medium text-base leading-relaxed">
+                Your trusted and reliable Partner in energy distribution.
+                We strive to provide the best and most satisfactory experience
+                in all our engagements with customers, business associates and employees.
               </p>
             </div>
           </div>
@@ -85,11 +87,11 @@ export default function LoginPage() {
           )}
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Email Field */}
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-3">
-                E-mail
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Your company email address *
               </label>
               <input
                 {...register('email', {
@@ -100,8 +102,8 @@ export default function LoginPage() {
                   },
                 })}
                 type="email"
-                className="w-full px-0 py-3 bg-transparent border-0 border-b-2 border-gray-200 focus:border-green-500 focus:ring-0 text-gray-900 placeholder-gray-400 transition-colors text-base"
-                placeholder="Enter your email address"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 transition-all text-base"
+                placeholder="company@email.com"
               />
               {errors.email && (
                 <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>
@@ -110,7 +112,7 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -123,13 +125,13 @@ export default function LoginPage() {
                     },
                   })}
                   type={showPassword ? 'text' : 'password'}
-                  className="w-full px-0 py-3 pr-10 bg-transparent border-0 border-b-2 border-gray-200 focus:border-green-500 focus:ring-0 text-gray-900 placeholder-gray-400 transition-colors text-base"
-                  placeholder="Enter your password"
+                  className="w-full px-4 py-3 pr-12 bg-white border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 transition-all text-base"
+                  placeholder="************"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-0 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5" />
@@ -141,53 +143,21 @@ export default function LoginPage() {
               {errors.password && (
                 <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>
               )}
-            </div>
-
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div
-                  onClick={() => setRememberMe(!rememberMe)}
-                  className={`w-5 h-5 rounded flex items-center justify-center cursor-pointer transition-colors ${
-                    rememberMe
-                      ? 'bg-green-500 border-green-500'
-                      : 'bg-white border-2 border-gray-300'
-                  }`}
+              <div className="mt-2">
+                <a
+                  href="/auth/forgot-password"
+                  className="text-sm text-orange-600 hover:text-orange-700 font-medium transition-colors"
                 >
-                  {rememberMe && (
-                    <svg
-                      className="w-3 h-3 text-white"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  )}
-                </div>
-                <label
-                  onClick={() => setRememberMe(!rememberMe)}
-                  className="ml-3 text-sm text-gray-600 cursor-pointer select-none"
-                >
-                  Remember me
-                </label>
+                  forget password?
+                </a>
               </div>
-              <a
-                href="/auth/forgot-password"
-                className="text-sm text-green-500 hover:text-green-600 font-medium transition-colors"
-              >
-                Forgot password?
-              </a>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 px-6 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg shadow-lg shadow-green-500/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-base"
+              className="w-full py-3 px-6 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold rounded-lg shadow-lg shadow-orange-500/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-base"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center">
@@ -195,35 +165,35 @@ export default function LoginPage() {
                   Signing in...
                 </span>
               ) : (
-                'Sign In'
+                'Log In'
               )}
             </button>
+
+            {/* Footer Text */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{' '}
+                <button
+                  onClick={() => {
+                    alert('Please contact your administrator for account access')
+                  }}
+                  className="font-medium text-orange-600 hover:text-orange-700 transition-colors"
+                >
+                  Sign up
+                </button>
+              </p>
+            </div>
           </form>
 
-          {/* Footer Link */}
-          <div className="mt-12">
-            <p className="text-sm text-gray-500">
-              Don&apos;t have an account?{' '}
-              <button
-                onClick={() => {
-                  alert('Please contact your administrator for account access')
-                }}
-                className="font-medium text-green-500 hover:text-green-600 transition-colors"
-              >
-                Contact Administrator
-              </button>
-            </p>
-          </div>
-
           {/* Copyright */}
-          <div className="mt-8 text-xs text-gray-400">
+          <div className="mt-8 text-xs text-gray-400 text-center">
             <p>&copy; 2024 MOFAD Energy Solutions. All rights reserved.</p>
           </div>
         </div>
       </div>
 
       {/* Right side - MOFAD Image */}
-      <div className="hidden lg:block lg:w-[55%] relative overflow-hidden bg-gradient-to-br from-green-50 to-green-100">
+      <div className="hidden lg:block lg:w-[55%] relative overflow-hidden bg-gradient-to-br from-orange-100 to-orange-200">
         {/* MOFAD Facility Image */}
         <div className="absolute inset-0">
           <img
@@ -231,10 +201,26 @@ export default function LoginPage() {
             alt="MOFAD Energy Solutions Facility"
             className="w-full h-full object-cover"
           />
-          {/* Overlay for better contrast with potential text */}
-          <div className="absolute inset-0 bg-gradient-to-br from-black/20 via-transparent to-black/30" />
+          {/* Enhanced Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-600/40 via-orange-500/20 to-orange-900/60" />
         </div>
 
+        {/* Overlay Content */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center text-white px-8 max-w-lg">
+            <h2 className="text-4xl font-bold mb-4">MOFAD Energy</h2>
+            <p className="text-xl font-semibold mb-6">Enterprise Management System</p>
+            <p className="text-lg leading-relaxed opacity-90">
+              Streamlining operations across Nigeria's energy distribution network with
+              cutting-edge technology and unmatched reliability.
+            </p>
+          </div>
+        </div>
+
+        {/* Decorative Pattern */}
+        <div className="absolute bottom-0 right-0 w-64 h-64 opacity-10">
+          <div className="w-full h-full bg-gradient-to-tl from-white/20 via-transparent to-transparent rounded-tl-full"></div>
+        </div>
       </div>
     </div>
   )

@@ -310,8 +310,6 @@ export default function CustomersPage() {
               </table>
             </div>
           )}
-        </div>
-
           {/* Pagination */}
           {!customersLoading && !customersError && totalPages > 1 && (
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">

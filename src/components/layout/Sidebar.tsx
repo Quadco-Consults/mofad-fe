@@ -41,7 +41,8 @@ import {
   Fuel,
   MapPin,
   Calendar,
-  AlertTriangle
+  AlertTriangle,
+  Building
 } from 'lucide-react'
 
 // Define user roles for access control
@@ -137,6 +138,13 @@ const navigationSections = [
         label: 'Customers',
         href: '/customers',
         icon: Users,
+        color: 'from-gray-500 to-gray-600',
+        roles: PRIVILEGED_ROLES,
+      },
+      {
+        label: 'Suppliers',
+        href: '/suppliers',
+        icon: Building,
         color: 'from-gray-500 to-gray-600',
         roles: PRIVILEGED_ROLES,
       },
