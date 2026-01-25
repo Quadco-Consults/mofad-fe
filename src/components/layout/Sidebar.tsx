@@ -42,7 +42,8 @@ import {
   MapPin,
   Calendar,
   AlertTriangle,
-  Building
+  Building,
+  BarChart3
 } from 'lucide-react'
 
 // Define user roles for access control
@@ -152,8 +153,13 @@ const navigationSections = [
         label: 'Reports',
         href: '/reports',
         icon: TrendingUp,
-        color: 'from-gray-500 to-gray-600',
+        color: 'from-blue-500 to-blue-600',
         roles: ['admin', 'manager', 'accountant'],
+        children: [
+          { label: 'Current Stock Report', href: '/reports/stock-report', icon: Package },
+          { label: 'Financial Reports', href: '/reports/financial', icon: TrendingUp },
+          { label: 'Inventory Analytics', href: '/reports/inventory', icon: BarChart3 },
+        ],
       },
     ]
   },

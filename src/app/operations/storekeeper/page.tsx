@@ -1,7 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
+import apiClient from '@/lib/apiClient'
+import { formatCurrency } from '@/lib/utils'
 import {
   Package,
   TrendingDown,
@@ -23,7 +26,8 @@ import {
   Printer,
   Edit,
   RotateCcw,
-  AlertTriangle
+  AlertTriangle,
+  Warehouse
 } from 'lucide-react'
 
 interface StoreKeeperItem {
@@ -72,105 +76,110 @@ const StorekeeperPage = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [selectedItem, setSelectedItem] = useState<StoreKeeperItem | null>(null)
   const [selectedProducts, setSelectedProducts] = useState<ProductSelection[]>([])
+  const [selectedWarehouse, setSelectedWarehouse] = useState<number | null>(null)
 
-  // Sample data for issued goods
-  const issuedGoods: StoreKeeperItem[] = [
-    {
-      id: '7000',
-      invoiceId: '7000',
-      refCode: '9885',
-      customerName: 'EBERE MPADE',
-      totalValue: 1014156.00,
-      salesRep: 'ELISHA DANIEL',
-      issuedStatus: 'Received',
-      checkout: 'INITIATED',
-      approvedBy: 'ABUBAKAR ABDULLAHI',
-      orderDate: '14-05-2024 07:46:47',
-      actions: ['view', 'edit']
-    },
-    {
-      id: '7001',
-      invoiceId: '7001',
-      refCode: '9886',
-      customerName: 'AUTO PLAZA',
-      totalValue: 368000.00,
-      salesRep: 'ELISHA DANIEL',
-      issuedStatus: 'Not Received',
-      checkout: 'Receive Goods',
-      approvedBy: 'ABUBAKAR ABDULLAHI',
-      orderDate: '14-05-2024 07:46:47',
-      actions: ['view', 'receive']
-    },
-    {
-      id: '7002',
-      invoiceId: '7002',
-      refCode: '9887',
-      customerName: 'S.A MULTI TECH VENTURE',
-      totalValue: 479000.00,
-      salesRep: 'ELISHA DANIEL',
-      issuedStatus: 'Received',
-      checkout: 'INITIATED',
-      approvedBy: 'ABUBAKAR ABDULLAHI',
-      orderDate: '14-05-2024 07:46:47',
-      actions: ['view', 'edit']
-    },
-    {
-      id: '7003',
-      invoiceId: '7003',
-      refCode: '9888',
-      customerName: 'ABSALCO LUBE OIL',
-      totalValue: 30000.00,
-      salesRep: 'ELISHA DANIEL',
-      issuedStatus: 'Received',
-      checkout: 'INITIATED',
-      approvedBy: 'ABUBAKAR ABDULLAHI',
-      orderDate: '14-05-2024 07:46:47',
-      actions: ['view', 'edit']
-    },
-    {
-      id: '7004',
-      invoiceId: '7004',
-      refCode: '9889',
-      customerName: 'EBERE MPADE',
-      totalValue: 1014156.00,
-      salesRep: 'ELISHA DANIEL',
-      issuedStatus: 'Not Received',
-      checkout: 'Receive Goods',
-      approvedBy: 'ABUBAKAR ABDULLAHI',
-      orderDate: '14-05-2024 07:46:47',
-      actions: ['view', 'receive']
-    }
-  ]
+  // Fetch warehouses
+  const { data: warehousesResponse, isLoading: warehousesLoading, error: warehousesError } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: () => apiClient.getWarehouses(),
+    refetchOnWindowFocus: false,
+  })
 
-  // Sample data for received goods
-  const receivedGoods: StoreKeeperItem[] = [
-    {
-      id: '7005',
-      invoiceId: '7005',
-      refCode: '9890',
-      customerName: 'ABSALCO LUBE OIL',
-      totalValue: 30000.00,
-      salesRep: 'ELISHA DANIEL',
-      issuedStatus: 'Not Received',
-      checkout: 'Receive Goods',
-      approvedBy: 'ABUBAKAR ABDULLAHI',
-      orderDate: '14-05-2024 07:46:47',
-      actions: ['view', 'receive']
-    },
-    {
-      id: '7006',
-      invoiceId: '7006',
-      refCode: '9891',
-      customerName: 'S.A MULTI TECH VENTURE',
-      totalValue: 479000.00,
-      salesRep: 'ELISHA DANIEL',
-      issuedStatus: 'Received',
-      checkout: 'INITIATED',
-      approvedBy: 'ABUBAKAR ABDULLAHI',
-      orderDate: '14-05-2024 07:46:47',
-      actions: ['view', 'edit']
-    }
-  ]
+  const warehouses = warehousesResponse?.results || []
+
+  // Fetch PRF data for Issue Goods tab (approved PRFs ready to be issued)
+  const { data: prfData, isLoading: prfLoading, error: prfError } = useQuery({
+    queryKey: ['prfs-for-issue', selectedWarehouse, searchTerm, timeFilter],
+    queryFn: () => apiClient.getPrfs({
+      status: 'approved', // PRFs that are approved and ready to issue goods
+      warehouse: selectedWarehouse || undefined,
+      search: searchTerm || undefined,
+      page_size: 100
+    }),
+    enabled: !!selectedWarehouse,
+    refetchOnWindowFocus: false,
+  })
+
+  // Fetch PRO data for Receive Goods tab (confirmed PROs with goods to receive)
+  const { data: proData, isLoading: proLoading, error: proError } = useQuery({
+    queryKey: ['pros-for-receive', selectedWarehouse, searchTerm, timeFilter],
+    queryFn: () => apiClient.getPros({
+      status: 'confirmed', // PROs that are confirmed and waiting for goods receipt
+      delivery_location: selectedWarehouse || undefined,
+      search: searchTerm || undefined,
+      page_size: 100
+    }),
+    enabled: !!selectedWarehouse,
+    refetchOnWindowFocus: false,
+  })
+
+  // Transform PRF data to StoreKeeperItem format for Issue Goods
+  const transformPrfToStoreKeeperItem = (prf: any): StoreKeeperItem => ({
+    id: prf.id.toString(),
+    invoiceId: prf.prf_number || prf.id.toString(),
+    refCode: prf.reference_number || prf.prf_number || '',
+    customerName: prf.department_name || prf.requested_by_name || 'Unknown Department',
+    totalValue: prf.total_amount || 0,
+    salesRep: prf.requested_by_name || prf.created_by_name || '',
+    issuedStatus: prf.goods_issued ? 'Received' : 'Not Received',
+    checkout: prf.goods_issued ? 'INITIATED' : 'Issue Goods',
+    approvedBy: prf.approved_by_name || prf.current_approver_name || '',
+    orderDate: prf.created_at || new Date().toISOString(),
+    actions: prf.goods_issued ? ['view', 'edit'] : ['view', 'issue']
+  })
+
+  // Transform PRO data to StoreKeeperItem format for Receive Goods
+  const transformProToStoreKeeperItem = (pro: any): StoreKeeperItem => ({
+    id: pro.id.toString(),
+    invoiceId: pro.pro_number || pro.id.toString(),
+    refCode: pro.reference_number || pro.pro_number || '',
+    customerName: pro.supplier_name || 'Unknown Supplier',
+    totalValue: pro.total_amount || 0,
+    salesRep: pro.created_by_name || '',
+    issuedStatus: pro.delivery_status === 'completed' ? 'Received' : 'Not Received',
+    checkout: pro.delivery_status === 'completed' ? 'INITIATED' : 'Receive Goods',
+    approvedBy: pro.approved_by_name || '',
+    orderDate: pro.created_at || new Date().toISOString(),
+    actions: pro.delivery_status === 'completed' ? ['view', 'edit'] : ['view', 'receive']
+  })
+
+  // Generate issued goods from PRF data
+  const issuedGoods: StoreKeeperItem[] = prfData?.results ?
+    prfData.results.map(transformPrfToStoreKeeperItem) : []
+
+  // Generate received goods from PRO data
+  const receivedGoods: StoreKeeperItem[] = proData?.results ?
+    proData.results.map(transformProToStoreKeeperItem) : []
+
+  // Filter data based on search and filters
+  const filteredIssuedGoods = issuedGoods.filter(item => {
+    const matchesSearch = !searchTerm ||
+      item.invoiceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.refCode.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesFilter = filterBy === 'Filter by' ||
+      filterBy === 'All' ||
+      item.issuedStatus === filterBy
+
+    return matchesSearch && matchesFilter
+  })
+
+  const filteredReceivedGoods = receivedGoods.filter(item => {
+    const matchesSearch = !searchTerm ||
+      item.invoiceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.refCode.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesFilter = filterBy === 'Filter by' ||
+      filterBy === 'All' ||
+      item.issuedStatus === filterBy
+
+    return matchesSearch && matchesFilter
+  })
+
+  const isLoading = activeTab === 'issue' ? prfLoading : proLoading
+  const error = activeTab === 'issue' ? prfError : proError
 
   // Sample products data
   const availableProducts: Product[] = [
@@ -235,11 +244,7 @@ const StorekeeperPage = () => {
     setShowSuccessModal(true)
   }
 
-  const formatCurrency = (amount: number) => {
-    return `₦${amount.toLocaleString()}`
-  }
-
-  const currentData = activeTab === 'issue' ? issuedGoods : receivedGoods
+  const currentData = activeTab === 'issue' ? filteredIssuedGoods : filteredReceivedGoods
 
   return (
     <AppLayout>
@@ -248,15 +253,96 @@ const StorekeeperPage = () => {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Store Keeper</h1>
+            <p className="text-gray-600">Manage inventory operations and transactions</p>
+            {!warehousesLoading && warehouses.length > 0 && selectedWarehouse && (
+              <div className="mt-2">
+                <label htmlFor="warehouse-select" className="text-sm font-medium text-gray-700 mr-2">
+                  Selected Warehouse:
+                </label>
+                <select
+                  id="warehouse-select"
+                  value={selectedWarehouse || ''}
+                  onChange={(e) => setSelectedWarehouse(Number(e.target.value))}
+                  className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                >
+                  <option value="">Select Warehouse</option>
+                  {warehouses.map((warehouse) => (
+                    <option key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name} - {warehouse.location || 'No location'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
-          <button className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 border">
-            <Package className="w-4 h-4 mr-2" />
-            Export
-          </button>
+          {selectedWarehouse && (
+            <button className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 border">
+              <Package className="w-4 h-4 mr-2" />
+              Export
+            </button>
+          )}
         </div>
 
-        {/* Tab Navigation */}
-        <div className="mb-6">
+        {/* Warehouse Loading State */}
+        {warehousesLoading && (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center mb-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading warehouses...</p>
+          </div>
+        )}
+
+        {/* Warehouse Error State */}
+        {warehousesError && !warehousesLoading && (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center mb-6">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Warehouses</h3>
+            <p className="text-gray-600 mb-4">Failed to load warehouse list</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Warehouse Selection Screen */}
+        {!warehousesLoading && !warehousesError && !selectedWarehouse && (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center mb-6">
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Package className="w-8 h-8 text-orange-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a Warehouse</h3>
+            <p className="text-gray-600 mb-6">Choose a warehouse to manage store keeper operations</p>
+
+            {warehouses.length === 0 ? (
+              <div className="text-gray-500">No warehouses available</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                {warehouses.map((warehouse) => (
+                  <div
+                    key={warehouse.id}
+                    onClick={() => setSelectedWarehouse(warehouse.id)}
+                    className="border border-gray-200 rounded-lg p-4 hover:border-orange-500 hover:bg-orange-50 cursor-pointer transition-all"
+                  >
+                    <div className="flex items-center mb-2">
+                      <Warehouse className="w-5 h-5 text-orange-500 mr-2" />
+                      <h4 className="font-semibold text-gray-900">{warehouse.name}</h4>
+                    </div>
+                    <p className="text-sm text-gray-600">{warehouse.location || 'No location specified'}</p>
+                    <p className="text-xs text-gray-500 mt-1">Code: {warehouse.code || warehouse.id}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab Navigation - Only show when warehouse is selected */}
+        {selectedWarehouse && (
+          <div className="mb-6">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
               <button
@@ -283,9 +369,10 @@ const StorekeeperPage = () => {
           </div>
         </div>
 
-        {/* Search and Filter Controls */}
-        <div className="mb-6 flex gap-4">
-          <div className="flex-1 relative">
+        {/* Search and Filter Controls - Only show when warehouse is selected */}
+        {selectedWarehouse && (
+          <div className="mb-6 flex gap-4">
+            <div className="flex-1 relative">
             <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
@@ -314,10 +401,53 @@ const StorekeeperPage = () => {
             <option>Not Received</option>
             <option>Initiated</option>
           </select>
-        </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading {activeTab === 'issue' ? 'issue goods' : 'receive goods'} records...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !isLoading && (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
+            <p className="text-gray-600 mb-4">Failed to load {activeTab === 'issue' ? 'PRF' : 'PRO'} records</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && !error && currentData.length === 0 && (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Package className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Records Found</h3>
+            <p className="text-gray-600">
+              {activeTab === 'issue'
+                ? 'No approved PRFs ready for goods issue found.'
+                : 'No confirmed PROs waiting for goods receipt found.'
+              }
+            </p>
+          </div>
+        )}
 
         {/* Main Data Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        {!isLoading && !error && currentData.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="bg-white border-b border-gray-200">
@@ -384,21 +514,21 @@ const StorekeeperPage = () => {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        )}
 
         {/* Pagination */}
-        <div className="mt-6 flex items-center justify-between">
-          <div className="text-sm text-gray-500">
-            1-10 of 30 items
+        {!isLoading && !error && currentData.length > 0 && (
+          <div className="mt-6 flex items-center justify-between">
+            <div className="text-sm text-gray-500">
+              Showing {currentData.length} of {activeTab === 'issue' ? (prfData?.total || 0) : (proData?.total || 0)} items
+            </div>
+            <div className="flex space-x-1">
+              <button className="px-3 py-2 text-sm bg-orange-500 text-white rounded">1</button>
+              {/* Add more pagination controls as needed */}
+            </div>
           </div>
-          <div className="flex space-x-1">
-            <button className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700">1</button>
-            <button className="px-3 py-2 text-sm bg-orange-500 text-white rounded">2</button>
-            <button className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700">3</button>
-            <span className="px-3 py-2 text-sm text-gray-500">...</span>
-            <button className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700">19</button>
-          </div>
-        </div>
+        )}
 
         {/* Receive Goods Modal */}
         {showReceiveGoodsModal && selectedItem && (
@@ -882,6 +1012,7 @@ const StorekeeperPage = () => {
               </div>
             </div>
           </div>
+        )}
         )}
       </div>
     </AppLayout>
