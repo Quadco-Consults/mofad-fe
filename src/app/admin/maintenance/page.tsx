@@ -36,7 +36,6 @@ import {
   MapPin,
   Target,
   Activity,
-  Tool,
   Gauge,
   Battery,
   Zap,
@@ -652,7 +651,7 @@ export default function MaintenancePage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Tool className="h-5 w-5 mr-2" />
+              <Wrench className="h-5 w-5 mr-2" />
               Maintenance Actions
             </CardTitle>
           </CardHeader>
