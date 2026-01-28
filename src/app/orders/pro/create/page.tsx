@@ -76,6 +76,8 @@ interface PROFormData {
   payment_terms?: string
   payment_method?: string
   notes?: string
+  reviewer?: number
+  approver?: number
   items: PROItem[]
 }
 
@@ -152,8 +154,15 @@ function CreatePROPageContent() {
     queryFn: () => apiClient.getWarehouses({ is_active: true }),
   })
 
+  // Fetch users for reviewer and approver selection
+  const { data: usersData } = useQuery({
+    queryKey: ['users-for-pro'],
+    queryFn: () => apiClient.getUsers({ is_active: true }),
+  })
+
   const products = productsData?.results || (Array.isArray(productsData) ? productsData : [])
   const warehouses = warehousesData?.results || (Array.isArray(warehousesData) ? warehousesData : [])
+  const users = usersData?.results || (Array.isArray(usersData) ? usersData : [])
 
   // Create PRO mutation
   const createMutation = useMutation({
@@ -594,6 +603,73 @@ function CreatePROPageContent() {
                     className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
                     placeholder="Additional notes about this order..."
                   />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Approval Workflow */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Approval Workflow
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Reviewer (1st Level) <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <select
+                        value={formData.reviewer || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, reviewer: e.target.value ? Number(e.target.value) : undefined }))}
+                        className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                        required
+                      >
+                        <option value="">Select Reviewer</option>
+                        {users.map((user: any) => {
+                          const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                          const displayName = fullName || user.email || `User ${user.id}`
+                          return (
+                            <option key={user.id} value={user.id}>
+                              {displayName}
+                            </option>
+                          )
+                        })}
+                      </select>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">User who will review this PRO first</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Approver (2nd Level) <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <select
+                        value={formData.approver || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, approver: e.target.value ? Number(e.target.value) : undefined }))}
+                        className="pl-10 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:ring-primary"
+                        required
+                      >
+                        <option value="">Select Approver</option>
+                        {users.map((user: any) => {
+                          const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                          const displayName = fullName || user.email || `User ${user.id}`
+                          return (
+                            <option key={user.id} value={user.id}>
+                              {displayName}
+                            </option>
+                          )
+                        })}
+                      </select>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">User who will approve this PRO after review</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

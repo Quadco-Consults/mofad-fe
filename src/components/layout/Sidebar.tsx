@@ -85,6 +85,11 @@ const navigationSections = [
         icon: ShoppingCart,
         color: 'from-gray-500 to-gray-600',
         roles: PRIVILEGED_ROLES,
+        children: [
+          { label: 'PRO', href: '/orders/pro', icon: ShoppingCart },
+          { label: 'View/Approve PRO', href: '/orders/pro/approve', icon: ClipboardCheck },
+          { label: 'Approved PRO', href: '/orders/pro/approved', icon: FileCheck },
+        ],
       },
       {
         label: 'PRF',
@@ -92,6 +97,11 @@ const navigationSections = [
         icon: FileText,
         color: 'from-gray-500 to-gray-600',
         roles: PRIVILEGED_ROLES,
+        children: [
+          { label: 'PRF', href: '/orders/prf', icon: FileText },
+          { label: 'View/Approve PRF', href: '/orders/prf/approve', icon: ClipboardCheck },
+          { label: 'Approved PRF', href: '/orders/prf/approved', icon: FileCheck },
+        ],
       },
       {
         label: 'Lodgement',

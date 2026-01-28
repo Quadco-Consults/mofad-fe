@@ -42,8 +42,12 @@ const getStatusIcon = (status: string) => {
   switch (status) {
     case 'draft':
       return <Edit className="w-4 h-4 text-gray-500" />
-    case 'submitted':
+    case 'pending_review':
       return <Clock className="w-4 h-4 text-yellow-500" />
+    case 'reviewed':
+      return <CheckCircle className="w-4 h-4 text-blue-500" />
+    case 'pending_approval':
+      return <Clock className="w-4 h-4 text-orange-500" />
     case 'approved':
       return <CheckCircle className="w-4 h-4 text-green-500" />
     case 'rejected':
@@ -62,17 +66,21 @@ const getStatusIcon = (status: string) => {
 const getStatusBadge = (status: string) => {
   const colors: Record<string, string> = {
     draft: 'bg-gray-100 text-gray-800',
-    submitted: 'bg-yellow-100 text-yellow-800',
+    pending_review: 'bg-yellow-100 text-yellow-800',
+    reviewed: 'bg-blue-100 text-blue-800',
+    pending_approval: 'bg-orange-100 text-orange-800',
     approved: 'bg-green-100 text-green-800',
     rejected: 'bg-red-100 text-red-800',
-    partially_fulfilled: 'bg-blue-100 text-blue-800',
+    partially_fulfilled: 'bg-purple-100 text-purple-800',
     fulfilled: 'bg-green-200 text-green-900',
     cancelled: 'bg-gray-200 text-gray-700',
   }
 
   const labels: Record<string, string> = {
     draft: 'Draft',
-    submitted: 'Submitted',
+    pending_review: 'Pending Review',
+    reviewed: 'Reviewed',
+    pending_approval: 'Pending Approval',
     approved: 'Approved',
     rejected: 'Rejected',
     partially_fulfilled: 'Partially Fulfilled',
@@ -1121,7 +1129,7 @@ export default function PRFPage() {
 
   // Stats calculation
   const totalPRFs = prfs.length
-  const pendingPRFs = prfs.filter((p) => p.status === 'draft' || p.status === 'submitted').length
+  const pendingPRFs = prfs.filter((p) => p.status === 'pending_review' || p.status === 'pending_approval').length
   const approvedPRFs = prfs.filter((p) => p.status === 'approved').length
   const totalValue = prfs.reduce((sum, p) => {
     const amount = parseFloat(p.estimated_total) || 0
@@ -1229,10 +1237,14 @@ export default function PRFPage() {
                 >
                   <option value="all">All Status</option>
                   <option value="draft">Draft</option>
-                  <option value="submitted">Submitted</option>
+                  <option value="pending_review">Pending Review</option>
+                  <option value="reviewed">Reviewed</option>
+                  <option value="pending_approval">Pending Approval</option>
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
+                  <option value="partially_fulfilled">Partially Fulfilled</option>
                   <option value="fulfilled">Fulfilled</option>
+                  <option value="cancelled">Cancelled</option>
                 </select>
 
                 <select

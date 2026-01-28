@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/Button'
+import { useToast } from '@/components/ui/Toast'
 import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { PRF } from '@/types/api'
@@ -26,7 +27,10 @@ import {
   Phone,
   Mail,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Send,
+  X,
+  Loader2
 } from 'lucide-react'
 
 // Helper functions for localStorage management (same as in main PRF page)
@@ -49,17 +53,21 @@ const getMockPRFs = (): PRF[] => {
 const getStatusBadge = (status: string) => {
   const colors: Record<string, string> = {
     draft: 'bg-gray-100 text-gray-800 border-gray-300',
-    submitted: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    pending_review: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    reviewed: 'bg-blue-100 text-blue-800 border-blue-300',
+    pending_approval: 'bg-orange-100 text-orange-800 border-orange-300',
     approved: 'bg-green-100 text-green-800 border-green-300',
     rejected: 'bg-red-100 text-red-800 border-red-300',
-    partially_fulfilled: 'bg-blue-100 text-blue-800 border-blue-300',
+    partially_fulfilled: 'bg-purple-100 text-purple-800 border-purple-300',
     fulfilled: 'bg-green-200 text-green-900 border-green-400',
     cancelled: 'bg-gray-200 text-gray-700 border-gray-400',
   }
 
   const labels: Record<string, string> = {
     draft: 'DRAFT',
-    submitted: 'PENDING APPROVAL',
+    pending_review: 'PENDING REVIEW',
+    reviewed: 'REVIEWED',
+    pending_approval: 'PENDING APPROVAL',
     approved: 'APPROVED',
     rejected: 'REJECTED',
     partially_fulfilled: 'PARTIALLY FULFILLED',
@@ -77,7 +85,13 @@ const getStatusBadge = (status: string) => {
 export default function PRFViewPage() {
   const router = useRouter()
   const params = useParams()
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const printRef = useRef<HTMLDivElement>(null)
+
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [rejectAction, setRejectAction] = useState<'review' | 'approve'>('review')
+  const [rejectionReason, setRejectionReason] = useState('')
 
   const prfId = params?.id ? parseInt(params.id as string) : null
 
@@ -98,6 +112,98 @@ export default function PRFViewPage() {
     },
     enabled: !!prfId,
   })
+
+  // Submit mutation
+  const submitMutation = useMutation({
+    mutationFn: () => apiClient.submitPrf(prfId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prf-detail', prfId] })
+      addToast({ type: 'success', title: 'Success', message: 'PRF submitted for review' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to submit PRF' })
+    }
+  })
+
+  // Review mutation
+  const reviewMutation = useMutation({
+    mutationFn: () => apiClient.reviewPrf(prfId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prf-detail', prfId] })
+      addToast({ type: 'success', title: 'Success', message: 'PRF reviewed and sent for approval' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to review PRF' })
+    }
+  })
+
+  // Review Reject mutation
+  const reviewRejectMutation = useMutation({
+    mutationFn: (reason: string) => apiClient.reviewRejectPrf(prfId!, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prf-detail', prfId] })
+      setShowRejectModal(false)
+      setRejectionReason('')
+      addToast({ type: 'info', title: 'Rejected', message: 'PRF has been rejected during review' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to reject PRF' })
+    }
+  })
+
+  // Approve mutation
+  const approveMutation = useMutation({
+    mutationFn: () => apiClient.approvePrf(prfId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prf-detail', prfId] })
+      addToast({ type: 'success', title: 'Approved', message: 'PRF has been approved' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to approve PRF' })
+    }
+  })
+
+  // Reject mutation
+  const rejectMutation = useMutation({
+    mutationFn: (reason: string) => apiClient.rejectPrf(prfId!, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prf-detail', prfId] })
+      setShowRejectModal(false)
+      setRejectionReason('')
+      addToast({ type: 'info', title: 'Rejected', message: 'PRF has been rejected' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to reject PRF' })
+    }
+  })
+
+  // Handler functions
+  const handleSubmit = () => submitMutation.mutate()
+  const handleReview = () => reviewMutation.mutate()
+  const handleApprove = () => approveMutation.mutate()
+
+  const handleReviewReject = () => {
+    setRejectAction('review')
+    setShowRejectModal(true)
+  }
+
+  const handleApprovalReject = () => {
+    setRejectAction('approve')
+    setShowRejectModal(true)
+  }
+
+  const confirmReject = () => {
+    if (!rejectionReason.trim()) {
+      addToast({ type: 'error', title: 'Error', message: 'Please provide a rejection reason' })
+      return
+    }
+
+    if (rejectAction === 'review') {
+      reviewRejectMutation.mutate(rejectionReason)
+    } else {
+      rejectMutation.mutate(rejectionReason)
+    }
+  }
 
 
   const handlePrint = () => {
@@ -449,21 +555,75 @@ export default function PRFViewPage() {
               Download PDF
             </Button>
 
-            {/* Approval Buttons - Only show for submitted PRFs */}
-            {prf.status === 'submitted' && (
+            {/* Approval Workflow Buttons */}
+            {prf.status === 'draft' && (
+              <Button
+                onClick={handleSubmit}
+                disabled={submitMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+              >
+                {submitMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                Submit for Review
+              </Button>
+            )}
+
+            {prf.status === 'pending_review' && (
               <>
                 <Button
-                  onClick={handleApprovePRF}
+                  onClick={handleReview}
+                  disabled={reviewMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                >
+                  {reviewMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4" />
+                  )}
+                  Review & Send to Approver
+                </Button>
+                <Button
+                  onClick={handleReviewReject}
+                  disabled={reviewRejectMutation.isPending}
+                  className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                >
+                  {reviewRejectMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <XCircle className="w-4 h-4" />
+                  )}
+                  Reject
+                </Button>
+              </>
+            )}
+
+            {prf.status === 'pending_approval' && (
+              <>
+                <Button
+                  onClick={handleApprove}
+                  disabled={approveMutation.isPending}
                   className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
                 >
-                  <ThumbsUp className="w-4 h-4" />
+                  {approveMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ThumbsUp className="w-4 h-4" />
+                  )}
                   Approve
                 </Button>
                 <Button
-                  onClick={handleRejectPRF}
+                  onClick={handleApprovalReject}
+                  disabled={rejectMutation.isPending}
                   className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
                 >
-                  <ThumbsDown className="w-4 h-4" />
+                  {rejectMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ThumbsDown className="w-4 h-4" />
+                  )}
                   Reject
                 </Button>
               </>
@@ -716,6 +876,69 @@ export default function PRFViewPage() {
             </div>
           </div>
         </div>
+
+        {/* Rejection Modal */}
+        {showRejectModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg max-w-md w-full m-4">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-xl font-semibold text-red-600">
+                  Reject PRF
+                </h2>
+                <Button variant="ghost" onClick={() => setShowRejectModal(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center bg-red-100">
+                    <XCircle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{prf?.prf_number}</h3>
+                    <p className="text-sm text-gray-600">{prf?.title}</p>
+                  </div>
+                </div>
+                <p className="text-gray-700 mb-4">
+                  Please provide a reason for rejecting this PRF.
+                </p>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Rejection Reason <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    rows={3}
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Enter reason for rejection"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 p-6 border-t">
+                <Button variant="outline" onClick={() => setShowRejectModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={confirmReject}
+                  disabled={
+                    !rejectionReason.trim() ||
+                    reviewRejectMutation.isPending ||
+                    rejectMutation.isPending
+                  }
+                >
+                  {(reviewRejectMutation.isPending || rejectMutation.isPending) ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <XCircle className="w-4 h-4 mr-2" />
+                  )}
+                  Reject
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   )

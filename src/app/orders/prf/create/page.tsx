@@ -42,6 +42,8 @@ interface CustomerOrderFormData {
   delivery_date: string
   order_notes: string
   sales_rep: string
+  reviewer?: number
+  approver?: number
   items: Array<{
     id: string
     product_id: string
@@ -133,6 +135,14 @@ export default function CreateCustomerOrderPage() {
     enabled: !!selectedCustomer,
   })
 
+  // Fetch users for reviewer and approver selection
+  const { data: usersData } = useQuery({
+    queryKey: ['users-for-prf'],
+    queryFn: () => apiClient.getUsers({ is_active: true }),
+  })
+
+  const users = usersData?.results || (Array.isArray(usersData) ? usersData : [])
+
   // Filter products by search term
   const filteredProducts = mofadProducts?.filter(
     (product: MofadProduct) => {
@@ -157,6 +167,8 @@ export default function CreateCustomerOrderPage() {
         estimated_total: data.items.reduce((sum, item) => sum + item.total, 0),
         client_type: 'customer',
         client_id: parseInt(data.customer_id) || undefined,
+        reviewer: data.reviewer || undefined,
+        approver: data.approver || undefined,
         items: data.items.map(item => ({
           product: parseInt(item.product_id),
           quantity_requested: item.quantity,
@@ -479,6 +491,48 @@ export default function CreateCustomerOrderPage() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="Enter sales rep name"
                         />
+                      </div>
+
+                      {/* Reviewer and Approver Selection */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Reviewer (1st Level)
+                          </label>
+                          <select
+                            value={formData.reviewer || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, reviewer: e.target.value ? parseInt(e.target.value) : undefined }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          >
+                            <option value="">Select Reviewer</option>
+                            {users.map((user: any) => (
+                              <option key={user.id} value={user.id}>
+                                {user.first_name && user.last_name
+                                  ? `${user.first_name} ${user.last_name}`
+                                  : user.username || user.email}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Approver (2nd Level)
+                          </label>
+                          <select
+                            value={formData.approver || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, approver: e.target.value ? parseInt(e.target.value) : undefined }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          >
+                            <option value="">Select Approver</option>
+                            {users.map((user: any) => (
+                              <option key={user.id} value={user.id}>
+                                {user.first_name && user.last_name
+                                  ? `${user.first_name} ${user.last_name}`
+                                  : user.username || user.email}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
 
                       <div>

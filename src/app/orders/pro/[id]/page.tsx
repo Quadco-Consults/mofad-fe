@@ -67,10 +67,11 @@ interface PRO {
   supplier_phone?: string | null
   supplier_email?: string | null
   delivery_address?: string | null
+  delivery_location_name?: string | null
   prf?: number | null
   prf_id?: number
   prf_number?: string
-  status: 'draft' | 'sent' | 'confirmed' | 'delivered' | 'cancelled'
+  status: 'draft' | 'pending_review' | 'reviewed' | 'pending_approval' | 'approved' | 'rejected' | 'sent' | 'confirmed' | 'partially_delivered' | 'delivered' | 'cancelled'
   delivery_status: 'pending' | 'partial' | 'completed'
   total_amount: string | number
   subtotal?: string | number
@@ -86,13 +87,23 @@ interface PRO {
   expected_delivery?: string
   actual_delivery?: string
   delivered_at?: string | null
-  created_by?: string | null
+  created_by?: number | string | null
   created_by_name?: string | null
-  approved_by?: string | null
+  reviewer?: number | null
+  reviewer_name?: string | null
+  reviewed_by?: number | null
+  reviewed_by_name?: string | null
+  reviewed_at?: string | null
+  approver?: number | null
+  approver_name?: string | null
+  approved_by?: number | null
   approved_by_name?: string | null
-  approved_at?: string
+  approved_at?: string | null
   confirmed_at?: string | null
   sent_at?: string | null
+  submitted_at?: string | null
+  rejected_at?: string | null
+  rejection_reason?: string | null
   notes?: string | null
   terms_conditions?: string | null
   items: PROItem[]
@@ -113,6 +124,36 @@ const getStatusConfig = (status: string) => {
       bg: 'bg-gray-100 border-gray-300',
       icon: <Clock className="w-4 h-4" />,
       label: 'DRAFT'
+    },
+    pending_review: {
+      color: 'text-yellow-700',
+      bg: 'bg-yellow-100 border-yellow-300',
+      icon: <Clock className="w-4 h-4" />,
+      label: 'PENDING REVIEW'
+    },
+    reviewed: {
+      color: 'text-blue-700',
+      bg: 'bg-blue-100 border-blue-300',
+      icon: <CheckCircle className="w-4 h-4" />,
+      label: 'REVIEWED'
+    },
+    pending_approval: {
+      color: 'text-purple-700',
+      bg: 'bg-purple-100 border-purple-300',
+      icon: <Clock className="w-4 h-4" />,
+      label: 'PENDING APPROVAL'
+    },
+    approved: {
+      color: 'text-green-700',
+      bg: 'bg-green-100 border-green-300',
+      icon: <CheckCircle className="w-4 h-4" />,
+      label: 'APPROVED'
+    },
+    rejected: {
+      color: 'text-red-700',
+      bg: 'bg-red-100 border-red-300',
+      icon: <XCircle className="w-4 h-4" />,
+      label: 'REJECTED'
     },
     sent: {
       color: 'text-amber-700',
@@ -160,16 +201,28 @@ export default function PRODetailPage() {
   const proId = parseInt(params.id as string)
 
   // State for workflow actions
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false)
+  const [showReviewDialog, setShowReviewDialog] = useState(false)
+  const [showReviewRejectDialog, setShowReviewRejectDialog] = useState(false)
   const [showApproveDialog, setShowApproveDialog] = useState(false)
   const [showRejectDialog, setShowRejectDialog] = useState(false)
   const [showSendDialog, setShowSendDialog] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [activeTab, setActiveTab] = useState<'details' | 'pdf'>('details')
+  const [rejectionReason, setRejectionReason] = useState('')
 
   const { data: pro, isLoading, error, refetch } = useQuery({
     queryKey: ['pro-detail', proId],
     queryFn: async () => {
       return apiClient.getProById(proId)
     },
+  })
+
+  // Get current user
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: () => apiClient.getCurrentUser(),
   })
 
   // Status update mutations
@@ -192,12 +245,129 @@ export default function PRODetailPage() {
       // Close all dialogs
       setShowSendDialog(false)
       setShowConfirmDialog(false)
-      setShowRejectDialog(false)
+      setShowCancelDialog(false)
     },
     onError: (error: any) => {
       addToast({
         title: 'Failed to update PRO',
         description: error.message || 'An error occurred while updating the PRO',
+        type: 'error'
+      })
+    }
+  })
+
+  // Submit for review mutation
+  const submitMutation = useMutation({
+    mutationFn: () => apiClient.submitPro(proId),
+    onSuccess: () => {
+      addToast({
+        title: 'PRO Submitted Successfully',
+        description: 'PRO has been submitted for review',
+        type: 'success'
+      })
+      queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
+      queryClient.invalidateQueries({ queryKey: ['pros'] })
+      refetch()
+      setShowSubmitDialog(false)
+    },
+    onError: (error: any) => {
+      addToast({
+        title: 'Failed to submit PRO',
+        description: error.message || 'An error occurred while submitting the PRO',
+        type: 'error'
+      })
+    }
+  })
+
+  // Review mutation
+  const reviewMutation = useMutation({
+    mutationFn: () => apiClient.reviewPro(proId),
+    onSuccess: () => {
+      addToast({
+        title: 'PRO Reviewed Successfully',
+        description: 'PRO has been reviewed and sent for approval',
+        type: 'success'
+      })
+      queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
+      queryClient.invalidateQueries({ queryKey: ['pros'] })
+      refetch()
+      setShowReviewDialog(false)
+    },
+    onError: (error: any) => {
+      addToast({
+        title: 'Failed to review PRO',
+        description: error.message || 'An error occurred while reviewing the PRO',
+        type: 'error'
+      })
+    }
+  })
+
+  // Review reject mutation
+  const reviewRejectMutation = useMutation({
+    mutationFn: (reason: string) => apiClient.reviewRejectPro(proId, reason),
+    onSuccess: () => {
+      addToast({
+        title: 'PRO Rejected',
+        description: 'PRO has been rejected at review stage',
+        type: 'success'
+      })
+      queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
+      queryClient.invalidateQueries({ queryKey: ['pros'] })
+      refetch()
+      setShowReviewRejectDialog(false)
+      setRejectionReason('')
+    },
+    onError: (error: any) => {
+      addToast({
+        title: 'Failed to reject PRO',
+        description: error.message || 'An error occurred while rejecting the PRO',
+        type: 'error'
+      })
+    }
+  })
+
+  // Approve mutation
+  const approveMutation = useMutation({
+    mutationFn: () => apiClient.approvePro(proId),
+    onSuccess: () => {
+      addToast({
+        title: 'PRO Approved Successfully',
+        description: 'PRO has been approved',
+        type: 'success'
+      })
+      queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
+      queryClient.invalidateQueries({ queryKey: ['pros'] })
+      refetch()
+      setShowApproveDialog(false)
+    },
+    onError: (error: any) => {
+      addToast({
+        title: 'Failed to approve PRO',
+        description: error.message || 'An error occurred while approving the PRO',
+        type: 'error'
+      })
+    }
+  })
+
+  // Reject at approval stage mutation
+  const rejectMutation = useMutation({
+    mutationFn: (reason: string) => apiClient.rejectPro(proId, reason),
+    onSuccess: () => {
+      addToast({
+        title: 'PRO Rejected',
+        description: 'PRO has been rejected at approval stage',
+        type: 'success'
+      })
+      queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
+      queryClient.invalidateQueries({ queryKey: ['pros'] })
+      refetch()
+      setShowRejectDialog(false)
+      setRejectionReason('')
+    },
+    onError: (error: any) => {
+      addToast({
+        title: 'Failed to reject PRO',
+        description: error.message || 'An error occurred while rejecting the PRO',
         type: 'error'
       })
     }
@@ -443,19 +613,26 @@ export default function PRODetailPage() {
             {pro.status === 'draft' && (
               <>
                 <Button
-                  onClick={() => setShowSendDialog(true)}
+                  onClick={() => setShowSubmitDialog(true)}
                   className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-                  disabled={statusMutation.isPending}
+                  disabled={submitMutation.isPending || !pro.reviewer}
                 >
-                  {statusMutation.isPending ? (
+                  {submitMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Send className="w-4 h-4" />
                   )}
-                  Send to Supplier
+                  Submit for Review
                 </Button>
                 <Button
-                  onClick={() => setShowRejectDialog(true)}
+                  onClick={() => router.push(`/orders/pro/${proId}/edit`)}
+                  className="bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-2"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit Order
+                </Button>
+                <Button
+                  onClick={() => setShowCancelDialog(true)}
                   className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
                 >
                   <Ban className="w-4 h-4" />
@@ -464,43 +641,297 @@ export default function PRODetailPage() {
               </>
             )}
 
-            {pro.status === 'sent' && (
+            {pro.status === 'pending_review' && currentUser && pro.reviewer === currentUser.id && (
               <>
                 <Button
-                  onClick={() => setShowConfirmDialog(true)}
+                  onClick={() => setShowReviewDialog(true)}
                   className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-                  disabled={statusMutation.isPending}
+                  disabled={reviewMutation.isPending}
                 >
-                  {statusMutation.isPending ? (
+                  {reviewMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <CheckCircle2 className="w-4 h-4" />
                   )}
-                  Confirm Order
+                  Review & Forward
                 </Button>
                 <Button
-                  onClick={() => setShowRejectDialog(true)}
+                  onClick={() => setShowReviewRejectDialog(true)}
                   className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                  disabled={reviewRejectMutation.isPending}
                 >
-                  <Ban className="w-4 h-4" />
-                  Cancel
+                  {reviewRejectMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <XCircle className="w-4 h-4" />
+                  )}
+                  Reject
                 </Button>
               </>
             )}
 
-            {pro.status === 'draft' && (
+            {pro.status === 'pending_approval' && currentUser && pro.approver === currentUser.id && (
+              <>
+                <Button
+                  onClick={() => setShowApproveDialog(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                  disabled={approveMutation.isPending}
+                >
+                  {approveMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  Approve
+                </Button>
+                <Button
+                  onClick={() => setShowRejectDialog(true)}
+                  className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                  disabled={rejectMutation.isPending}
+                >
+                  {rejectMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <XCircle className="w-4 h-4" />
+                  )}
+                  Reject
+                </Button>
+              </>
+            )}
+
+            {pro.status === 'approved' && (
               <Button
-                onClick={() => router.push(`/orders/pro/${proId}/edit`)}
-                className="bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-2"
+                onClick={() => setShowSendDialog(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                disabled={statusMutation.isPending}
               >
-                <Edit className="w-4 h-4" />
-                Edit Order
+                {statusMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                Send to Supplier
+              </Button>
+            )}
+
+            {pro.status === 'sent' && (
+              <Button
+                onClick={() => setShowConfirmDialog(true)}
+                className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                disabled={statusMutation.isPending}
+              >
+                {statusMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4" />
+                )}
+                Confirm Order
               </Button>
             )}
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="mb-6 no-print print:hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-1">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab('details')}
+                className={`flex-1 px-4 py-2.5 rounded-md font-medium transition-all ${
+                  activeTab === 'details'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <ClipboardList className="w-4 h-4" />
+                  Details & Delivery Status
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('pdf')}
+                className={`flex-1 px-4 py-2.5 rounded-md font-medium transition-all ${
+                  activeTab === 'pdf'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  PDF Document
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Delivery Schedule & Item Receipt Status */}
+        {activeTab === 'details' && (
+          <div className="space-y-6 mb-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Truck className="w-5 h-5" />
+                  Delivery Schedule & Item Receipt Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Delivery Information */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-blue-700 uppercase tracking-wide block mb-1">Expected Delivery</label>
+                        <p className="text-sm font-medium text-blue-900">
+                          {pro.expected_delivery ? formatDateTime(pro.expected_delivery).split(' ')[0] : 'Not specified'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-blue-700 uppercase tracking-wide block mb-1">Actual Delivery</label>
+                        <p className="text-sm font-medium text-blue-900">
+                          {pro.delivered_at ? formatDateTime(pro.delivered_at).split(' ')[0] : 'Pending'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-blue-700 uppercase tracking-wide block mb-1">Delivery Location</label>
+                        <p className="text-sm font-medium text-blue-900">
+                          {pro.delivery_location_name || 'MOFAD Headquarters'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Item Receipt Status Table */}
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      Item-by-Item Receipt Status
+                    </h4>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-200">
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Item</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Unit Price</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Ordered</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Received</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Pending</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Total Value</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map((item, index) => {
+                            const received = item.received_quantity || 0
+                            const ordered = item.quantity
+                            const pending = ordered - received
+                            const percentage = (received / ordered) * 100
+                            const unitPrice = item.unit_price || 0
+                            const totalValue = ordered * unitPrice
+
+                            return (
+                              <tr key={item.id} className={`border-b border-gray-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                                <td className="px-4 py-3">
+                                  <div>
+                                    <p className="font-medium text-gray-900">{item.product_name}</p>
+                                    {item.product_code && (
+                                      <p className="text-xs text-gray-500 font-mono">{item.product_code}</p>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <span className="text-sm text-gray-700">{formatCurrency(unitPrice)}</span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className="font-semibold text-gray-900">{ordered}</span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`font-bold ${
+                                    received >= ordered ? 'text-green-600' : received > 0 ? 'text-orange-600' : 'text-gray-400'
+                                  }`}>
+                                    {received}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`font-semibold ${pending > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                                    {pending}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <span className="font-bold text-gray-900">{formatCurrency(totalValue)}</span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  {percentage === 100 ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                                      <CheckCircle className="w-3 h-3" />
+                                      Complete
+                                    </span>
+                                  ) : percentage > 0 ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold">
+                                      <Clock className="w-3 h-3" />
+                                      Partial ({percentage.toFixed(0)}%)
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
+                                      <AlertTriangle className="w-3 h-3" />
+                                      Pending
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-gradient-to-r from-blue-50 to-indigo-50 border-t-2 border-blue-200">
+                            <td className="px-4 py-3 font-bold text-gray-900">Total</td>
+                            <td className="px-4 py-3 text-right font-bold text-gray-900">-</td>
+                            <td className="px-4 py-3 text-center font-bold text-gray-900">
+                              {items.reduce((sum, item) => sum + item.quantity, 0)}
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-green-600">
+                              {items.reduce((sum, item) => sum + (item.received_quantity || 0), 0)}
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-red-600">
+                              {items.reduce((sum, item) => sum + (item.quantity - (item.received_quantity || 0)), 0)}
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-gray-900">
+                              {formatCurrency(items.reduce((sum, item) => sum + (item.quantity * (item.unit_price || 0)), 0))}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {(() => {
+                                const totalOrdered = items.reduce((sum, item) => sum + item.quantity, 0)
+                                const totalReceived = items.reduce((sum, item) => sum + (item.received_quantity || 0), 0)
+                                const overallPercentage = (totalReceived / totalOrdered) * 100
+
+                                return (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <div className="w-24 bg-gray-200 rounded-full h-2">
+                                      <div
+                                        className={`h-2 rounded-full transition-all ${
+                                          overallPercentage === 100 ? 'bg-green-500' : overallPercentage > 0 ? 'bg-orange-500' : 'bg-gray-400'
+                                        }`}
+                                        style={{ width: `${overallPercentage}%` }}
+                                      ></div>
+                                    </div>
+                                    <span className="text-xs font-semibold text-gray-700">{overallPercentage.toFixed(0)}%</span>
+                                  </div>
+                                )
+                              })()}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* PRO Document */}
+        {activeTab === 'pdf' && (
         <div ref={printRef} className="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-200 print:shadow-none print:rounded-none print:border-none print:max-w-none print:w-full print:h-auto print:m-0 print:p-0">
           {/* Professional Header */}
           <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #B8941F 50%, #1B4F3A 100%)' }}>
@@ -748,13 +1179,37 @@ export default function PRODetailPage() {
                 <h3 className="text-xl font-bold text-gray-900">Approval Workflow</h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="border border-gray-200 rounded-lg p-4">
                   <h4 className="font-semibold text-gray-900 mb-2">Created By</h4>
                   <div className="space-y-1">
-                    <p className="text-sm text-gray-600">Name: {pro.created_by_name || pro.created_by || 'Admin User'}</p>
+                    <p className="text-sm text-gray-600">Name: {pro.created_by_name || 'Admin User'}</p>
                     <p className="text-sm text-gray-600">Position: Purchase Manager</p>
                     <p className="text-sm text-gray-600">Date: {formatDateTime(pro.created_at).split(',')[0]}</p>
+                    <div className="mt-3 pt-2 border-t border-gray-200">
+                      <p className="text-xs text-gray-500">Signature: ________________</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">Reviewer (1st Level)</h4>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-600">Name: {pro.reviewed_by_name || pro.reviewer_name || '________________'}</p>
+                    <p className="text-sm text-gray-600">Position: Reviewer</p>
+                    <p className="text-sm text-gray-600">Date: {pro.reviewed_at ? formatDateTime(pro.reviewed_at).split(',')[0] : '________________'}</p>
+                    <div className="mt-3 pt-2 border-t border-gray-200">
+                      <p className="text-xs text-gray-500">Signature: ________________</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">Approver (2nd Level)</h4>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-600">Name: {pro.approved_by_name || pro.approver_name || '________________'}</p>
+                    <p className="text-sm text-gray-600">Position: Approver</p>
+                    <p className="text-sm text-gray-600">Date: {pro.approved_at ? formatDateTime(pro.approved_at).split(',')[0] : '________________'}</p>
                     <div className="mt-3 pt-2 border-t border-gray-200">
                       <p className="text-xs text-gray-500">Signature: ________________</p>
                     </div>
@@ -767,18 +1222,6 @@ export default function PRODetailPage() {
                     <p className="text-sm text-gray-600">Name: {pro.supplier_name || '________________'}</p>
                     <p className="text-sm text-gray-600">Position: Supplier Representative</p>
                     <p className="text-sm text-gray-600">Date: {pro.confirmed_at ? formatDateTime(pro.confirmed_at).split(',')[0] : '________________'}</p>
-                    <div className="mt-3 pt-2 border-t border-gray-200">
-                      <p className="text-xs text-gray-500">Signature: ________________</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Delivery Confirmation</h4>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-600">Name: ________________</p>
-                    <p className="text-sm text-gray-600">Position: Warehouse Manager</p>
-                    <p className="text-sm text-gray-600">Date: {pro.delivered_at ? formatDateTime(pro.delivered_at).split(',')[0] : '________________'}</p>
                     <div className="mt-3 pt-2 border-t border-gray-200">
                       <p className="text-xs text-gray-500">Signature: ________________</p>
                     </div>
@@ -812,9 +1255,102 @@ export default function PRODetailPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Workflow Confirmation Dialogs */}
+
+      {/* Submit for Review Dialog */}
+      <ConfirmDialog
+        open={showSubmitDialog}
+        onClose={() => setShowSubmitDialog(false)}
+        onConfirm={() => submitMutation.mutate()}
+        title="Submit PRO for Review"
+        message={`Are you sure you want to submit PRO "${pro.pro_number}" for review? It will be sent to ${pro.reviewer_name || 'the assigned reviewer'} for first-level review.`}
+        confirmText="Submit for Review"
+        confirmVariant="primary"
+        isLoading={submitMutation.isPending}
+      />
+
+      {/* Review Dialog */}
+      <ConfirmDialog
+        open={showReviewDialog}
+        onClose={() => setShowReviewDialog(false)}
+        onConfirm={() => reviewMutation.mutate()}
+        title="Review PRO"
+        message={`Are you sure you want to approve this review? PRO "${pro.pro_number}" will be forwarded to ${pro.approver_name || 'the assigned approver'} for final approval.`}
+        confirmText="Review & Forward"
+        confirmVariant="primary"
+        isLoading={reviewMutation.isPending}
+      />
+
+      {/* Review Reject Dialog */}
+      <ConfirmDialog
+        open={showReviewRejectDialog}
+        onClose={() => {
+          setShowReviewRejectDialog(false)
+          setRejectionReason('')
+        }}
+        onConfirm={() => reviewRejectMutation.mutate(rejectionReason)}
+        title="Reject PRO at Review Stage"
+        message={`Are you sure you want to reject PRO "${pro.pro_number}"? Please provide a reason for rejection.`}
+        confirmText="Reject PRO"
+        variant="danger"
+        isLoading={reviewRejectMutation.isPending}
+      >
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Rejection Reason
+          </label>
+          <textarea
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={4}
+            placeholder="Enter reason for rejection..."
+          />
+        </div>
+      </ConfirmDialog>
+
+      {/* Approve Dialog */}
+      <ConfirmDialog
+        open={showApproveDialog}
+        onClose={() => setShowApproveDialog(false)}
+        onConfirm={() => approveMutation.mutate()}
+        title="Approve PRO"
+        message={`Are you sure you want to approve PRO "${pro.pro_number}"? Once approved, it can be sent to the supplier.`}
+        confirmText="Approve PRO"
+        confirmVariant="primary"
+        isLoading={approveMutation.isPending}
+      />
+
+      {/* Reject at Approval Stage Dialog */}
+      <ConfirmDialog
+        open={showRejectDialog}
+        onClose={() => {
+          setShowRejectDialog(false)
+          setRejectionReason('')
+        }}
+        onConfirm={() => rejectMutation.mutate(rejectionReason)}
+        title="Reject PRO at Approval Stage"
+        message={`Are you sure you want to reject PRO "${pro.pro_number}"? Please provide a reason for rejection.`}
+        confirmText="Reject PRO"
+        variant="danger"
+        isLoading={rejectMutation.isPending}
+      >
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Rejection Reason
+          </label>
+          <textarea
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={4}
+            placeholder="Enter reason for rejection..."
+          />
+        </div>
+      </ConfirmDialog>
 
       {/* Send to Supplier Dialog */}
       <ConfirmDialog
@@ -840,10 +1376,10 @@ export default function PRODetailPage() {
         isLoading={statusMutation.isPending}
       />
 
-      {/* Cancel/Reject Dialog */}
+      {/* Cancel Dialog */}
       <ConfirmDialog
-        open={showRejectDialog}
-        onClose={() => setShowRejectDialog(false)}
+        open={showCancelDialog}
+        onClose={() => setShowCancelDialog(false)}
         onConfirm={() => statusMutation.mutate({ status: 'cancelled' })}
         title="Cancel Purchase Order"
         message={`Are you sure you want to cancel PRO "${pro.pro_number}"? This action cannot be undone and the order will be marked as cancelled.`}

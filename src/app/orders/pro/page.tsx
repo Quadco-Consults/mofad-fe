@@ -41,13 +41,23 @@ interface PRO {
   supplier_email: string | null
   supplier_phone: string | null
   total_amount: number | string
-  status: 'draft' | 'sent' | 'confirmed' | 'partially_delivered' | 'delivered' | 'cancelled'
+  status: 'draft' | 'pending_review' | 'reviewed' | 'pending_approval' | 'approved' | 'rejected' | 'sent' | 'confirmed' | 'partially_delivered' | 'delivered' | 'cancelled'
   delivery_status: 'pending' | 'partial' | 'completed'
   delivery_location: number | null
   delivery_location_name: string | null
   created_by: number | null
   created_by_name: string | null
+  reviewer: number | null
+  reviewer_name: string | null
+  reviewed_by: number | null
+  reviewed_by_name: string | null
+  approver: number | null
+  approver_name: string | null
+  approved_by: number | null
+  approved_by_name: string | null
   created_at: string
+  reviewed_at: string | null
+  approved_at: string | null
   expected_delivery_date: string | null
   items_count: number
   items: any[]
@@ -89,15 +99,25 @@ const getStatusIcon = (status: string) => {
 const getStatusBadge = (status: string) => {
   const colors: Record<string, string> = {
     draft: 'bg-gray-100 text-gray-800',
-    sent: 'bg-yellow-100 text-yellow-800',
-    confirmed: 'bg-blue-100 text-blue-800',
+    pending_review: 'bg-yellow-100 text-yellow-800',
+    reviewed: 'bg-blue-100 text-blue-800',
+    pending_approval: 'bg-purple-100 text-purple-800',
+    approved: 'bg-green-100 text-green-800',
+    rejected: 'bg-red-100 text-red-800',
+    sent: 'bg-indigo-100 text-indigo-800',
+    confirmed: 'bg-teal-100 text-teal-800',
     partially_delivered: 'bg-orange-100 text-orange-800',
-    delivered: 'bg-green-100 text-green-800',
+    delivered: 'bg-emerald-100 text-emerald-800',
     cancelled: 'bg-red-100 text-red-800'
   }
 
   const labels: Record<string, string> = {
     draft: 'Draft',
+    pending_review: 'Pending Review',
+    reviewed: 'Reviewed',
+    pending_approval: 'Pending Approval',
+    approved: 'Approved',
+    rejected: 'Rejected',
     sent: 'Sent',
     confirmed: 'Confirmed',
     partially_delivered: 'Partial',
@@ -422,7 +442,9 @@ export default function PROPage() {
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">PRO Number</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Title</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Supplier</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Amount</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total Amount</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Received Value</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Pending Value</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Delivery</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Created</th>
@@ -430,71 +452,94 @@ export default function PROPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pros.map((pro) => (
-                      <tr key={pro.id} className="border-b border-border hover:bg-muted/50">
-                        <td className="py-3 px-4">
-                          <input
-                            type="checkbox"
-                            checked={selection.isSelected(pro.id)}
-                            onChange={() => selection.toggle(pro.id)}
-                            className="rounded border-gray-300"
-                          />
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center">
-                            {getStatusIcon(pro.status)}
-                            <span className="ml-2 font-medium">{pro.pro_number}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div>
-                            <p className="font-medium">{pro.title || '-'}</p>
-                            <p className="text-sm text-muted-foreground">{pro.items_count || 0} items</p>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">{pro.supplier || '-'}</td>
-                        <td className="py-3 px-4 font-medium">
-                          {formatCurrency(Number(pro.total_amount) || 0)}
-                        </td>
-                        <td className="py-3 px-4">{getStatusBadge(pro.status)}</td>
-                        <td className="py-3 px-4">{getDeliveryBadge(pro.delivery_status)}</td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {formatDateTime(pro.created_at)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => router.push(`/orders/pro/${pro.id}`)}
-                              title="View Details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            {pro.status === 'draft' && (
+                    {pros.map((pro) => {
+                      // Calculate received and pending values
+                      const items = pro.items || []
+                      const receivedValue = items.reduce((sum: number, item: any) => {
+                        const received = Number(item.received_quantity || item.quantity_delivered || 0)
+                        const unitPrice = Number(item.unit_price || 0)
+                        return sum + (received * unitPrice)
+                      }, 0)
+
+                      const totalOrderValue = Number(pro.total_amount) || 0
+                      const pendingValue = totalOrderValue - receivedValue
+
+                      return (
+                        <tr key={pro.id} className="border-b border-border hover:bg-muted/50">
+                          <td className="py-3 px-4">
+                            <input
+                              type="checkbox"
+                              checked={selection.isSelected(pro.id)}
+                              onChange={() => selection.toggle(pro.id)}
+                              className="rounded border-gray-300"
+                            />
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center">
+                              {getStatusIcon(pro.status)}
+                              <span className="ml-2 font-medium">{pro.pro_number}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <p className="font-medium">{pro.title || '-'}</p>
+                              <p className="text-sm text-muted-foreground">{pro.items_count || 0} items</p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">{pro.supplier || '-'}</td>
+                          <td className="py-3 px-4 text-right font-medium">
+                            {formatCurrency(totalOrderValue)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="font-medium text-green-600">
+                              {formatCurrency(receivedValue)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className={`font-medium ${pendingValue > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                              {formatCurrency(pendingValue)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">{getStatusBadge(pro.status)}</td>
+                          <td className="py-3 px-4">{getDeliveryBadge(pro.delivery_status)}</td>
+                          <td className="py-3 px-4 text-sm text-muted-foreground">
+                            {formatDateTime(pro.created_at)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => router.push(`/orders/pro/${pro.id}/edit`)}
-                                title="Edit"
+                                onClick={() => router.push(`/orders/pro/${pro.id}`)}
+                                title="View Details"
                               >
-                                <Edit className="w-4 h-4" />
+                                <Eye className="w-4 h-4" />
                               </Button>
-                            )}
-                            {pro.status === 'draft' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(pro)}
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              {pro.status === 'draft' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => router.push(`/orders/pro/${pro.id}/edit`)}
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {pro.status === 'draft' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(pro)}
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

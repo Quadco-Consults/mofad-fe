@@ -2275,10 +2275,7 @@ class ApiClient {
     page?: number
     page_size?: number
   }): Promise<any> {
-    return this.get('/pros/', {
-      ...params,
-      fields: 'status,delivery_status,final_approval,approval_status,current_approval,created_at,submitted_at,approved_at,rejected_at,confirmed_at,delivered_at'
-    })
+    return this.get('/pros/', params)
   }
 
   async getProById(id: number | string): Promise<any> {
@@ -2302,6 +2299,8 @@ class ApiClient {
     payment_method?: string
     notes?: string
     terms_conditions?: string
+    reviewer?: number
+    approver?: number
     items?: Array<{
       product: number
       quantity: number
@@ -2386,6 +2385,19 @@ class ApiClient {
   async submitPro(id: number | string): Promise<any> {
     return this.request(`/pros/${id}/submit/`, {
       method: 'POST'
+    })
+  }
+
+  async reviewPro(id: number | string): Promise<any> {
+    return this.request(`/pros/${id}/review/`, {
+      method: 'POST'
+    })
+  }
+
+  async reviewRejectPro(id: number | string, reason?: string): Promise<any> {
+    return this.request(`/pros/${id}/review-reject/`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason || '' })
     })
   }
 
@@ -2741,12 +2753,7 @@ class ApiClient {
     department?: string
     ordering?: string
   }): Promise<any> {
-    // Only fetch essential fields, exclude unnecessary ones like title, department, purpose, priority
-    const requestParams = {
-      ...params,
-      fields: 'id,prf_number,estimated_total,status,requested_by_name,created_at,total_items,customer_name,client_id,client_type'
-    }
-    return this.get('/prfs/', requestParams)
+    return this.get('/prfs/', params)
   }
 
   async getPrfById(id: number | string): Promise<any> {
@@ -2763,6 +2770,8 @@ class ApiClient {
     expected_delivery_date?: string
     estimated_total?: number
     budget_code?: string
+    reviewer?: number
+    approver?: number
     client_id?: number
     items?: Array<{
       product: number
@@ -2793,14 +2802,25 @@ class ApiClient {
     return this.request(`/prfs/${id}/submit/`, { method: 'POST' })
   }
 
+  async reviewPrf(id: number | string): Promise<any> {
+    return this.request(`/prfs/${id}/review/`, { method: 'POST' })
+  }
+
+  async reviewRejectPrf(id: number | string, reason?: string): Promise<any> {
+    return this.request(`/prfs/${id}/review-reject/`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason || '' })
+    })
+  }
+
   async approvePrf(id: number | string): Promise<any> {
     return this.request(`/prfs/${id}/approve/`, { method: 'POST' })
   }
 
-  async rejectPrf(id: number | string, reason: string): Promise<any> {
+  async rejectPrf(id: number | string, reason?: string): Promise<any> {
     return this.request(`/prfs/${id}/reject/`, {
       method: 'POST',
-      body: JSON.stringify({ reason })
+      body: JSON.stringify({ reason: reason || '' })
     })
   }
 
