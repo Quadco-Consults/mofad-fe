@@ -24,13 +24,13 @@ export default function HomePage() {
   }, [isAuthenticated, isLoading, router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">
       <div className="text-center">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">MOFAD</h1>
           <p className="text-lg text-gray-600">Distribution Management System</p>
         </div>
-        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary-500" />
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-orange-500" />
         <p className="mt-4 text-gray-500">Loading...</p>
       </div>
     </div>
