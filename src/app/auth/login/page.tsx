@@ -13,6 +13,20 @@ export default function LoginPage() {
   const { login, isLoading, error, clearError } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [sessionExpiredMessage, setSessionExpiredMessage] = useState('')
+
+  // Check for session expired parameter
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      if (urlParams.get('session_expired') === 'true') {
+        setSessionExpiredMessage('Your session has expired. Please log in again.')
+        // Clear the query parameter
+        const newUrl = window.location.pathname
+        window.history.replaceState({}, '', newUrl)
+      }
+    }
+  }, [])
 
   // Clear any lingering errors when the login page loads
   useEffect(() => {
@@ -75,6 +89,13 @@ export default function LoginPage() {
               </p>
             </div>
           </div>
+
+          {/* Session Expired Message */}
+          {sessionExpiredMessage && (
+            <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-r-lg">
+              <p className="text-yellow-700 text-sm font-medium">{sessionExpiredMessage}</p>
+            </div>
+          )}
 
           {/* Error Message */}
           {error && (

@@ -161,12 +161,15 @@ class ApiClient {
     }
   }
 
-  // Clear authentication token
+  // Clear authentication token and all auth data
   clearAuthToken() {
     this.authToken = null
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('refresh_token')
+      localStorage.removeItem('auth_user')
+      // Also clear Zustand persisted state
+      localStorage.removeItem('auth-storage')
     }
   }
 
@@ -266,8 +269,14 @@ class ApiClient {
           // Retry the request with the new token
           return this.request<T>(endpoint, options, false)
         }
-        // Token refresh failed - clear auth and throw
+        // Token refresh failed - clear auth and redirect to login
         this.clearAuthToken()
+
+        // Redirect to login page
+        if (typeof window !== 'undefined') {
+          window.location.href = '/auth/login?session_expired=true'
+        }
+
         throw {
           message: 'Session expired. Please log in again.',
           status: 401
