@@ -121,7 +121,7 @@ export default function CustomerDetailPage() {
       <AppLayout>
         <div className="p-6 text-center">
           <h2 className="text-2xl font-bold text-gray-900">Customer Not Found</h2>
-          <p className="text-gray-500 mt-2">The customer you're looking for doesn't exist.</p>
+          <p className="text-gray-500 mt-2">The customer you&apos;re looking for doesn&apos;t exist.</p>
           <Button onClick={() => router.back()} className="mt-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Go Back

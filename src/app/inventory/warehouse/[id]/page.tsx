@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import api from '@/lib/api-client'
-import { Eye, CheckCircle, XCircle, Plus, Package, Warehouse, AlertTriangle, TrendingUp, TrendingDown, Loader2, AlertCircle as AlertCircleIcon, ArrowLeft, MapPin } from 'lucide-react'
+import { Eye, CheckCircle, XCircle, Plus, Package, Warehouse, AlertTriangle, TrendingUp, TrendingDown, Loader2, AlertCircle as AlertCircleIcon, ArrowLeft, MapPin, Search, Filter, FileText, Calendar, User, ArrowUp, ArrowDown, Settings } from 'lucide-react'
 
 interface InventoryItem {
   id: number
@@ -183,16 +183,27 @@ export default function WarehouseInventoryPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showDeclineModal, setShowDeclineModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'inventory' | 'receipts' | 'issues'>('inventory')
   const [selectedReceipt, setSelectedReceipt] = useState<PendingReceipt | null>(null)
   const [selectedIssue, setSelectedIssue] = useState<PendingIssue | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'out-of-stock'>('all')
+  const [showReceiveGoodsModal, setShowReceiveGoodsModal] = useState(false)
+  const [receiveQuantity, setReceiveQuantity] = useState<number>(0)
+  const [showIssueGoodsModal, setShowIssueGoodsModal] = useState(false)
+  const [issueQuantity, setIssueQuantity] = useState<number>(0)
 
   // Fetch warehouse details
   const { data: warehouseData, isLoading: warehouseLoading, error: warehouseError } = useQuery({
     queryKey: ['warehouse', warehouseId],
     queryFn: () => api.getWarehouseById(warehouseId),
     enabled: !!warehouseId
+  })
+
+  // Fetch all products
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['products-all'],
+    queryFn: () => api.getProducts({ page: 1, size: 1000 }), // Fetch all products
   })
 
   // Fetch warehouse inventory
@@ -234,7 +245,72 @@ export default function WarehouseInventoryPage() {
     staleTime: 5 * 60 * 1000 // 5 minutes
   })
 
-  const inventoryItems = inventoryResponse?.results || []
+  // Get all products and warehouse inventory
+  const allProducts = productsData?.results || (Array.isArray(productsData) ? productsData : [])
+  const warehouseInventory = inventoryResponse?.results || []
+
+  // Create a map of warehouse inventory by product ID
+  const inventoryMap = new Map<number, InventoryItem>()
+  warehouseInventory.forEach((item: InventoryItem) => {
+    if (item.product?.id) {
+      inventoryMap.set(item.product.id, item)
+    }
+  })
+
+  // Merge all products with warehouse inventory data
+  const allInventoryItems: InventoryItem[] = allProducts.map((product: any) => {
+    const warehouseItem = inventoryMap.get(product.id)
+
+    if (warehouseItem) {
+      // Product exists in warehouse, use actual data
+      return warehouseItem
+    } else {
+      // Product not in warehouse, create entry with 0 stock
+      return {
+        id: 0,
+        product: {
+          id: product.id,
+          name: product.name,
+          code: product.code,
+          category: product.category,
+          cost_price: product.cost_price,
+          selling_price: product.direct_sales_price || product.retail_sales_price,
+        },
+        warehouse: warehouseData ? {
+          id: warehouseData.id,
+          name: warehouseData.name,
+          location: warehouseData.location,
+        } : null,
+        current_stock: 0,
+        reorder_level: product.reorder_point || product.minimum_stock_level || 0,
+        unit_cost: product.cost_price,
+        total_value: 0,
+        last_updated: product.updated_at,
+        status: 'out-of-stock' as const,
+        supplier_name: product.primary_supplier,
+      }
+    }
+  })
+
+  // Apply filters
+  const inventoryItems = allInventoryItems.filter((item) => {
+    // Search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      const matchesSearch =
+        item.product?.name?.toLowerCase().includes(searchLower) ||
+        item.product?.code?.toLowerCase().includes(searchLower) ||
+        item.product?.category?.toLowerCase().includes(searchLower)
+
+      if (!matchesSearch) return false
+    }
+
+    // Stock filter
+    if (stockFilter === 'in-stock' && item.current_stock === 0) return false
+    if (stockFilter === 'out-of-stock' && item.current_stock > 0) return false
+
+    return true
+  })
 
   const handleSuccess = () => {
     if (selectedItem) {
@@ -253,8 +329,9 @@ export default function WarehouseInventoryPage() {
   }
 
   const viewDetails = (item: InventoryItem) => {
-    setSelectedItem(item)
-    setShowDetailsModal(true)
+    if (item.product?.id) {
+      router.push(`/inventory/warehouse/${warehouseId}/product/${item.product.id}`)
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -401,7 +478,7 @@ export default function WarehouseInventoryPage() {
           <div className="bg-white rounded-lg shadow-sm p-8 text-center">
             <AlertCircleIcon className="h-8 w-8 mx-auto text-red-500 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Warehouse Not Found</h3>
-            <p className="text-gray-600 mb-4">The warehouse you're looking for doesn't exist or you don't have access to it.</p>
+            <p className="text-gray-600 mb-4">The warehouse you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.</p>
             <button
               onClick={() => router.push('/inventory/warehouse')}
               className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
@@ -414,8 +491,39 @@ export default function WarehouseInventoryPage() {
         {/* Tab Content */}
         {!warehouseError && activeTab === 'inventory' && (
           <div className="space-y-6">
+            {/* Search and Filters */}
+            {!warehouseLoading && !warehouseError && (
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by product name, code, or category..."
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <select
+                      className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      value={stockFilter}
+                      onChange={(e) => setStockFilter(e.target.value as any)}
+                    >
+                      <option value="all">All Products</option>
+                      <option value="in-stock">In Stock Only</option>
+                      <option value="out-of-stock">Out of Stock</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Loading state */}
-            {(inventoryLoading || warehouseLoading) && (
+            {(inventoryLoading || warehouseLoading || productsLoading) && (
               <div className="flex items-center justify-center p-12">
                 <div className="text-center">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto text-orange-500 mb-4" />
@@ -435,14 +543,17 @@ export default function WarehouseInventoryPage() {
             )}
 
             {/* Summary Cards */}
-            {!inventoryLoading && !warehouseLoading && !inventoryError && (
+            {!inventoryLoading && !warehouseLoading && !productsLoading && !inventoryError && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="bg-white p-6 rounded-lg shadow-lg">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Total Products</p>
-                        <p className="text-2xl font-bold text-gray-900">{inventoryItems.length}</p>
+                        <p className="text-2xl font-bold text-gray-900">{allInventoryItems.length}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {allInventoryItems.filter(item => item.current_stock > 0).length} in stock
+                        </p>
                       </div>
                       <Package className="h-8 w-8 text-blue-600" />
                     </div>
@@ -452,7 +563,7 @@ export default function WarehouseInventoryPage() {
                       <div>
                         <p className="text-sm font-medium text-gray-600">Total Value</p>
                         <p className="text-2xl font-bold text-gray-900">
-                          ₦{inventoryItems.reduce((sum, item) => sum + (item.total_value || 0), 0).toLocaleString()}
+                          ₦{allInventoryItems.reduce((sum, item) => sum + (item.total_value || 0), 0).toLocaleString()}
                         </p>
                       </div>
                       <Warehouse className="h-8 w-8 text-green-600" />
@@ -463,7 +574,7 @@ export default function WarehouseInventoryPage() {
                       <div>
                         <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
                         <p className="text-2xl font-bold text-gray-900">
-                          {inventoryItems.filter(item => item.status === 'low-stock').length}
+                          {allInventoryItems.filter(item => item.status === 'low-stock').length}
                         </p>
                       </div>
                       <AlertTriangle className="h-8 w-8 text-yellow-600" />
@@ -474,7 +585,7 @@ export default function WarehouseInventoryPage() {
                       <div>
                         <p className="text-sm font-medium text-gray-600">Out of Stock</p>
                         <p className="text-2xl font-bold text-gray-900">
-                          {inventoryItems.filter(item => item.status === 'out-of-stock').length}
+                          {allInventoryItems.filter(item => item.status === 'out-of-stock').length}
                         </p>
                       </div>
                       <XCircle className="h-8 w-8 text-red-600" />
@@ -485,7 +596,7 @@ export default function WarehouseInventoryPage() {
             )}
 
         {/* Main Table */}
-        {!inventoryLoading && !warehouseLoading && !inventoryError && (
+        {!inventoryLoading && !warehouseLoading && !productsLoading && !inventoryError && (
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
             <table className="w-full">
               <thead>
@@ -510,12 +621,22 @@ export default function WarehouseInventoryPage() {
                   </tr>
                 ) : (
                   inventoryItems.map((item, index) => (
-                    <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <tr
+                      key={`${item.product?.id}-${item.id}`}
+                      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${item.current_stock === 0 ? 'opacity-60' : ''}`}
+                    >
                       <td className="px-6 py-4 text-sm text-gray-900 font-medium">
                         {item.product?.code || `ID-${item.id}`}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                        {item.product?.name || 'Unknown Product'}
+                        <div className="flex items-center gap-2">
+                          {item.product?.name || 'Unknown Product'}
+                          {item.current_stock === 0 && (
+                            <span className="px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded">
+                              Not in warehouse
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(item.product?.category || '')}`}>
@@ -631,7 +752,11 @@ export default function WarehouseInventoryPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button
                             className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3 py-1 rounded text-xs hover:from-orange-600 hover:to-amber-600"
-                            onClick={() => setSelectedReceipt(receipt)}
+                            onClick={() => {
+                              setSelectedReceipt(receipt)
+                              setReceiveQuantity(receipt.pendingQty)
+                              setShowReceiveGoodsModal(true)
+                            }}
                           >
                             Receive Goods
                           </button>
@@ -710,7 +835,11 @@ export default function WarehouseInventoryPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button
                             className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3 py-1 rounded text-xs hover:from-orange-600 hover:to-amber-600"
-                            onClick={() => setSelectedIssue(issue)}
+                            onClick={() => {
+                              setSelectedIssue(issue)
+                              setIssueQuantity(issue.pendingQty)
+                              setShowIssueGoodsModal(true)
+                            }}
                           >
                             Issue Goods
                           </button>
@@ -719,65 +848,6 @@ export default function WarehouseInventoryPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Product Details Modal */}
-        {showDetailsModal && selectedItem && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Product Details</h3>
-                <button
-                  onClick={() => setShowDetailsModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <XCircle className="h-6 w-6" />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-3">Product Information</h4>
-                    <div className="space-y-2">
-                      <p><span className="font-medium">Product Code:</span> {selectedItem.product?.code || `ID-${selectedItem.id}`}</p>
-                      <p><span className="font-medium">Product Name:</span> {selectedItem.product?.name || 'Unknown Product'}</p>
-                      <p><span className="font-medium">Category:</span> {selectedItem.product?.category || 'N/A'}</p>
-                      <p><span className="font-medium">Supplier:</span> {selectedItem.supplier_name || 'N/A'}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-3">Stock Information</h4>
-                    <div className="space-y-2">
-                      <p><span className="font-medium">Current Stock:</span> {selectedItem.current_stock?.toLocaleString() || '0'} units</p>
-                      <p><span className="font-medium">Reorder Level:</span> {selectedItem.reorder_level?.toLocaleString() || '0'} units</p>
-                      <p><span className="font-medium">Unit Price:</span> ₦{(selectedItem.unit_cost || selectedItem.product?.cost_price || 0).toLocaleString()}</p>
-                      <p><span className="font-medium">Total Value:</span> ₦{(selectedItem.total_value || 0).toLocaleString()}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Location & Status</h4>
-                  <div className="space-y-2">
-                    <p><span className="font-medium">Warehouse Location:</span> {selectedItem.warehouse?.location || selectedItem.warehouse?.name || 'N/A'}</p>
-                    <p><span className="font-medium">Last Updated:</span> {selectedItem.last_updated || 'N/A'}</p>
-                    <p><span className="font-medium">Status:</span> {getStatusBadge(selectedItem.status)}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end mt-6">
-                <button
-                  onClick={() => setShowDetailsModal(false)}
-                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg hover:from-orange-600 hover:to-amber-600"
-                >
-                  Close
-                </button>
               </div>
             </div>
           </div>
@@ -836,6 +906,374 @@ export default function WarehouseInventoryPage() {
                     Mark Reviewed
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Issue Goods Modal */}
+        {showIssueGoodsModal && selectedIssue && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-xl font-semibold text-gray-900">Issue Goods - {selectedIssue.prfNumber}</h3>
+                <button
+                  onClick={() => {
+                    setShowIssueGoodsModal(false)
+                    setSelectedIssue(null)
+                    setIssueQuantity(0)
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircle className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Request Details Section */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-gray-900 mb-3">Request Details</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">PRF Number</p>
+                      <p className="font-medium text-gray-900">{selectedIssue.prfNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Department</p>
+                      <p className="font-medium text-gray-900">{selectedIssue.department}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Requested By</p>
+                      <p className="font-medium text-gray-900">{selectedIssue.requestedBy}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Request Date</p>
+                      <p className="font-medium text-gray-900">{selectedIssue.requestDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Product Code</p>
+                      <p className="font-medium text-gray-900">{selectedIssue.productCode}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Product Name</p>
+                      <p className="font-medium text-gray-900">{selectedIssue.productName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Urgency</p>
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        selectedIssue.urgency === 'high' ? 'bg-red-100 text-red-800' :
+                        selectedIssue.urgency === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {selectedIssue.urgency.charAt(0).toUpperCase() + selectedIssue.urgency.slice(1)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Status</p>
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        selectedIssue.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        selectedIssue.status === 'partial' ? 'bg-blue-100 text-blue-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {selectedIssue.status.charAt(0).toUpperCase() + selectedIssue.status.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quantity Summary */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-sm text-blue-800 font-medium">Requested Quantity</p>
+                    <p className="text-2xl font-bold text-blue-600">{selectedIssue.requestedQty.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <p className="text-sm text-green-800 font-medium">Already Issued</p>
+                    <p className="text-2xl font-bold text-green-600">{selectedIssue.issuedQty.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-orange-50 p-4 rounded-lg">
+                    <p className="text-sm text-orange-800 font-medium">Pending</p>
+                    <p className="text-2xl font-bold text-orange-600">{selectedIssue.pendingQty.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                {/* Issue Quantity Form */}
+                <div className="border-t pt-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">Record Issued Quantity</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Quantity Issuing Now <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg"
+                        value={issueQuantity}
+                        onChange={(e) => setIssueQuantity(Number(e.target.value))}
+                        min="0"
+                        max={selectedIssue.pendingQty}
+                        placeholder="Enter quantity to issue"
+                      />
+                      <p className="text-sm text-gray-500 mt-1">
+                        Maximum: {selectedIssue.pendingQty.toLocaleString()} units
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Unit Price</label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50"
+                        value={`₦${selectedIssue.unitPrice.toLocaleString()}`}
+                        disabled
+                      />
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-700 font-medium">Total Value of This Issue:</span>
+                        <span className="text-2xl font-bold text-gray-900">
+                          ₦{(issueQuantity * selectedIssue.unitPrice).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Issue Date</label>
+                      <input
+                        type="date"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        defaultValue={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Issued To (Name)</label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        defaultValue={selectedIssue.requestedBy}
+                        placeholder="Name of person receiving the goods"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Employee ID / Signature (Optional)</label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        placeholder="Employee ID or digital signature"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Purpose / Notes</label>
+                      <textarea
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        rows={3}
+                        placeholder="Purpose of issue or additional notes"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
+                <button
+                  onClick={() => {
+                    setShowIssueGoodsModal(false)
+                    setSelectedIssue(null)
+                    setIssueQuantity(0)
+                  }}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    // TODO: Implement issue goods logic
+                    console.log('Issuing goods:', {
+                      issue: selectedIssue,
+                      quantity: issueQuantity
+                    })
+                    setShowIssueGoodsModal(false)
+                    setSelectedIssue(null)
+                    setIssueQuantity(0)
+                  }}
+                  className="px-6 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={issueQuantity <= 0 || issueQuantity > selectedIssue.pendingQty}
+                >
+                  Confirm Issue
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Receive Goods Modal */}
+        {showReceiveGoodsModal && selectedReceipt && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-xl font-semibold text-gray-900">Receive Goods - {selectedReceipt.proNumber}</h3>
+                <button
+                  onClick={() => {
+                    setShowReceiveGoodsModal(false)
+                    setSelectedReceipt(null)
+                    setReceiveQuantity(0)
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircle className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Order Details Section */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-gray-900 mb-3">Order Details</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">PRO Number</p>
+                      <p className="font-medium text-gray-900">{selectedReceipt.proNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Supplier</p>
+                      <p className="font-medium text-gray-900">{selectedReceipt.supplierName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Product Code</p>
+                      <p className="font-medium text-gray-900">{selectedReceipt.productCode}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Product Name</p>
+                      <p className="font-medium text-gray-900">{selectedReceipt.productName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Order Date</p>
+                      <p className="font-medium text-gray-900">{selectedReceipt.orderDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Expected Date</p>
+                      <p className="font-medium text-gray-900">{selectedReceipt.expectedDate}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quantity Summary */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-sm text-blue-800 font-medium">Ordered Quantity</p>
+                    <p className="text-2xl font-bold text-blue-600">{selectedReceipt.orderedQty.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <p className="text-sm text-green-800 font-medium">Already Received</p>
+                    <p className="text-2xl font-bold text-green-600">{selectedReceipt.receivedQty.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-orange-50 p-4 rounded-lg">
+                    <p className="text-sm text-orange-800 font-medium">Pending</p>
+                    <p className="text-2xl font-bold text-orange-600">{selectedReceipt.pendingQty.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                {/* Receive Quantity Form */}
+                <div className="border-t pt-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">Record Received Quantity</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Quantity Receiving Now <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg"
+                        value={receiveQuantity}
+                        onChange={(e) => setReceiveQuantity(Number(e.target.value))}
+                        min="0"
+                        max={selectedReceipt.pendingQty}
+                        placeholder="Enter quantity received"
+                      />
+                      <p className="text-sm text-gray-500 mt-1">
+                        Maximum: {selectedReceipt.pendingQty.toLocaleString()} units
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Unit Price</label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50"
+                        value={`₦${selectedReceipt.unitPrice.toLocaleString()}`}
+                        disabled
+                      />
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-700 font-medium">Total Value of This Receipt:</span>
+                        <span className="text-2xl font-bold text-gray-900">
+                          ₦{(receiveQuantity * selectedReceipt.unitPrice).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Batch Number (Optional)</label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        placeholder="Enter batch number if applicable"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Receipt Date</label>
+                      <input
+                        type="date"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        defaultValue={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                      <textarea
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        rows={3}
+                        placeholder="Add any notes about this receipt (condition, quality, etc.)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
+                <button
+                  onClick={() => {
+                    setShowReceiveGoodsModal(false)
+                    setSelectedReceipt(null)
+                    setReceiveQuantity(0)
+                  }}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    // TODO: Implement receive goods logic
+                    console.log('Receiving goods:', {
+                      receipt: selectedReceipt,
+                      quantity: receiveQuantity
+                    })
+                    setShowReceiveGoodsModal(false)
+                    setSelectedReceipt(null)
+                    setReceiveQuantity(0)
+                  }}
+                  className="px-6 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={receiveQuantity <= 0 || receiveQuantity > selectedReceipt.pendingQty}
+                >
+                  Confirm Receipt
+                </button>
               </div>
             </div>
           </div>

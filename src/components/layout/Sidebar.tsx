@@ -123,6 +123,11 @@ const navigationSections = [
         icon: Car,
         color: 'from-gray-500 to-gray-600',
         roles: PRIVILEGED_ROLES,
+        children: [
+          { label: 'Lubebays', href: '/channels/lubebays', icon: Car },
+          { label: 'Lodgements', href: '/channels/lubebays/lodgements', icon: DollarSign },
+          { label: 'Expenses', href: '/channels/lubebays/expenses', icon: Receipt },
+        ],
       },
       {
         label: 'Store Keeper',

@@ -414,7 +414,7 @@ export default function SubstoreDashboard() {
                   <DollarSign className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Today's Sales</p>
+                  <p className="text-sm text-gray-600">Today&apos;s Sales</p>
                   <p className="text-xl font-bold text-green-600">{formatCurrency(todaysSalesAmount)}</p>
                 </div>
               </div>

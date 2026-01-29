@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import api from '@/lib/api-client'
 import {
   ArrowLeft,
   Save,
@@ -28,6 +30,7 @@ import {
 // Memo interfaces
 interface MemoItem {
   id: number
+  product_id?: number
   description: string
   quantity?: number
   unit?: string
@@ -99,6 +102,14 @@ const formatCurrency = (amount: number) => {
 export default function CreateMemoPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+
+  // Fetch products for dropdown
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['products-all'],
+    queryFn: () => api.getProducts({ page: 1, size: 1000 }),
+  })
+
+  const products = productsData?.results || (Array.isArray(productsData) ? productsData : [])
 
   const [formData, setFormData] = useState<MemoFormData>({
     title: '',
@@ -479,7 +490,7 @@ export default function CreateMemoPage() {
                     <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                       <ShoppingCart className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                       <p className="text-gray-600 font-medium">No items added yet</p>
-                      <p className="text-gray-500 text-sm">Click "Add Item" to start adding items to your request</p>
+                      <p className="text-gray-500 text-sm">Click &quot;Add Item&quot; to start adding items to your request</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -500,14 +511,38 @@ export default function CreateMemoPage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
-                                <input
-                                  type="text"
-                                  placeholder="Item description"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                  value={item.description}
-                                  onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                                />
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Product / Service *</label>
+                                <select
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                                  value={item.product_id || ''}
+                                  onChange={(e) => {
+                                    const productId = parseInt(e.target.value)
+                                    const selectedProduct = products.find((p: any) => p.id === productId)
+
+                                    if (selectedProduct) {
+                                      updateItem(item.id, 'product_id', productId)
+                                      updateItem(item.id, 'description', selectedProduct.name)
+                                      updateItem(item.id, 'unitCost', selectedProduct.cost_price || 0)
+                                    } else {
+                                      updateItem(item.id, 'product_id', 0)
+                                      updateItem(item.id, 'description', '')
+                                    }
+                                  }}
+                                >
+                                  <option value="">Select a product or service</option>
+                                  {productsLoading ? (
+                                    <option disabled>Loading products...</option>
+                                  ) : (
+                                    products.map((product: any) => (
+                                      <option key={product.id} value={product.id}>
+                                        {product.code} - {product.name}
+                                      </option>
+                                    ))
+                                  )}
+                                </select>
+                                {item.description && (
+                                  <p className="mt-1 text-sm text-gray-600">{item.description}</p>
+                                )}
                               </div>
 
                               <div>

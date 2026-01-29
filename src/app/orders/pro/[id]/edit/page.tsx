@@ -308,7 +308,7 @@ export default function EditPROPage() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Purchase Order Not Found</h2>
             <p className="text-gray-600 mb-6 max-w-md mx-auto">
-              The purchase order you're trying to edit doesn't exist or may have been removed.
+              The purchase order you&apos;re trying to edit doesn&apos;t exist or may have been removed.
             </p>
             <Button onClick={() => router.back()} className="mofad-btn-primary">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -767,7 +767,7 @@ export default function EditPROPage() {
                     <h4 className="font-medium text-gray-900 text-sm">Editing PRO</h4>
                     <p className="text-xs text-gray-600 mt-1">
                       You can modify the supplier information, delivery details, and product items.
-                      Changes will be saved when you click "Update PRO".
+                      Changes will be saved when you click &quot;Update PRO&quot;.
                     </p>
                   </div>
                 </div>

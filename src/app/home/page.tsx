@@ -74,7 +74,7 @@ export default function HomePage() {
               </h2>
 
               <p className="text-lg text-[#4B4F58] font-medium leading-relaxed max-w-4xl mx-auto" style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
-                Nigeria's leading distributor of synthetic and mineral lubricants, serving the West African market with premium quality products and exceptional service.
+                Nigeria&apos;s leading distributor of synthetic and mineral lubricants, serving the West African market with premium quality products and exceptional service.
               </p>
             </div>
 
@@ -379,7 +379,7 @@ export default function HomePage() {
                 </div>
               </div>
               <p className="text-[#4B4F58] leading-relaxed" style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontSize: '15px' }}>
-                Nigeria's leading distributor of synthetic and mineral lubricants across West Africa.
+                Nigeria&apos;s leading distributor of synthetic and mineral lubricants across West Africa.
               </p>
               <div className="text-sm text-[#4B4F58] space-y-2 mt-4" style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontSize: '15px' }}>
                 <div className="flex items-center space-x-2">

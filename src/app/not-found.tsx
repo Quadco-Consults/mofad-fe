@@ -21,7 +21,7 @@ export default function NotFound() {
 
           {/* Description */}
           <p className="text-gray-600 mb-6">
-            Sorry, we couldn't find the page you're looking for. It might have been moved, deleted, or never existed.
+            Sorry, we couldn&apos;t find the page you&apos;re looking for. It might have been moved, deleted, or never existed.
           </p>
 
           {/* Suggestions */}

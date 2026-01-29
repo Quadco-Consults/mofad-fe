@@ -282,7 +282,7 @@ function ResetPasswordContent() {
           {/* Resend OTP */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-500 mb-2">
-              Didn't receive the code?
+              Didn&apos;t receive the code?
             </p>
             <button
               onClick={handleResendOtp}

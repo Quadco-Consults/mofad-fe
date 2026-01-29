@@ -68,9 +68,6 @@ export default function LoginPage() {
               <h1 className="text-3xl font-bold text-gray-900 mb-3">
                 Welcome Back
               </h1>
-              <h2 className="text-xl font-semibold text-orange-600 mb-2">
-                Unlock Efficiency with EMMS Today!
-              </h2>
               <p className="text-gray-600 font-medium text-base leading-relaxed">
                 Your trusted and reliable Partner in energy distribution.
                 We strive to provide the best and most satisfactory experience
@@ -172,7 +169,7 @@ export default function LoginPage() {
             {/* Footer Text */}
             <div className="text-center">
               <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <button
                   onClick={() => {
                     alert('Please contact your administrator for account access')
@@ -211,7 +208,7 @@ export default function LoginPage() {
             <h2 className="text-4xl font-bold mb-4">MOFAD Energy</h2>
             <p className="text-xl font-semibold mb-6">Enterprise Management System</p>
             <p className="text-lg leading-relaxed opacity-90">
-              Streamlining operations across Nigeria's energy distribution network with
+              Streamlining operations across Nigeria&apos;s energy distribution network with
               cutting-edge technology and unmatched reliability.
             </p>
           </div>

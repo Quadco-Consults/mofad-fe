@@ -37,7 +37,7 @@ export default function AboutPage() {
               About <span className="text-orange-300">MOFAD Energy Solutions</span>
             </h1>
             <p className="text-xl text-white/90 max-w-3xl mx-auto leading-relaxed" style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontSize: '15px' }}>
-              Nigeria's leading distributor of synthetic and mineral lubricants, built on a foundation of integrity,
+              Nigeria&apos;s leading distributor of synthetic and mineral lubricants, built on a foundation of integrity,
               trust, and unwavering commitment to excellence in the oil and gas industry.
             </p>
           </div>
@@ -55,7 +55,7 @@ export default function AboutPage() {
             </div>
             <h2 className="text-4xl font-black text-[#3a3a3a] mb-6" style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
               Mission, Vision & Goals for
-              <span className="block text-[#0170B9]">West Africa's Energy Future</span>
+              <span className="block text-[#0170B9]">West Africa&apos;s Energy Future</span>
             </h2>
           </div>
 
@@ -212,7 +212,7 @@ export default function AboutPage() {
                     <CheckCircle className="w-6 h-6 text-[#0170B9] mt-1" />
                     <div>
                       <h4 className="font-semibold text-[#3a3a3a]" style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>Marketing Excellence</h4>
-                      <p className="text-[#4B4F58] text-sm" style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontSize: '15px' }}>As a marketing company we have pushed our partners' brands, products and services</p>
+                      <p className="text-[#4B4F58] text-sm" style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontSize: '15px' }}>As a marketing company we have pushed our partners&apos; brands, products and services</p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3">
@@ -413,7 +413,7 @@ export default function AboutPage() {
                 </div>
               </div>
               <p className="text-[#4B4F58] leading-relaxed" style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontSize: '15px' }}>
-                Nigeria's leading distributor of synthetic and mineral lubricants across West Africa.
+                Nigeria&apos;s leading distributor of synthetic and mineral lubricants across West Africa.
               </p>
               <div className="text-sm text-[#4B4F58] space-y-2 mt-4" style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontSize: '15px' }}>
                 <div className="flex items-center space-x-2">

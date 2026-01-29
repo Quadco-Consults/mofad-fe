@@ -331,7 +331,7 @@ export default function ExpensesPage() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Decline Expense</h2>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to decline "{selectedExpense?.expenseName}"?
+              Are you sure you want to decline &quot;{selectedExpense?.expenseName}&quot;?
             </p>
             <div className="flex gap-3">
               <button

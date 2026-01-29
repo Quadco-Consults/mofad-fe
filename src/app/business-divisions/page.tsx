@@ -107,7 +107,7 @@ export default function BusinessDivisions() {
               className="text-xl md:text-2xl text-blue-100 mb-8 leading-relaxed"
               style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
             >
-              Comprehensive solutions across energy, technology, and business intelligence to power your organization's success
+              Comprehensive solutions across energy, technology, and business intelligence to power your organization&apos;s success
             </p>
           </div>
         </div>
@@ -229,7 +229,7 @@ export default function BusinessDivisions() {
             className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto"
             style={{ fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
           >
-            Let's discuss how our business divisions can contribute to your organization's growth and success
+            Let&apos;s discuss how our business divisions can contribute to your organization&apos;s growth and success
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button

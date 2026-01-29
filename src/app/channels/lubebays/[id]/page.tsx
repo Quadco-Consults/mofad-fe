@@ -216,9 +216,10 @@ export default function LubebayDashboardPage() {
   const router = useRouter()
   const lubebayId = params.id as string
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'services'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'services' | 'lodgements'>('overview')
   const [showRecordSaleModal, setShowRecordSaleModal] = useState(false)
   const [showRecordServiceModal, setShowRecordServiceModal] = useState(false)
+  const [showCreateLodgementModal, setShowCreateLodgementModal] = useState(false)
 
   // Lubricant sale form state (simplified - no customer details)
   const [saleForm, setSaleForm] = useState({
@@ -538,7 +539,7 @@ export default function LubebayDashboardPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Today's Revenue</p>
+                  <p className="text-sm text-muted-foreground">Today&apos;s Revenue</p>
                   <p className="text-2xl font-bold text-primary">{formatCurrency(totalRevenueToday)}</p>
                 </div>
                 <DollarSign className="w-8 h-8 text-primary/60" />

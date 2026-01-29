@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search,
@@ -9,16 +10,14 @@ import {
   CheckCircle,
   AlertCircle,
   XCircle,
-  DollarSign,
   X,
   ArrowDownLeft,
   ChevronLeft,
   ChevronRight,
   RefreshCw,
-  FileText,
+  Wrench,
+  ShoppingCart,
   CreditCard,
-  TrendingDown,
-  TrendingUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -27,40 +26,25 @@ import { useToast } from '@/components/ui/Toast'
 import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 
-interface PRF {
-  id: number
-  prf_number: string
-  title: string
-  description: string | null
-  estimated_total: number
-  status: string
-  client_type: string | null
-  client_id: number | null
-  customer_name: string | null
-  requested_by_name: string | null
-  created_at: string
-  approved_at: string | null
-  // Payment tracking fields
-  total_lodged?: number
-  outstanding_balance?: number
-  payment_status?: 'unpaid' | 'partially_paid' | 'paid' | 'overpaid'
-  lodgements?: LodgementSummary[]
-}
-
-interface LodgementSummary {
-  id: number
-  lodgement_number: string
-  amount_lodged: number
-  lodgement_date: string
-  approval_status: string
-  payment_method: string
+interface DailySalesSummary {
+  id: string
+  lubebay_id: number
+  lubebay_name: string
+  transaction_date: string
+  transaction_type: 'lubricant_sales' | 'services'
+  total_transactions: number
+  total_amount: number
+  lodged_amount: number
+  outstanding_amount: number
+  lodgement_status: 'unlodged' | 'partially_lodged' | 'fully_lodged'
+  transactions: any[]
 }
 
 interface Lodgement {
   id: number
   lodgement_number: string
-  prf: number | null
-  prf_number?: string
+  lubebay: number | null
+  lubebay_name?: string
   amount_lodged: number
   expected_amount: number
   variance: number
@@ -70,16 +54,15 @@ interface Lodgement {
   deposit_slip_number?: string
   reference_number?: string
   description?: string
-  notes?: string
   approval_status: string
-  rejection_reason?: string
   lodged_by_name?: string
-  approved_by_name?: string
   created_at: string
 }
 
 interface LodgementFormData {
-  prf: number
+  lubebay: number
+  transaction_date: string
+  transaction_type: 'lubricant_sales' | 'services'
   amount_lodged: number
   lodgement_date: string
   payment_method: string
@@ -87,65 +70,77 @@ interface LodgementFormData {
   account_number?: string
   deposit_slip_number?: string
   reference_number?: string
-  transaction_reference?: string
   description?: string
   notes?: string
 }
 
-function LodgementsPage() {
+function LubebayLodgementsPage() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'prfs' | 'lodgements'>('prfs')
+  const [activeTab, setActiveTab] = useState<'summaries' | 'lodgements'>('summaries')
 
   // Pagination state
-  const [prfPage, setprfPage] = useState(1)
-  const [lodgementPage, setLodgementPage] = useState(1)
+  const [summariesPage, setSummariesPage] = useState(1)
+  const [lodgementsPage, setLodgementsPage] = useState(1)
   const [pageSize] = useState(20)
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all')
+  const [lodgementStatusFilter, setLodgementStatusFilter] = useState<string>('all')
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState<string>('all')
 
   // Modal state
-  const [showAddModal, setShowAddModal] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
-  const [selectedPRF, setSelectedPRF] = useState<PRF | null>(null)
+  const [selectedSummary, setSelectedSummary] = useState<DailySalesSummary | null>(null)
   const [selectedLodgement, setSelectedLodgement] = useState<Lodgement | null>(null)
 
   // Form state
   const [formData, setFormData] = useState<LodgementFormData>({
-    prf: 0,
+    lubebay: 0,
+    transaction_date: '',
+    transaction_type: 'lubricant_sales',
     amount_lodged: 0,
     lodgement_date: new Date().toISOString().split('T')[0],
     payment_method: 'bank_transfer',
   })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
-  // Fetch PRFs with payment status
-  const { data: prfData, isLoading: prfsLoading, refetch: refetchPRFs } = useQuery({
-    queryKey: ['prfs-for-lodgement', prfPage, pageSize, searchTerm, statusFilter, paymentStatusFilter],
+  // Fetch daily sales summaries
+  const { data: summariesData, isLoading: summariesLoading, refetch: refetchSummaries } = useQuery({
+    queryKey: ['lubebay-daily-summaries', summariesPage, pageSize, searchTerm, lodgementStatusFilter, transactionTypeFilter],
     queryFn: async () => {
+      // In real implementation, this would call the API
+      // For now, return mock data structure
       const params: Record<string, any> = {
-        page: prfPage,
+        page: summariesPage,
         page_size: pageSize,
-        status: 'approved,fulfilled,partially_fulfilled', // Only show approved PRFs
       }
       if (searchTerm) params.search = searchTerm
-      return apiClient.getPrfs(params)
+      if (lodgementStatusFilter !== 'all') params.lodgement_status = lodgementStatusFilter
+      if (transactionTypeFilter !== 'all') params.transaction_type = transactionTypeFilter
+
+      // Mock API call - replace with actual endpoint
+      try {
+        return await apiClient.get('/lubebay-daily-summaries/', params)
+      } catch {
+        // Return empty for now
+        return { results: [], count: 0 }
+      }
     },
   })
 
   // Fetch lodgements
   const { data: lodgementsData, isLoading: lodgementsLoading, refetch: refetchLodgements } = useQuery({
-    queryKey: ['customer-lodgements', lodgementPage, pageSize, searchTerm],
+    queryKey: ['lubebay-lodgements', lodgementsPage, pageSize, searchTerm],
     queryFn: async () => {
       const params: Record<string, any> = {
-        page: lodgementPage,
+        page: lodgementsPage,
         page_size: pageSize,
-        lodgement_type: 'customer',
+        lodgement_type: 'lubebay',
       }
       if (searchTerm) params.search = searchTerm
       return apiClient.getLodgements(params)
@@ -161,48 +156,27 @@ function LodgementsPage() {
     return []
   }
 
-  const prfs = extractResults(prfData)
+  const summaries = extractResults(summariesData)
   const lodgements = extractResults(lodgementsData)
-  const prfTotalCount = prfData?.count || prfs.length
-  const prfTotalPages = Math.ceil(prfTotalCount / pageSize) || 1
-  const lodgementTotalCount = lodgementsData?.count || lodgements.length
-  const lodgementTotalPages = Math.ceil(lodgementTotalCount / pageSize) || 1
-
-  // Calculate payment status for each PRF
-  const getPRFWithPaymentStatus = (prf: PRF) => {
-    const total = Number(prf.estimated_total || 0)
-    const lodged = Number(prf.total_lodged || 0)
-    const outstanding = total - lodged
-
-    let paymentStatus: 'unpaid' | 'partially_paid' | 'paid' | 'overpaid' = 'unpaid'
-    if (lodged === 0) paymentStatus = 'unpaid'
-    else if (lodged < total) paymentStatus = 'partially_paid'
-    else if (lodged === total) paymentStatus = 'paid'
-    else paymentStatus = 'overpaid'
-
-    return {
-      ...prf,
-      total_lodged: lodged,
-      outstanding_balance: outstanding,
-      payment_status: paymentStatus,
-    }
-  }
+  const summariesTotalCount = summariesData?.count || summaries.length
+  const summariesTotalPages = Math.ceil(summariesTotalCount / pageSize) || 1
+  const lodgementsTotalCount = lodgementsData?.count || lodgements.length
+  const lodgementsTotalPages = Math.ceil(lodgementsTotalCount / pageSize) || 1
 
   // Mutations
   const createMutation = useMutation({
     mutationFn: (data: LodgementFormData) => {
       const payload = {
         ...data,
-        lodgement_type: 'customer',
-        customer: selectedPRF?.client_id,
-        expected_amount: selectedPRF?.estimated_total || 0,
+        lodgement_type: 'lubebay',
+        expected_amount: selectedSummary?.total_amount || 0,
       }
       return apiClient.createLodgement(payload)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['prfs-for-lodgement'] })
-      queryClient.invalidateQueries({ queryKey: ['customer-lodgements'] })
-      setShowAddModal(false)
+      queryClient.invalidateQueries({ queryKey: ['lubebay-daily-summaries'] })
+      queryClient.invalidateQueries({ queryKey: ['lubebay-lodgements'] })
+      setShowCreateModal(false)
       resetForm()
       addToast({ type: 'success', title: 'Success', message: 'Lodgement created successfully' })
     },
@@ -213,13 +187,15 @@ function LodgementsPage() {
 
   const resetForm = () => {
     setFormData({
-      prf: 0,
+      lubebay: 0,
+      transaction_date: '',
+      transaction_type: 'lubricant_sales',
       amount_lodged: 0,
       lodgement_date: new Date().toISOString().split('T')[0],
       payment_method: 'bank_transfer',
     })
     setFormErrors({})
-    setSelectedPRF(null)
+    setSelectedSummary(null)
   }
 
   const validateForm = (): boolean => {
@@ -242,35 +218,50 @@ function LodgementsPage() {
     createMutation.mutate(formData)
   }
 
-  const handleCreateLodgement = (prf: PRF) => {
-    const prfWithStatus = getPRFWithPaymentStatus(prf)
-    setSelectedPRF(prfWithStatus)
+  const handleCreateLodgement = (summary: DailySalesSummary) => {
+    setSelectedSummary(summary)
     setFormData({
       ...formData,
-      prf: prf.id,
-      amount_lodged: prfWithStatus.outstanding_balance || 0,
+      lubebay: summary.lubebay_id,
+      transaction_date: summary.transaction_date,
+      transaction_type: summary.transaction_type,
+      amount_lodged: summary.outstanding_amount,
     })
-    setShowAddModal(true)
+    setShowCreateModal(true)
   }
 
-  const getPaymentStatusBadge = (status: string) => {
+  const getLodgementStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      unpaid: 'bg-red-100 text-red-800',
-      partially_paid: 'bg-yellow-100 text-yellow-800',
-      paid: 'bg-green-100 text-green-800',
-      overpaid: 'bg-blue-100 text-blue-800',
+      unlodged: 'bg-red-100 text-red-800',
+      partially_lodged: 'bg-yellow-100 text-yellow-800',
+      fully_lodged: 'bg-green-100 text-green-800',
     }
     return styles[status] || 'bg-gray-100 text-gray-800'
   }
 
-  const getPaymentStatusLabel = (status: string) => {
+  const getLodgementStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      unpaid: 'Unpaid',
-      partially_paid: 'Partially Paid',
-      paid: 'Paid',
-      overpaid: 'Overpaid',
+      unlodged: 'Unlodged',
+      partially_lodged: 'Partially Lodged',
+      fully_lodged: 'Fully Lodged',
     }
     return labels[status] || status
+  }
+
+  const getTransactionTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      lubricant_sales: 'Lubricant Sales',
+      services: 'Service Revenue',
+    }
+    return labels[type] || type
+  }
+
+  const getTransactionTypeIcon = (type: string) => {
+    return type === 'lubricant_sales' ? (
+      <ShoppingCart className="w-4 h-4 text-blue-600" />
+    ) : (
+      <Wrench className="w-4 h-4 text-green-600" />
+    )
   }
 
   const getPaymentMethodLabel = (method: string) => {
@@ -290,11 +281,11 @@ function LodgementsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">PRF Lodgements & Payments</h1>
-            <p className="text-gray-600">Match customer payments to their PRF invoices</p>
+            <h1 className="text-2xl font-bold text-gray-900">Lubebay Lodgements</h1>
+            <p className="text-gray-600">Track daily sales summaries and bank lodgements from all lubebays</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => activeTab === 'prfs' ? refetchPRFs() : refetchLodgements()}>
+            <Button variant="outline" onClick={() => activeTab === 'summaries' ? refetchSummaries() : refetchLodgements()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
@@ -306,14 +297,14 @@ function LodgementsPage() {
           <nav className="-mb-px flex space-x-8">
             <button
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'prfs'
+                activeTab === 'summaries'
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
-              onClick={() => setActiveTab('prfs')}
+              onClick={() => setActiveTab('summaries')}
             >
-              <FileText className="w-4 h-4 inline mr-2" />
-              PRF Invoices
+              <ShoppingCart className="w-4 h-4 inline mr-2" />
+              Daily Sales Summaries
             </button>
             <button
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -335,23 +326,54 @@ function LodgementsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder={activeTab === 'prfs' ? 'Search PRFs...' : 'Search lodgements...'}
+              placeholder={activeTab === 'summaries' ? 'Search lubebays...' : 'Search lodgements...'}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value)
-                setprfPage(1)
-                setLodgementPage(1)
+                setSummariesPage(1)
+                setLodgementsPage(1)
               }}
             />
           </div>
+
+          {activeTab === 'summaries' && (
+            <>
+              <select
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                value={lodgementStatusFilter}
+                onChange={(e) => {
+                  setLodgementStatusFilter(e.target.value)
+                  setSummariesPage(1)
+                }}
+              >
+                <option value="all">All Status</option>
+                <option value="unlodged">Unlodged</option>
+                <option value="partially_lodged">Partially Lodged</option>
+                <option value="fully_lodged">Fully Lodged</option>
+              </select>
+
+              <select
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                value={transactionTypeFilter}
+                onChange={(e) => {
+                  setTransactionTypeFilter(e.target.value)
+                  setSummariesPage(1)
+                }}
+              >
+                <option value="all">All Types</option>
+                <option value="lubricant_sales">Lubricant Sales</option>
+                <option value="services">Service Revenue</option>
+              </select>
+            </>
+          )}
         </div>
 
-        {/* PRF Invoices Tab */}
-        {activeTab === 'prfs' && (
+        {/* Daily Sales Summaries Tab */}
+        {activeTab === 'summaries' && (
           <Card>
             <CardContent className="p-0">
-              {prfsLoading ? (
+              {summariesLoading ? (
                 <div className="p-6">
                   <div className="animate-pulse space-y-3">
                     {[...Array(5)].map((_, i) => (
@@ -366,11 +388,11 @@ function LodgementsPage() {
                     ))}
                   </div>
                 </div>
-              ) : prfs.length === 0 ? (
+              ) : summaries.length === 0 ? (
                 <div className="p-12 text-center">
-                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No PRFs found</h3>
-                  <p className="text-gray-500">No approved PRF invoices available for payment matching.</p>
+                  <ShoppingCart className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No sales summaries found</h3>
+                  <p className="text-gray-500">No daily sales summaries available for lodgement.</p>
                 </div>
               ) : (
                 <>
@@ -378,63 +400,68 @@ function LodgementsPage() {
                     <table className="w-full">
                       <thead className="bg-gray-50 border-b">
                         <tr>
-                          <th className="text-left py-3 px-4 font-medium text-gray-900">PRF Invoice</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-900">Customer</th>
-                          <th className="text-right py-3 px-4 font-medium text-gray-900">Invoice Total</th>
-                          <th className="text-right py-3 px-4 font-medium text-gray-900">Amount Paid</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">Lubebay</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">Transaction Date</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
+                          <th className="text-center py-3 px-4 font-medium text-gray-900">Transactions</th>
+                          <th className="text-right py-3 px-4 font-medium text-gray-900">Total Amount</th>
+                          <th className="text-right py-3 px-4 font-medium text-gray-900">Lodged</th>
                           <th className="text-right py-3 px-4 font-medium text-gray-900">Outstanding</th>
-                          <th className="text-center py-3 px-4 font-medium text-gray-900">Payment Status</th>
-                          <th className="text-center py-3 px-4 font-medium text-gray-900">Created</th>
+                          <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
                           <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {prfs.map((prf: PRF) => {
-                          const prfWithStatus = getPRFWithPaymentStatus(prf)
-                          const canCreateLodgement = prfWithStatus.payment_status !== 'paid'
+                        {summaries.map((summary: DailySalesSummary) => {
+                          const canCreateLodgement = summary.lodgement_status !== 'fully_lodged'
 
                           return (
-                            <tr key={prf.id} className="hover:bg-gray-50">
+                            <tr key={summary.id} className="hover:bg-gray-50">
                               <td className="py-3 px-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <FileText className="w-4 h-4 text-blue-600" />
+                                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <Wrench className="w-4 h-4 text-orange-600" />
                                   </div>
                                   <div>
-                                    <div className="font-medium text-gray-900">{prf.prf_number}</div>
-                                    <div className="text-sm text-gray-500">{prf.title}</div>
+                                    <div className="font-medium text-gray-900">{summary.lubebay_name}</div>
                                   </div>
                                 </div>
                               </td>
                               <td className="py-3 px-4">
-                                <span className="text-sm text-gray-900">{prf.customer_name || 'N/A'}</span>
+                                <span className="text-sm text-gray-900">{formatDate(summary.transaction_date)}</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  {getTransactionTypeIcon(summary.transaction_type)}
+                                  <span className="text-sm">{getTransactionTypeLabel(summary.transaction_type)}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span className="text-sm text-gray-900">{summary.total_transactions}</span>
                               </td>
                               <td className="py-3 px-4 text-right">
-                                <span className="font-bold text-gray-900">{formatCurrency(Number(prf.estimated_total || 0))}</span>
+                                <span className="font-bold text-gray-900">{formatCurrency(summary.total_amount)}</span>
                               </td>
                               <td className="py-3 px-4 text-right">
-                                <span className="font-medium text-green-600">{formatCurrency(prfWithStatus.total_lodged || 0)}</span>
+                                <span className="font-medium text-green-600">{formatCurrency(summary.lodged_amount)}</span>
                               </td>
                               <td className="py-3 px-4 text-right">
-                                <span className={`font-medium ${prfWithStatus.outstanding_balance! > 0 ? 'text-red-600' : prfWithStatus.outstanding_balance! < 0 ? 'text-blue-600' : 'text-gray-600'}`}>
-                                  {formatCurrency(prfWithStatus.outstanding_balance || 0)}
+                                <span className={`font-medium ${summary.outstanding_amount > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                                  {formatCurrency(summary.outstanding_amount)}
                                 </span>
                               </td>
                               <td className="py-3 px-4 text-center">
-                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusBadge(prfWithStatus.payment_status!)}`}>
-                                  {prfWithStatus.payment_status === 'paid' ? <CheckCircle className="w-3 h-3" /> :
-                                   prfWithStatus.payment_status === 'unpaid' ? <XCircle className="w-3 h-3" /> :
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getLodgementStatusBadge(summary.lodgement_status)}`}>
+                                  {summary.lodgement_status === 'fully_lodged' ? <CheckCircle className="w-3 h-3" /> :
+                                   summary.lodgement_status === 'unlodged' ? <XCircle className="w-3 h-3" /> :
                                    <AlertCircle className="w-3 h-3" />}
-                                  {getPaymentStatusLabel(prfWithStatus.payment_status!)}
+                                  {getLodgementStatusLabel(summary.lodgement_status)}
                                 </span>
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                <span className="text-sm text-gray-600">{formatDate(prf.created_at)}</span>
                               </td>
                               <td className="py-3 px-4">
                                 <div className="flex items-center justify-center gap-2">
                                   <button
-                                    onClick={() => { setSelectedPRF(prfWithStatus); setShowViewModal(true) }}
+                                    onClick={() => { setSelectedSummary(summary); setShowViewModal(true) }}
                                     className="p-1 text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded"
                                     title="View Details"
                                   >
@@ -444,11 +471,11 @@ function LodgementsPage() {
                                     <Button
                                       size="sm"
                                       className="mofad-btn-primary"
-                                      onClick={() => handleCreateLodgement(prf)}
+                                      onClick={() => handleCreateLodgement(summary)}
                                       title="Create Lodgement"
                                     >
                                       <Plus className="h-3 w-3 mr-1" />
-                                      Pay
+                                      Lodge
                                     </Button>
                                   )}
                                 </div>
@@ -461,28 +488,28 @@ function LodgementsPage() {
                   </div>
 
                   {/* Pagination */}
-                  {prfTotalPages > 1 && (
+                  {summariesTotalPages > 1 && (
                     <div className="flex items-center justify-between px-4 py-3 border-t">
                       <div className="text-sm text-gray-600">
-                        Showing {((prfPage - 1) * pageSize) + 1} to {Math.min(prfPage * pageSize, prfTotalCount)} of {prfTotalCount} PRFs
+                        Showing {((summariesPage - 1) * pageSize) + 1} to {Math.min(summariesPage * pageSize, summariesTotalCount)} of {summariesTotalCount} summaries
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setprfPage(p => Math.max(1, p - 1))}
-                          disabled={prfPage === 1}
+                          onClick={() => setSummariesPage(p => Math.max(1, p - 1))}
+                          disabled={summariesPage === 1}
                         >
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
                         <span className="text-sm">
-                          Page {prfPage} of {prfTotalPages}
+                          Page {summariesPage} of {summariesTotalPages}
                         </span>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setprfPage(p => Math.min(prfTotalPages, p + 1))}
-                          disabled={prfPage === prfTotalPages}
+                          onClick={() => setSummariesPage(p => Math.min(summariesTotalPages, p + 1))}
+                          disabled={summariesPage === summariesTotalPages}
                         >
                           <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -517,7 +544,7 @@ function LodgementsPage() {
                 <div className="p-12 text-center">
                   <ArrowDownLeft className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No lodgements found</h3>
-                  <p className="text-gray-500">No customer lodgements have been recorded yet.</p>
+                  <p className="text-gray-500">No lubebay lodgements have been recorded yet.</p>
                 </div>
               ) : (
                 <>
@@ -526,7 +553,7 @@ function LodgementsPage() {
                       <thead className="bg-gray-50 border-b">
                         <tr>
                           <th className="text-left py-3 px-4 font-medium text-gray-900">Lodgement</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-900">PRF Number</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">Lubebay</th>
                           <th className="text-right py-3 px-4 font-medium text-gray-900">Amount</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-900">Method</th>
                           <th className="text-center py-3 px-4 font-medium text-gray-900">Date</th>
@@ -549,7 +576,7 @@ function LodgementsPage() {
                               </div>
                             </td>
                             <td className="py-3 px-4">
-                              <span className="text-sm text-gray-900">{lodgement.prf_number || 'N/A'}</span>
+                              <span className="text-sm text-gray-900">{lodgement.lubebay_name || 'N/A'}</span>
                             </td>
                             <td className="py-3 px-4 text-right">
                               <span className="font-bold text-green-600">{formatCurrency(lodgement.amount_lodged)}</span>
@@ -592,28 +619,28 @@ function LodgementsPage() {
                   </div>
 
                   {/* Pagination */}
-                  {lodgementTotalPages > 1 && (
+                  {lodgementsTotalPages > 1 && (
                     <div className="flex items-center justify-between px-4 py-3 border-t">
                       <div className="text-sm text-gray-600">
-                        Showing {((lodgementPage - 1) * pageSize) + 1} to {Math.min(lodgementPage * pageSize, lodgementTotalCount)} of {lodgementTotalCount} lodgements
+                        Showing {((lodgementsPage - 1) * pageSize) + 1} to {Math.min(lodgementsPage * pageSize, lodgementsTotalCount)} of {lodgementsTotalCount} lodgements
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setLodgementPage(p => Math.max(1, p - 1))}
-                          disabled={lodgementPage === 1}
+                          onClick={() => setLodgementsPage(p => Math.max(1, p - 1))}
+                          disabled={lodgementsPage === 1}
                         >
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
                         <span className="text-sm">
-                          Page {lodgementPage} of {lodgementTotalPages}
+                          Page {lodgementsPage} of {lodgementsTotalPages}
                         </span>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setLodgementPage(p => Math.min(lodgementTotalPages, p + 1))}
-                          disabled={lodgementPage === lodgementTotalPages}
+                          onClick={() => setLodgementsPage(p => Math.min(lodgementsTotalPages, p + 1))}
+                          disabled={lodgementsPage === lodgementsTotalPages}
                         >
                           <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -627,34 +654,42 @@ function LodgementsPage() {
         )}
 
         {/* Create Lodgement Modal */}
-        {showAddModal && selectedPRF && (
+        {showCreateModal && selectedSummary && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-4 border-b">
                 <div>
-                  <h2 className="text-lg font-semibold">Create Payment Lodgement</h2>
-                  <p className="text-sm text-gray-600">PRF: {selectedPRF.prf_number}</p>
+                  <h2 className="text-lg font-semibold">Create Lodgement</h2>
+                  <p className="text-sm text-gray-600">{selectedSummary.lubebay_name} - {formatDate(selectedSummary.transaction_date)}</p>
                 </div>
-                <button onClick={() => { setShowAddModal(false); resetForm() }}>
+                <button onClick={() => { setShowCreateModal(false); resetForm() }}>
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
 
-              {/* PRF Summary */}
+              {/* Summary */}
               <div className="p-4 bg-gray-50 border-b">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-gray-600">Invoice Total</p>
-                    <p className="font-bold text-lg">{formatCurrency(Number(selectedPRF.estimated_total || 0))}</p>
+                    <p className="text-gray-600">Transaction Type</p>
+                    <p className="font-medium">{getTransactionTypeLabel(selectedSummary.transaction_type)}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Already Paid</p>
-                    <p className="font-medium text-green-600">{formatCurrency(selectedPRF.total_lodged || 0)}</p>
+                    <p className="text-gray-600">Transactions</p>
+                    <p className="font-medium">{selectedSummary.total_transactions}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Total Amount</p>
+                    <p className="font-bold text-lg">{formatCurrency(selectedSummary.total_amount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Already Lodged</p>
+                    <p className="font-medium text-green-600">{formatCurrency(selectedSummary.lodged_amount)}</p>
                   </div>
                   <div className="col-span-2">
                     <p className="text-gray-600">Outstanding Balance</p>
-                    <p className={`font-bold text-xl ${(selectedPRF.outstanding_balance || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {formatCurrency(selectedPRF.outstanding_balance || 0)}
+                    <p className={`font-bold text-xl ${selectedSummary.outstanding_amount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {formatCurrency(selectedSummary.outstanding_amount)}
                     </p>
                   </div>
                 </div>
@@ -750,6 +785,7 @@ function LodgementsPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                     value={formData.description || ''}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder={`Lodgement for ${getTransactionTypeLabel(selectedSummary.transaction_type)} - ${formatDate(selectedSummary.transaction_date)}`}
                   />
                 </div>
 
@@ -764,7 +800,7 @@ function LodgementsPage() {
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => { setShowAddModal(false); resetForm() }}>
+                  <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); resetForm() }}>
                     Cancel
                   </Button>
                   <Button type="submit" className="mofad-btn-primary" disabled={createMutation.isPending}>
@@ -775,212 +811,9 @@ function LodgementsPage() {
             </div>
           </div>
         )}
-
-        {/* View PRF Details Modal */}
-        {showViewModal && selectedPRF && activeTab === 'prfs' && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="text-lg font-semibold">PRF Payment Details</h2>
-                <button onClick={() => { setShowViewModal(false); setSelectedPRF(null) }}>
-                  <X className="h-5 w-5 text-gray-500" />
-                </button>
-              </div>
-              <div className="p-4 space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{selectedPRF.prf_number}</h3>
-                    <p className="text-gray-600">{selectedPRF.title}</p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPaymentStatusBadge(selectedPRF.payment_status!)}`}>
-                    {getPaymentStatusLabel(selectedPRF.payment_status!)}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                  <div>
-                    <p className="text-sm text-gray-600">Invoice Total</p>
-                    <p className="font-bold text-xl text-gray-900">{formatCurrency(Number(selectedPRF.estimated_total || 0))}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total Paid</p>
-                    <p className="font-bold text-xl text-green-600">{formatCurrency(selectedPRF.total_lodged || 0)}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-sm text-gray-600">Outstanding Balance</p>
-                    <p className={`font-bold text-2xl ${(selectedPRF.outstanding_balance || 0) > 0 ? 'text-red-600' : (selectedPRF.outstanding_balance || 0) < 0 ? 'text-blue-600' : 'text-green-600'}`}>
-                      {formatCurrency(selectedPRF.outstanding_balance || 0)}
-                      {(selectedPRF.outstanding_balance || 0) < 0 && <span className="text-sm font-normal"> (Overpaid)</span>}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Customer</p>
-                    <p className="font-medium">{selectedPRF.customer_name || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Created</p>
-                    <p className="font-medium">{formatDateTime(selectedPRF.created_at)}</p>
-                  </div>
-                </div>
-
-                {selectedPRF.description && (
-                  <div className="pt-4 border-t">
-                    <p className="text-sm text-gray-600 mb-1">Description</p>
-                    <p className="text-gray-900">{selectedPRF.description}</p>
-                  </div>
-                )}
-
-                {/* Payment History */}
-                {selectedPRF.lodgements && selectedPRF.lodgements.length > 0 && (
-                  <div className="pt-4 border-t">
-                    <h4 className="font-semibold mb-3">Payment History</h4>
-                    <div className="space-y-2">
-                      {selectedPRF.lodgements.map((lodgement: LodgementSummary) => (
-                        <div key={lodgement.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-sm">{lodgement.lodgement_number}</p>
-                            <p className="text-xs text-gray-600">{formatDate(lodgement.lodgement_date)} • {getPaymentMethodLabel(lodgement.payment_method)}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-green-600">{formatCurrency(lodgement.amount_lodged)}</p>
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${lodgement.approval_status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                              {lodgement.approval_status}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-2 pt-4">
-                  {selectedPRF.payment_status !== 'paid' && (
-                    <Button
-                      className="mofad-btn-primary"
-                      onClick={() => {
-                        setShowViewModal(false)
-                        handleCreateLodgement(selectedPRF)
-                      }}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Payment
-                    </Button>
-                  )}
-                  <Button variant="outline" onClick={() => { setShowViewModal(false); setSelectedPRF(null) }}>
-                    Close
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* View Lodgement Details Modal */}
-        {showViewModal && selectedLodgement && activeTab === 'lodgements' && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="text-lg font-semibold">Lodgement Details</h2>
-                <button onClick={() => { setShowViewModal(false); setSelectedLodgement(null) }}>
-                  <X className="h-5 w-5 text-gray-500" />
-                </button>
-              </div>
-              <div className="p-4 space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <ArrowDownLeft className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{selectedLodgement.lodgement_number}</h3>
-                    <p className="text-gray-600">PRF: {selectedLodgement.prf_number || 'N/A'}</p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    selectedLodgement.approval_status === 'approved' ? 'bg-green-100 text-green-800' :
-                    selectedLodgement.approval_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {selectedLodgement.approval_status}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Amount Lodged</p>
-                    <p className="font-bold text-green-600 text-lg">{formatCurrency(selectedLodgement.amount_lodged)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Expected Amount</p>
-                    <p className="font-medium">{formatCurrency(selectedLodgement.expected_amount)}</p>
-                  </div>
-                  {selectedLodgement.variance !== 0 && (
-                    <div className="col-span-2">
-                      <p className="text-sm text-gray-600">Variance</p>
-                      <p className={`font-medium ${selectedLodgement.variance < 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                        {formatCurrency(selectedLodgement.variance)}
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm text-gray-600">Payment Method</p>
-                    <p className="font-medium">{getPaymentMethodLabel(selectedLodgement.payment_method)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Date</p>
-                    <p className="font-medium">{formatDate(selectedLodgement.lodgement_date)}</p>
-                  </div>
-                  {selectedLodgement.bank_name && (
-                    <div>
-                      <p className="text-sm text-gray-600">Bank</p>
-                      <p className="font-medium">{selectedLodgement.bank_name}</p>
-                    </div>
-                  )}
-                  {selectedLodgement.deposit_slip_number && (
-                    <div>
-                      <p className="text-sm text-gray-600">Deposit Slip #</p>
-                      <p className="font-medium">{selectedLodgement.deposit_slip_number}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm text-gray-600">Lodged By</p>
-                    <p className="font-medium">{selectedLodgement.lodged_by_name || 'Unknown'}</p>
-                  </div>
-                  {selectedLodgement.approved_by_name && (
-                    <div>
-                      <p className="text-sm text-gray-600">Approved By</p>
-                      <p className="font-medium">{selectedLodgement.approved_by_name}</p>
-                    </div>
-                  )}
-                </div>
-
-                {selectedLodgement.description && (
-                  <div className="pt-4 border-t">
-                    <p className="text-sm text-gray-600">Description</p>
-                    <p className="font-medium">{selectedLodgement.description}</p>
-                  </div>
-                )}
-
-                {selectedLodgement.rejection_reason && (
-                  <div className="pt-4 border-t">
-                    <p className="text-sm text-gray-600">Rejection Reason</p>
-                    <p className="font-medium text-red-600">{selectedLodgement.rejection_reason}</p>
-                  </div>
-                )}
-
-                <div className="flex justify-end pt-4">
-                  <Button variant="outline" onClick={() => { setShowViewModal(false); setSelectedLodgement(null) }}>
-                    Close
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </AppLayout>
   )
 }
 
-export default LodgementsPage
+export default LubebayLodgementsPage

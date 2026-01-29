@@ -667,7 +667,7 @@ export default function CreateStockTransferPage() {
                     <h4 className="font-medium text-gray-900 text-sm">About Stock Transfers</h4>
                     <p className="text-xs text-gray-600 mt-1">
                       Stock transfers move inventory between warehouses. After creating a transfer,
-                      it will be in 'Draft' status. Submit it for approval, then it can be shipped
+                      it will be in &apos;Draft&apos; status. Submit it for approval, then it can be shipped
                       and received at the destination warehouse.
                     </p>
                   </div>

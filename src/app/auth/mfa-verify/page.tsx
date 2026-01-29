@@ -149,7 +149,7 @@ export default function MfaVerifyPage() {
                 Two-Factor Authentication
               </h1>
               <p className="text-gray-600">
-                We've sent a verification code to <span className="text-green-600 font-medium">{pendingEmail}</span>. Please enter the code below to continue.
+                We&apos;ve sent a verification code to <span className="text-green-600 font-medium">{pendingEmail}</span>. Please enter the code below to continue.
               </p>
             </div>
           </div>
@@ -206,7 +206,7 @@ export default function MfaVerifyPage() {
           {/* Resend Code */}
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500 mb-2">
-              Didn't receive the code?
+              Didn&apos;t receive the code?
             </p>
             <button
               onClick={handleResendOtp}

@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
                 Check Your Email
               </h1>
               <p className="text-gray-600 mb-2">
-                We've sent a password reset code to:
+                We&apos;ve sent a password reset code to:
               </p>
               <p className="text-green-600 font-medium mb-4">
                 {submittedEmail}
@@ -101,7 +101,7 @@ export default function ForgotPasswordPage() {
             {/* Resend Link */}
             <div className="text-center">
               <p className="text-sm text-gray-500 mb-2">
-                Didn't receive the email?
+                Didn&apos;t receive the email?
               </p>
               <button
                 onClick={handleResendOtp}
@@ -169,7 +169,7 @@ export default function ForgotPasswordPage() {
                 Forgot Password?
               </h1>
               <p className="text-gray-600">
-                No worries! Enter your email address and we'll send you a code to reset your password.
+                No worries! Enter your email address and we&apos;ll send you a code to reset your password.
               </p>
             </div>
           </div>

@@ -187,7 +187,7 @@ export default function ProductDetailPage() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Product Not Found</h2>
             <p className="text-gray-600 mb-6 max-w-md mx-auto">
-              The product you're looking for doesn't exist or may have been removed.
+              The product you&apos;re looking for doesn&apos;t exist or may have been removed.
             </p>
             <Button onClick={() => router.back()} className="mofad-btn-primary">
               <ArrowLeft className="w-4 h-4 mr-2" />
