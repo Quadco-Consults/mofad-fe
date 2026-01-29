@@ -176,7 +176,7 @@ export default function LandingPage() {
                 </div>
 
                 <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                  Nigeria's Premier <span className="text-blue-600">Lubricants & Service</span> Provider
+                  Nigeria&apos;s Premier <span className="text-blue-600">Lubricants & Service</span> Provider
                 </h1>
 
                 <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
@@ -252,7 +252,7 @@ export default function LandingPage() {
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               From premium lubricants distribution to professional automotive services, we provide
-              comprehensive solutions that keep Nigeria's vehicles running smoothly.
+              comprehensive solutions that keep Nigeria&apos;s vehicles running smoothly.
             </p>
           </div>
 
@@ -411,7 +411,7 @@ export default function LandingPage() {
                 </h2>
 
                 <p className="text-lg text-gray-600 leading-relaxed">
-                  MOFAD Energy Solutions Limited is Nigeria's trusted distributor of premium lubricants and automotive products,
+                  MOFAD Energy Solutions Limited is Nigeria&apos;s trusted distributor of premium lubricants and automotive products,
                   operating professional service centers and lube bays that deliver exceptional quality and reliability
                   to customers across the nation.
                 </p>
@@ -425,7 +425,7 @@ export default function LandingPage() {
                   </h4>
                   <p className="text-gray-600">
                     To provide premium lubricants and exceptional automotive services through best practices
-                    that keep Nigeria's vehicles and machinery running smoothly and efficiently.
+                    that keep Nigeria&apos;s vehicles and machinery running smoothly and efficiently.
                   </p>
                 </div>
 
@@ -435,7 +435,7 @@ export default function LandingPage() {
                     Our Vision
                   </h4>
                   <p className="text-gray-600">
-                    To be Nigeria's most trusted lubricants distributor and service provider,
+                    To be Nigeria&apos;s most trusted lubricants distributor and service provider,
                     setting industry standards for quality, reliability, and customer satisfaction.
                   </p>
                 </div>
@@ -497,7 +497,7 @@ export default function LandingPage() {
               Authorized Distributor for <span className="text-blue-600">Premium Brands</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We proudly distribute products from the world's leading lubricant manufacturers,
+              We proudly distribute products from the world&apos;s leading lubricant manufacturers,
               ensuring our customers receive only the highest quality automotive fluids and parts.
             </p>
           </div>
@@ -575,7 +575,7 @@ export default function LandingPage() {
                 className="h-12 w-auto brightness-0 invert"
               />
               <p className="text-gray-300 leading-relaxed">
-                Nigeria's premier lubricants distributor and automotive service provider
+                Nigeria&apos;s premier lubricants distributor and automotive service provider
                 committed to quality, reliability, and exceptional customer satisfaction.
               </p>
               <div className="flex space-x-4">

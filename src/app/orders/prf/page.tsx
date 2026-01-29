@@ -1601,7 +1601,7 @@ export default function PRFPage() {
                   {formData.items.length === 0 && (
                     <div className="text-center py-6 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
                       <p>No products added yet</p>
-                      <p className="text-sm">Click "Add Product" to get started</p>
+                      <p className="text-sm">Click &quot;Add Product&quot; to get started</p>
                     </div>
                   )}
                 </div>
@@ -1660,7 +1660,7 @@ export default function PRFPage() {
                       value={formData.order_date}
                       readOnly
                     />
-                    <p className="text-xs text-gray-500 mt-1">Automatically set to today's date</p>
+                    <p className="text-xs text-gray-500 mt-1">Automatically set to today&apos;s date</p>
                   </div>
                 </div>
 

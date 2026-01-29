@@ -72,7 +72,7 @@ export default function GlobalError({
                 >
                   <Home className="w-4 h-4" />
                   Return Home
-                </a>
+                </Link>
               </div>
 
               {/* Support Info */}
