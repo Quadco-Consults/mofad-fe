@@ -13,7 +13,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore()
+  const { isAuthenticated, isLoading, checkAuth, _hasHydrated } = useAuthStore()
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -23,7 +23,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, [checkAuth])
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    // Only check auth after Zustand has hydrated from localStorage
+    if (_hasHydrated && !isLoading && !isAuthenticated) {
       // Save the current path before redirecting to login
       // This allows the user to return to this page after logging back in
       if (pathname) {
@@ -31,9 +32,9 @@ export function AppLayout({ children }: AppLayoutProps) {
       }
       router.push('/auth/login')
     }
-  }, [isAuthenticated, isLoading, router, pathname])
+  }, [isAuthenticated, isLoading, _hasHydrated, router, pathname])
 
-  if (isLoading) {
+  if (isLoading || !_hasHydrated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900">
         <div className="text-center">

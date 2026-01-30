@@ -12,6 +12,7 @@ interface AuthState {
   isMfaRequired: boolean
   pendingEmail: string | null
   forcePasswordReset: boolean
+  _hasHydrated: boolean
 
   // Actions
   login: (credentials: LoginForm) => Promise<{ requiresMfa?: boolean; forcePasswordReset?: boolean }>
@@ -19,6 +20,7 @@ interface AuthState {
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
   clearError: () => void
+  setHasHydrated: (hasHydrated: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -31,6 +33,7 @@ export const useAuthStore = create<AuthState>()(
       isMfaRequired: false,
       pendingEmail: null,
       forcePasswordReset: false,
+      _hasHydrated: false,
 
       login: async (credentials: LoginForm) => {
         set({ isLoading: true, error: null, isMfaRequired: false, pendingEmail: null })
@@ -158,8 +161,21 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuth: async () => {
+        // If already authenticated, don't re-check
+        const currentState = get()
+        if (currentState.isAuthenticated && currentState.user) {
+          set({ isLoading: false })
+          return
+        }
+
+        // Set loading state at the start
+        set({ isLoading: true })
+
         // Frontend-only authentication check using localStorage
-        if (typeof window === 'undefined') return
+        if (typeof window === 'undefined') {
+          set({ isLoading: false })
+          return
+        }
 
         const token = localStorage.getItem('auth_token')
         const storedUser = localStorage.getItem('auth_user')
@@ -207,6 +223,10 @@ export const useAuthStore = create<AuthState>()(
       clearError: () => {
         set({ error: null })
       },
+
+      setHasHydrated: (hasHydrated: boolean) => {
+        set({ _hasHydrated: hasHydrated })
+      },
     }),
     {
       name: 'auth-storage',
@@ -217,6 +237,11 @@ export const useAuthStore = create<AuthState>()(
         pendingEmail: state.pendingEmail,
         forcePasswordReset: state.forcePasswordReset,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      },
+      // Skip hydration check initially to prevent flash
+      skipHydration: false,
     }
   )
 )

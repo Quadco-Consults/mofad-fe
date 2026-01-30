@@ -28,9 +28,16 @@ export default function LoginPage() {
     }
   }, [])
 
-  // Clear any lingering errors when the login page loads
+  // Clear any lingering errors and invalid redirect paths when the login page loads
   useEffect(() => {
     clearError()
+    // Clear any saved landing page redirects from localStorage
+    if (typeof window !== 'undefined') {
+      const lastPath = localStorage.getItem('mofad_last_visited_path')
+      if (lastPath === '/landing' || lastPath === '/') {
+        localStorage.removeItem('mofad_last_visited_path')
+      }
+    }
   }, [clearError])
 
   const {
@@ -54,8 +61,16 @@ export default function LoginPage() {
         return
       }
 
-      // Redirect to last visited page or dashboard
-      router.push(getRedirectPath())
+      // Wait a moment for state to persist before redirecting
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Get redirect path and ensure it's not landing page
+      const redirectPath = getRedirectPath()
+      const finalPath = redirectPath === '/landing' || redirectPath === '/'
+        ? '/dashboard'
+        : redirectPath
+
+      router.push(finalPath)
     } catch (error) {
       console.error('LoginPage caught error:', error)
       // Error is handled by the store

@@ -7,21 +7,22 @@ import { Loader2 } from 'lucide-react'
 
 export default function HomePage() {
   const router = useRouter()
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore()
+  const { isAuthenticated, isLoading, checkAuth, _hasHydrated } = useAuthStore()
 
   useEffect(() => {
     checkAuth()
   }, [checkAuth])
 
   useEffect(() => {
-    if (!isLoading) {
+    // Wait for Zustand to hydrate before redirecting
+    if (_hasHydrated && !isLoading) {
       if (isAuthenticated) {
         router.push('/dashboard')
       } else {
         router.push('/landing')
       }
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, _hasHydrated, router])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">

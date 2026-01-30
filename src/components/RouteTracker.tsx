@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation'
 
 // Routes that should NOT be saved as "last visited"
 const EXCLUDED_ROUTES = [
+  '/',
+  '/landing',
   '/auth/login',
   '/auth/mfa-verify',
   '/auth/forgot-password',
