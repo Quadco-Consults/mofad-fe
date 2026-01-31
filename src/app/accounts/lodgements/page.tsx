@@ -59,8 +59,11 @@ interface LodgementSummary {
 interface Lodgement {
   id: number
   lodgement_number: string
+  lodgement_type: string
   prf: number | null
   prf_number?: string
+  customer_name?: string
+  entity_name?: string
   amount_lodged: number
   expected_amount: number
   variance: number
@@ -544,7 +547,9 @@ function LodgementsPage() {
                                 </div>
                                 <div>
                                   <div className="font-medium text-gray-900">{lodgement.lodgement_number}</div>
-                                  <div className="text-sm text-gray-500">by {lodgement.lodged_by_name || 'Unknown'}</div>
+                                  <div className="text-sm text-gray-500">
+                                    {lodgement.entity_name || lodgement.customer_name || lodgement.lodged_by_name || 'Unknown'}
+                                  </div>
                                 </div>
                               </div>
                             </td>
