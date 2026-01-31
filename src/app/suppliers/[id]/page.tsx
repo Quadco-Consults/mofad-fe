@@ -529,7 +529,7 @@ export default function SupplierDetailPage() {
                     <div className="text-right">
                       <p className="text-sm text-gray-600">Rating</p>
                       <p className="font-medium text-yellow-600">
-                        {supplier.rating ? `${supplier.rating.toFixed(1)} / 5.0` : 'Not rated'}
+                        {supplier.rating && typeof supplier.rating === 'number' ? `${Number(supplier.rating).toFixed(1)} / 5.0` : 'Not rated'}
                       </p>
                     </div>
                   </div>
