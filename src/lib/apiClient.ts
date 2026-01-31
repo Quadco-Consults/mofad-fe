@@ -1607,6 +1607,122 @@ class ApiClient {
     })
   }
 
+  // Supplier Management
+  async getSuppliers(params?: {
+    search?: string
+    status?: string
+    supplier_type?: string
+    page?: number
+    page_size?: number
+  }): Promise<any> {
+    let endpoint = '/suppliers/'
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        endpoint += `?${queryString}`
+      }
+    }
+    return this.request(endpoint)
+  }
+
+  async getSupplierById(id: number | string): Promise<any> {
+    return this.request(`/suppliers/${id}/`)
+  }
+
+  async createSupplier(data: {
+    name: string
+    contact_person: string
+    email: string
+    phone: string
+    address?: string
+    supplier_type?: string
+    payment_terms?: string
+    credit_limit?: number
+    products_supplied?: string[]
+    tax_id?: string
+    bank_account?: string
+    notes?: string
+  }): Promise<any> {
+    return this.request('/suppliers/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async updateSupplier(id: number | string, data: {
+    name?: string
+    contact_person?: string
+    email?: string
+    phone?: string
+    address?: string
+    supplier_type?: string
+    payment_terms?: string
+    credit_limit?: number
+    products_supplied?: string[]
+    tax_id?: string
+    bank_account?: string
+    notes?: string
+    status?: string
+  }): Promise<any> {
+    return this.request(`/suppliers/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async deleteSupplier(id: number | string): Promise<void> {
+    await this.request(`/suppliers/${id}/`, {
+      method: 'DELETE'
+    })
+  }
+
+  async getSupplierSummary(): Promise<any[]> {
+    return this.request('/suppliers/summary/')
+  }
+
+  async getSupplierStats(): Promise<any> {
+    return this.request('/suppliers/stats/')
+  }
+
+  async activateSupplier(id: number | string): Promise<any> {
+    return this.request(`/suppliers/${id}/activate/`, {
+      method: 'POST'
+    })
+  }
+
+  async suspendSupplier(id: number | string): Promise<any> {
+    return this.request(`/suppliers/${id}/suspend/`, {
+      method: 'POST'
+    })
+  }
+
+  async updateSupplierBalance(id: number | string, balance: number): Promise<any> {
+    return this.request(`/suppliers/${id}/update_balance/`, {
+      method: 'POST',
+      body: JSON.stringify({ balance })
+    })
+  }
+
+  async updateSupplierRating(id: number | string, rating: number): Promise<any> {
+    return this.request(`/suppliers/${id}/update_rating/`, {
+      method: 'POST',
+      body: JSON.stringify({ rating })
+    })
+  }
+
+  async bulkDeleteSuppliers(ids: (number | string)[]): Promise<any> {
+    return this.request('/suppliers/bulk_delete/', {
+      method: 'POST',
+      body: JSON.stringify({ ids })
+    })
+  }
+
   // Price Scheme Management
   async getPriceSchemes(params?: {
     search?: string

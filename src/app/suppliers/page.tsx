@@ -40,19 +40,30 @@ interface Supplier {
   email?: string
   phone?: string
   address?: string
-  tax_number?: string
-  payment_terms?: number
+  tax_id?: string
+  supplier_type?: string
+  payment_terms?: string
   credit_limit?: number
-  is_active: boolean
+  products_supplied?: string[]
+  bank_account?: string
+  notes?: string
+  status: string
+  current_balance: number
+  total_value_ytd: number
+  total_orders_ytd: number
+  rating: number
   created_at: string
   updated_at: string
+  created_by?: number
+  updated_by?: number
 
-  // Financial data
-  total_orders: number
-  total_ordered_value: number
-  total_paid: number
-  outstanding_balance: number
-  deposits: number
+  // Legacy fields for compatibility
+  is_active?: boolean
+  total_orders?: number
+  total_ordered_value?: number
+  total_paid?: number
+  outstanding_balance?: number
+  deposits?: number
   last_order_date?: string
   last_payment_date?: string
 }
@@ -112,7 +123,63 @@ export default function SuppliersPage() {
     credit_limit: null
   })
 
-  // Mock suppliers data (in real app, this would come from API)
+  // Create supplier mutation
+  const createSupplierMutation = useMutation({
+    mutationFn: (data: any) => api.createSupplier(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+      setShowAddModal(false)
+      setSelectedSupplier(null)
+      setFormData({
+        name: '',
+        contact_person: '',
+        email: '',
+        phone: '',
+        address: '',
+        tax_number: '',
+        payment_terms: 30,
+        credit_limit: null
+      })
+    },
+    onError: (error: any) => {
+      console.error('Failed to create supplier:', error)
+      alert(error.message || 'Failed to create supplier')
+    }
+  })
+
+  // Update supplier mutation
+  const updateSupplierMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => api.updateSupplier(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+      setShowAddModal(false)
+      setSelectedSupplier(null)
+      setFormData({
+        name: '',
+        contact_person: '',
+        email: '',
+        phone: '',
+        address: '',
+        tax_number: '',
+        payment_terms: 30,
+        credit_limit: null
+      })
+    },
+    onError: (error: any) => {
+      console.error('Failed to update supplier:', error)
+      alert(error.message || 'Failed to update supplier')
+    }
+  })
+
+  // Fetch suppliers from API
+  const { data: suppliersResponse, isLoading, error } = useQuery({
+    queryKey: ['suppliers', searchTerm],
+    queryFn: () => api.getSuppliers({ search: searchTerm, page_size: 100 })
+  })
+
+  const suppliers = suppliersResponse?.results || []
+
+  // Mock suppliers data (backup - will be removed)
   const mockSuppliers: Supplier[] = [
     {
       id: 1,
@@ -271,18 +338,14 @@ export default function SuppliersPage() {
     }
   ]
 
-  // Filtered suppliers based on search
-  const filteredSuppliers = mockSuppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Filtered suppliers based on search (search now done on backend)
+  const filteredSuppliers = suppliers
 
   // Calculate summary statistics
-  const totalSuppliers = mockSuppliers.length
-  const activeSuppliers = mockSuppliers.filter(s => s.is_active).length
-  const totalOutstanding = mockSuppliers.reduce((sum, s) => sum + Math.abs(s.outstanding_balance), 0)
-  const totalDeposits = mockSuppliers.reduce((sum, s) => sum + s.deposits, 0)
+  const totalSuppliers = suppliers.length
+  const activeSuppliers = suppliers.filter((s: Supplier) => s.status === 'active').length
+  const totalOutstanding = suppliers.reduce((sum: number, s: Supplier) => sum + Math.abs(s.current_balance || 0), 0)
+  const totalDeposits = 0 // Will be calculated from actual data
 
   const handleAddSupplier = () => {
     setFormData({
@@ -299,15 +362,20 @@ export default function SuppliersPage() {
   }
 
   const handleEditSupplier = (supplier: Supplier) => {
+    // Extract payment terms number from string like "Net 30"
+    const paymentTermsNum = supplier.payment_terms
+      ? parseInt(supplier.payment_terms.replace(/\D/g, '')) || 30
+      : 30
+
     setFormData({
       name: supplier.name,
       contact_person: supplier.contact_person || '',
       email: supplier.email || '',
       phone: supplier.phone || '',
       address: supplier.address || '',
-      tax_number: supplier.tax_number || '',
-      payment_terms: supplier.payment_terms || 30,
-      credit_limit: supplier.credit_limit
+      tax_number: supplier.tax_id || '',
+      payment_terms: paymentTermsNum,
+      credit_limit: supplier.credit_limit || null
     })
     setSelectedSupplier(supplier)
     setShowAddModal(true)
@@ -468,10 +536,25 @@ export default function SuppliersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredSuppliers.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center">
+                      <div className="flex items-center justify-center gap-2 text-gray-500">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Loading suppliers...
+                      </div>
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center text-red-500">
+                      Failed to load suppliers. Please try again.
+                    </td>
+                  </tr>
+                ) : filteredSuppliers.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                      {searchTerm ? 'No suppliers found matching your search.' : 'No suppliers available.'}
+                      {searchTerm ? 'No suppliers found matching your search.' : 'No suppliers available. Click "Add Supplier" to create one.'}
                     </td>
                   </tr>
                 ) : (
@@ -505,27 +588,31 @@ export default function SuppliersPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="font-medium text-gray-900">{supplier.total_orders}</div>
+                        <div className="font-medium text-gray-900">{supplier.total_orders_ytd || 0}</div>
                         <div className="text-xs text-gray-500">
                           {supplier.last_order_date ? `Last: ${new Date(supplier.last_order_date).toLocaleDateString()}` : 'No orders'}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right font-medium text-gray-900">
-                        {formatCurrency(supplier.total_ordered_value)}
+                        {formatCurrency(supplier.total_value_ytd || 0)}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        {getBalanceDisplay(supplier.outstanding_balance)}
+                        {getBalanceDisplay(supplier.current_balance || 0)}
                       </td>
                       <td className="px-6 py-4 text-right font-medium text-green-600">
-                        {formatCurrency(supplier.deposits)}
+                        {formatCurrency(0)}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          supplier.is_active
+                          supplier.status === 'active'
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                            : supplier.status === 'suspended'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : supplier.status === 'blacklisted'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
                         }`}>
-                          {supplier.is_active ? 'Active' : 'Inactive'}
+                          {supplier.status ? supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1) : 'Unknown'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -669,14 +756,48 @@ export default function SuppliersPage() {
                     setSelectedSupplier(null)
                   }}
                   className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={createSupplierMutation.isPending || updateSupplierMutation.isPending}
                 >
                   Cancel
                 </button>
                 <button
-                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all flex items-center gap-2"
+                  onClick={() => {
+                    if (!formData.name || !formData.contact_person || !formData.email || !formData.phone) {
+                      alert('Please fill in all required fields: Name, Contact Person, Email, and Phone')
+                      return
+                    }
+
+                    const submitData = {
+                      name: formData.name,
+                      contact_person: formData.contact_person,
+                      email: formData.email,
+                      phone: formData.phone,
+                      address: formData.address || '',
+                      tax_id: formData.tax_number || '',
+                      payment_terms: formData.payment_terms ? `Net ${formData.payment_terms}` : 'Net 30',
+                      credit_limit: formData.credit_limit || 0,
+                    }
+
+                    if (selectedSupplier) {
+                      updateSupplierMutation.mutate({ id: selectedSupplier.id, data: submitData })
+                    } else {
+                      createSupplierMutation.mutate(submitData)
+                    }
+                  }}
+                  disabled={createSupplierMutation.isPending || updateSupplierMutation.isPending}
+                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all flex items-center gap-2 disabled:opacity-50"
                 >
-                  <Save className="w-4 h-4" />
-                  {selectedSupplier ? 'Update' : 'Create'} Supplier
+                  {(createSupplierMutation.isPending || updateSupplierMutation.isPending) ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      {selectedSupplier ? 'Update' : 'Create'} Supplier
+                    </>
+                  )}
                 </button>
               </div>
             </div>
