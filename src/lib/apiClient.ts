@@ -1723,6 +1723,92 @@ class ApiClient {
     })
   }
 
+  // Payment Management
+  async getPayments(params?: {
+    search?: string
+    status?: string
+    payment_type?: string
+    payment_method?: string
+    reference_type?: string
+    supplier_name?: string
+    customer?: number
+    payment_date?: string
+    page?: number
+    page_size?: number
+  }): Promise<any> {
+    let endpoint = '/payments/'
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        endpoint += `?${queryString}`
+      }
+    }
+    return this.request(endpoint)
+  }
+
+  async getPaymentById(id: number | string): Promise<any> {
+    return this.request(`/payments/${id}/`)
+  }
+
+  async createPayment(data: {
+    payment_type: 'incoming' | 'outgoing'
+    amount: number
+    payment_date: string
+    payment_method: string
+    reference_type: string
+    reference_number?: string
+    customer?: number
+    supplier_name?: string
+    description: string
+    notes?: string
+    bank_account?: string
+    cheque_number?: string
+    transaction_reference?: string
+    status?: string
+  }): Promise<any> {
+    return this.request('/payments/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async updatePayment(id: number | string, data: any): Promise<any> {
+    return this.request(`/payments/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async deletePayment(id: number | string): Promise<void> {
+    await this.request(`/payments/${id}/`, {
+      method: 'DELETE'
+    })
+  }
+
+  async clearPayment(id: number | string): Promise<any> {
+    return this.request(`/payments/${id}/clear/`, {
+      method: 'POST'
+    })
+  }
+
+  async bouncePayment(id: number | string): Promise<any> {
+    return this.request(`/payments/${id}/bounce/`, {
+      method: 'POST'
+    })
+  }
+
+  async cancelPayment(id: number | string): Promise<any> {
+    return this.request(`/payments/${id}/cancel/`, {
+      method: 'POST'
+    })
+  }
+
   // Price Scheme Management
   async getPriceSchemes(params?: {
     search?: string
