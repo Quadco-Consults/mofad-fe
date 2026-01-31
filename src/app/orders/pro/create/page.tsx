@@ -38,6 +38,8 @@ interface Product {
   cost_price: number
   selling_price: number
   category_name?: string
+  primary_supplier?: string
+  brand?: string
 }
 
 interface Supplier {
@@ -258,9 +260,35 @@ function CreatePROPageContent() {
       notes: ''
     }
 
+    // Auto-suggest supplier based on product's primary supplier
+    let updatedFormData = {
+      items: [...formData.items, newItem]
+    }
+
+    // If this is the first item or supplier is not set, auto-suggest from product
+    if (formData.items.length === 0 && product.primary_supplier && !formData.supplier) {
+      updatedFormData = {
+        ...updatedFormData,
+        supplier: product.primary_supplier
+      }
+
+      addToast({
+        title: 'Supplier Auto-Selected',
+        description: `${product.primary_supplier} suggested for ${product.brand || product.name}`,
+        type: 'success'
+      })
+    } else if (product.primary_supplier && formData.supplier && formData.supplier !== product.primary_supplier) {
+      // Warn if adding product from different supplier
+      addToast({
+        title: 'Different Supplier Detected',
+        description: `This product is typically supplied by ${product.primary_supplier}, but PRO is set to ${formData.supplier}`,
+        type: 'warning'
+      })
+    }
+
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, newItem]
+      ...updatedFormData
     }))
     setShowProductDropdown(false)
     setProductSearch('')
