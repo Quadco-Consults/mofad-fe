@@ -106,6 +106,17 @@ export function PROPaymentSection({
       return
     }
 
+    // Check for overpayment and warn user
+    const paymentAmount = parseFloat(formData.amount)
+    const wouldOverpay = (paidAmount + paymentAmount) > totalAmount
+
+    if (wouldOverpay) {
+      const overpaymentAmt = (paidAmount + paymentAmount) - totalAmount
+      if (!confirm(`This payment will result in an overpayment of ₦${overpaymentAmt.toLocaleString('en-NG', { minimumFractionDigits: 2 })}. This amount will be added to the supplier's credit balance for future orders. Continue?`)) {
+        return
+      }
+    }
+
     recordPaymentMutation.mutate(formData)
   }
 

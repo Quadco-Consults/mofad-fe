@@ -308,20 +308,40 @@ export default function SupplierDetailPage() {
                 {/* Balance Information */}
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
                   <h3 className="font-semibold text-gray-900 mb-4">Financial Balance</h3>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Calculator className="h-8 w-8 text-gray-400" />
-                      <div>
-                        <p className="font-medium">Current Balance Status</p>
-                        {getBalanceDisplay(supplier.current_balance || 0)}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Calculator className="h-8 w-8 text-gray-400" />
+                        <div>
+                          <p className="font-medium">Current Balance Status</p>
+                          {getBalanceDisplay(supplier.current_balance || 0)}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-600">Rating</p>
+                        <p className="font-medium text-yellow-600">
+                          {supplier.rating && typeof supplier.rating === 'number' ? `${Number(supplier.rating).toFixed(1)} / 5.0` : 'Not rated'}
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">Rating</p>
-                      <p className="font-medium text-yellow-600">
-                        {supplier.rating && typeof supplier.rating === 'number' ? `${Number(supplier.rating).toFixed(1)} / 5.0` : 'Not rated'}
-                      </p>
-                    </div>
+
+                    {/* Credit Balance */}
+                    {supplier.credit_balance && parseFloat(supplier.credit_balance) > 0 && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center gap-3">
+                          <DollarSign className="h-6 w-6 text-blue-600" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-900">Available Credit Balance</p>
+                            <p className="text-lg font-bold text-blue-600">
+                              {formatCurrency(parseFloat(supplier.credit_balance))}
+                            </p>
+                            <p className="text-xs text-blue-700 mt-1">
+                              Prepayments and overpayments available for future orders
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
