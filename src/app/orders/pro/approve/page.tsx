@@ -299,6 +299,7 @@ export default function ApprovePROPage() {
                     <tr className="border-b border-border">
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">PRO Number</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Supplier</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Warehouse</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Items</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Total Amount</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Received Value</th>
@@ -336,6 +337,13 @@ export default function ApprovePROPage() {
                                 <div className="text-sm text-muted-foreground">{pro.supplier_contact}</div>
                               )}
                             </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            {pro.delivery_location_name ? (
+                              <span className="text-sm text-foreground">{pro.delivery_location_name}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400">Not specified</span>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-foreground">{pro.items_count} item(s)</td>
                           <td className="py-3 px-4 text-right font-medium text-foreground">
