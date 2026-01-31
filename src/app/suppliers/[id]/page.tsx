@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
+import api from '@/lib/api-client'
 import {
   ArrowLeft,
   Building,
@@ -23,7 +24,9 @@ import {
   AlertTriangle,
   Clock,
   Download,
-  Printer
+  Printer,
+  Loader2,
+  Eye
 } from 'lucide-react'
 
 interface Supplier {
@@ -33,21 +36,22 @@ interface Supplier {
   email?: string
   phone?: string
   address?: string
-  tax_number?: string
-  payment_terms?: number
+  tax_id?: string
+  supplier_type?: string
+  payment_terms?: string
   credit_limit?: number
-  is_active: boolean
+  status: string
+  current_balance: number
+  total_value_ytd: number
+  total_orders_ytd: number
+  rating: number
+  products_supplied?: string[]
+  bank_account?: string
+  notes?: string
   created_at: string
   updated_at: string
-
-  // Financial data
-  total_orders: number
-  total_ordered_value: number
-  total_paid: number
-  outstanding_balance: number
-  deposits: number
-  last_order_date?: string
-  last_payment_date?: string
+  created_by?: number
+  updated_by?: number
 }
 
 interface SupplierOrder {
@@ -79,7 +83,23 @@ export default function SupplierDetailPage() {
   const supplierId = params.id as string
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'payments'>('overview')
 
-  // Mock suppliers data (same as in the main page)
+  // Fetch supplier from API
+  const { data: supplier, isLoading: supplierLoading } = useQuery({
+    queryKey: ['supplier', supplierId],
+    queryFn: () => api.getSupplierById(supplierId),
+    enabled: !!supplierId
+  })
+
+  // Fetch PROs for this supplier
+  const { data: prosData, isLoading: prosLoading } = useQuery({
+    queryKey: ['supplier-pros', supplierId, supplier?.name],
+    queryFn: () => api.getPros({ search: supplier?.name, page_size: 100 }),
+    enabled: !!supplier?.name
+  })
+
+  const pros = prosData?.results || []
+
+  // Mock suppliers data (backup - same as in the main page)
   const mockSuppliers: Supplier[] = [
     {
       id: 1,
@@ -279,8 +299,18 @@ export default function SupplierDetailPage() {
     }
   ]
 
-  // Find the supplier
-  const supplier = mockSuppliers.find(s => s.id === parseInt(supplierId))
+  if (supplierLoading) {
+    return (
+      <AppLayout>
+        <div className="p-6 flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto text-orange-600" />
+            <p className="mt-4 text-gray-600">Loading supplier details...</p>
+          </div>
+        </div>
+      </AppLayout>
+    )
+  }
 
   if (!supplier) {
     return (
@@ -300,6 +330,12 @@ export default function SupplierDetailPage() {
       </AppLayout>
     )
   }
+
+  // Calculate stats from real PRO data
+  const totalOrders = pros.length
+  const totalOrderValue = pros.reduce((sum: number, pro: any) => sum + (parseFloat(pro.total_amount) || 0), 0)
+  const totalPaidValue = pros.reduce((sum: number, pro: any) => sum + (parseFloat(pro.received_value) || 0), 0)
+  const totalOutstanding = totalOrderValue - totalPaidValue
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -394,32 +430,41 @@ export default function SupplierDetailPage() {
             {activeTab === 'overview' && (
               <div className="space-y-6">
                 {/* Financial Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-blue-700">Total Orders</p>
-                        <p className="text-2xl font-bold text-blue-900">{supplier.total_orders}</p>
+                        <p className="text-2xl font-bold text-blue-900">{totalOrders}</p>
                       </div>
                       <Package className="h-8 w-8 text-blue-600" />
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-purple-700">Total Value</p>
+                        <p className="text-2xl font-bold text-purple-900">{formatCurrency(totalOrderValue)}</p>
+                      </div>
+                      <DollarSign className="h-8 w-8 text-purple-600" />
                     </div>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-green-700">Total Paid</p>
-                        <p className="text-2xl font-bold text-green-900">{formatCurrency(supplier.total_paid)}</p>
+                        <p className="text-sm font-medium text-green-700">Received Value</p>
+                        <p className="text-2xl font-bold text-green-900">{formatCurrency(totalPaidValue)}</p>
                       </div>
-                      <DollarSign className="h-8 w-8 text-green-600" />
+                      <CheckCircle className="h-8 w-8 text-green-600" />
                     </div>
                   </div>
-                  <div className="bg-yellow-50 p-4 rounded-lg">
+                  <div className="bg-red-50 p-4 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-yellow-700">Deposits</p>
-                        <p className="text-2xl font-bold text-yellow-900">{formatCurrency(supplier.deposits)}</p>
+                        <p className="text-sm font-medium text-red-700">Pending Value</p>
+                        <p className="text-2xl font-bold text-red-900">{formatCurrency(totalOutstanding)}</p>
                       </div>
-                      <CreditCard className="h-8 w-8 text-yellow-600" />
+                      <Clock className="h-8 w-8 text-red-600" />
                     </div>
                   </div>
                 </div>
@@ -447,13 +492,24 @@ export default function SupplierDetailPage() {
                     <h3 className="font-semibold text-gray-900 mb-3">Business Information</h3>
                     <div className="space-y-2">
                       <p className="text-sm">
-                        <span className="font-medium">Tax Number:</span> {supplier.tax_number || 'Not provided'}
+                        <span className="font-medium">Tax ID:</span> {supplier.tax_id || 'Not provided'}
                       </p>
                       <p className="text-sm">
-                        <span className="font-medium">Payment Terms:</span> {supplier.payment_terms || 'N/A'} days
+                        <span className="font-medium">Payment Terms:</span> {supplier.payment_terms || 'N/A'}
                       </p>
                       <p className="text-sm">
                         <span className="font-medium">Credit Limit:</span> {formatCurrency(supplier.credit_limit || 0)}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Status:</span>{' '}
+                        <span className={`${
+                          supplier.status === 'active' ? 'text-green-600' :
+                          supplier.status === 'suspended' ? 'text-yellow-600' :
+                          supplier.status === 'blacklisted' ? 'text-red-600' :
+                          'text-gray-600'
+                        }`}>
+                          {supplier.status ? supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1) : 'Unknown'}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -467,16 +523,13 @@ export default function SupplierDetailPage() {
                       <Calculator className="h-8 w-8 text-gray-400" />
                       <div>
                         <p className="font-medium">Current Balance Status</p>
-                        {getBalanceDisplay(supplier.outstanding_balance)}
+                        {getBalanceDisplay(supplier.current_balance || 0)}
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-gray-600">Last Payment</p>
-                      <p className="font-medium">
-                        {supplier.last_payment_date
-                          ? new Date(supplier.last_payment_date).toLocaleDateString()
-                          : 'No payments yet'
-                        }
+                      <p className="text-sm text-gray-600">Rating</p>
+                      <p className="font-medium text-yellow-600">
+                        {supplier.rating ? `${supplier.rating.toFixed(1)} / 5.0` : 'Not rated'}
                       </p>
                     </div>
                   </div>
@@ -487,43 +540,93 @@ export default function SupplierDetailPage() {
             {activeTab === 'orders' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900">Order History</h3>
-                  <span className="text-sm text-gray-600">{mockOrders.length} orders</span>
+                  <h3 className="font-semibold text-gray-900">Order History (PROs)</h3>
+                  <span className="text-sm text-gray-600">{pros.length} orders</span>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full border border-gray-200 rounded-lg">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">PRO Number</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Title</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Order Date</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Amount</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Outstanding</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {mockOrders.map((order) => (
-                        <tr key={order.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm font-medium text-blue-600">{order.pro_number}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900">{order.title}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">
-                            {new Date(order.order_date).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-                            {formatCurrency(order.total_amount)}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium text-red-600 text-right">
-                            {formatCurrency(order.outstanding_amount)}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {getStatusBadge(order.status)}
-                          </td>
+                {prosLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-6 h-6 animate-spin text-orange-600" />
+                    <span className="ml-2 text-gray-600">Loading orders...</span>
+                  </div>
+                ) : pros.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg">
+                    <Package className="w-12 h-12 mx-auto text-gray-400" />
+                    <p className="mt-4 text-gray-600">No PROs found for this supplier</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      PROs with supplier "{supplier.name}" will appear here
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border border-gray-200 rounded-lg">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">PRO Number</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Title</th>
+                          <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Items</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Created</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Total Amount</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Received Value</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Pending Value</th>
+                          <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Status</th>
+                          <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {pros.map((pro: any) => {
+                          const totalAmount = parseFloat(pro.total_amount) || 0
+                          const receivedValue = parseFloat(pro.received_value) || 0
+                          const pendingValue = parseFloat(pro.pending_value) || 0
+
+                          return (
+                            <tr key={pro.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-sm font-medium text-blue-600">
+                                {pro.pro_number}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-900">
+                                {pro.title || 'Untitled PRO'}
+                              </td>
+                              <td className="px-4 py-3 text-center text-sm text-gray-600">
+                                {pro.items_count || 0} items
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {new Date(pro.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
+                                {formatCurrency(totalAmount)}
+                              </td>
+                              <td className="px-4 py-3 text-sm font-medium text-green-600 text-right">
+                                {formatCurrency(receivedValue)}
+                              </td>
+                              <td className="px-4 py-3 text-sm font-medium text-red-600 text-right">
+                                {formatCurrency(pendingValue)}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  pro.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                  pro.status === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
+                                  pro.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {pro.status?.replace('_', ' ')}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <button
+                                  onClick={() => router.push(`/orders/pro/${pro.id}`)}
+                                  className="text-blue-600 hover:text-blue-800"
+                                  title="View Details"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
