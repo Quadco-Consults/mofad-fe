@@ -179,6 +179,8 @@ export default function WarehouseInventoryPage() {
   const queryClient = useQueryClient()
   const warehouseId = Number(params?.id)
 
+  console.log('Warehouse Page - warehouseId:', warehouseId, 'params:', params)
+
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showDeclineModal, setShowDeclineModal] = useState(false)
@@ -209,86 +211,104 @@ export default function WarehouseInventoryPage() {
   // Fetch warehouse inventory
   const { data: inventoryResponse, isLoading: inventoryLoading, error: inventoryError } = useQuery({
     queryKey: ['warehouse-inventory', warehouseId],
-    queryFn: () => api.getWarehouseInventory(warehouseId),
-    enabled: !!warehouseId
-  })
-
-  // Fetch pending receipts (mock for now as endpoint may not exist)
-  const { data: pendingReceipts = mockPendingReceipts, isLoading: receiptsLoading } = useQuery({
-    queryKey: ['pending-receipts'],
     queryFn: async () => {
-      // Try to fetch real data, fallback to mock if endpoint doesn't exist
+      console.log('Fetching inventory for warehouse:', warehouseId)
       try {
-        const response = await api.get('/warehouse-receipts/pending/')
-        return response.results || response
+        const response = await api.getWarehouseInventory(warehouseId)
+        console.log('Inventory API Response:', response)
+        return response
       } catch (error) {
-        console.warn('Pending receipts endpoint not available, using mock data')
-        return mockPendingReceipts
+        console.error('Inventory API Error:', error)
+        throw error
       }
     },
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    enabled: !!warehouseId,
+    retry: 1
   })
 
-  // Fetch pending issues (mock for now as endpoint may not exist)
-  const { data: pendingIssues = mockPendingIssues, isLoading: issuesLoading } = useQuery({
-    queryKey: ['pending-issues'],
+  // Fetch pending receipts - PROs that are approved and need to be received at this warehouse
+  const { data: pendingReceipts = [], isLoading: receiptsLoading } = useQuery({
+    queryKey: ['pending-receipts', warehouseId],
     queryFn: async () => {
-      // Try to fetch real data, fallback to mock if endpoint doesn't exist
+      // Fetch PROs that are approved and assigned to this warehouse for delivery
       try {
-        const response = await api.get('/warehouse-issues/pending/')
-        return response.results || response
+        const response = await api.getPros({
+          delivery_location: warehouseId,
+          status: 'approved,sent,confirmed',
+          delivery_status: 'pending,partially_delivered',
+          page_size: 100
+        })
+        console.log('Pending PROs for warehouse:', response)
+        return response.results || []
       } catch (error) {
-        console.warn('Pending issues endpoint not available, using mock data')
-        return mockPendingIssues
+        console.error('Error fetching pending PROs:', error)
+        return []
       }
     },
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    enabled: !!warehouseId,
+    staleTime: 2 * 60 * 1000 // 2 minutes
+  })
+
+  // Fetch pending issues - PRFs that need to pick items from this warehouse
+  const { data: pendingIssues = [], isLoading: issuesLoading } = useQuery({
+    queryKey: ['pending-issues', warehouseId],
+    queryFn: async () => {
+      // Fetch PRFs that are approved and need to pick items from this warehouse
+      try {
+        const response = await api.getPrfs({
+          delivery_location: warehouseId,
+          status: 'approved,partially_fulfilled',
+          page_size: 100
+        })
+        console.log('Pending PRFs for warehouse:', response)
+        return response.results || []
+      } catch (error) {
+        console.error('Error fetching pending PRFs:', error)
+        return []
+      }
+    },
+    enabled: !!warehouseId,
+    staleTime: 2 * 60 * 1000 // 2 minutes
   })
 
   // Get all products and warehouse inventory
   const allProducts = productsData?.results || (Array.isArray(productsData) ? productsData : [])
-  const warehouseInventory = inventoryResponse?.results || []
+  // Backend returns inventory in "inventory" field, not "results"
+  const warehouseInventory = inventoryResponse?.inventory || inventoryResponse?.results || []
 
-  // Create a map of warehouse inventory by product ID
-  const inventoryMap = new Map<number, InventoryItem>()
-  warehouseInventory.forEach((item: InventoryItem) => {
-    if (item.product?.id) {
-      inventoryMap.set(item.product.id, item)
-    }
-  })
+  // Transform backend data to match frontend expectations
+  // The serializer already provides product_name and product_code, so we use those directly
+  const allInventoryItems: InventoryItem[] = warehouseInventory.map((item: any) => {
+    // Try to get full product data for additional fields like category and pricing
+    const fullProduct = allProducts.find((p: any) => p.id === item.product)
 
-  // Merge all products with warehouse inventory data
-  const allInventoryItems: InventoryItem[] = allProducts.map((product: any) => {
-    const warehouseItem = inventoryMap.get(product.id)
-
-    if (warehouseItem) {
-      // Product exists in warehouse, use actual data
-      return warehouseItem
-    } else {
-      // Product not in warehouse, create entry with 0 stock
-      return {
-        id: 0,
-        product: {
-          id: product.id,
-          name: product.name,
-          code: product.code,
-          category: product.category,
-          cost_price: product.cost_price,
-          selling_price: product.direct_sales_price || product.retail_sales_price,
-        },
-        warehouse: warehouseData ? {
-          id: warehouseData.id,
-          name: warehouseData.name,
-          location: warehouseData.location,
-        } : null,
-        current_stock: 0,
-        reorder_level: product.reorder_point || product.minimum_stock_level || 0,
-        unit_cost: product.cost_price,
-        total_value: 0,
-        last_updated: product.updated_at,
-        status: 'out-of-stock' as const,
-        supplier_name: product.primary_supplier,
-      }
+    return {
+      id: item.id,
+      product: {
+        id: item.product,
+        // Always use the serializer data for name and code (it's more reliable)
+        name: item.product_name || 'Unknown Product',
+        code: item.product_code || `ID-${item.id}`,
+        description: item.product_description || fullProduct?.description || '',
+        // Use fullProduct for additional fields if available
+        category: fullProduct?.category || null,
+        cost_price: fullProduct?.cost_price || parseFloat(item.average_cost || 0),
+        selling_price: fullProduct?.selling_price || 0,
+      },
+      warehouse: warehouseData ? {
+        id: warehouseData.id,
+        name: warehouseData.name,
+        location: warehouseData.location,
+      } : null,
+      current_stock: parseFloat(item.quantity_on_hand || 0),
+      reorder_level: parseFloat(item.reorder_point || item.minimum_level || 0),
+      unit_cost: parseFloat(item.average_cost || 0),
+      total_value: parseFloat(item.total_cost_value || 0),
+      last_updated: item.updated_at,
+      status: parseFloat(item.quantity_on_hand || 0) === 0 ? 'out-of-stock' as const :
+              parseFloat(item.quantity_on_hand || 0) <= parseFloat(item.reorder_point || item.minimum_level || 0) ? 'low-stock' as const :
+              'in-stock' as const,
+      supplier_name: fullProduct?.primary_supplier,
     }
   })
 
@@ -538,6 +558,9 @@ export default function WarehouseInventoryPage() {
                 <div className="text-center">
                   <AlertCircleIcon className="h-8 w-8 mx-auto text-red-500 mb-4" />
                   <p className="text-gray-600">Error loading inventory data. Please try again.</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    {inventoryError instanceof Error ? inventoryError.message : String(inventoryError)}
+                  </p>
                 </div>
               </div>
             )}
@@ -603,6 +626,7 @@ export default function WarehouseInventoryPage() {
                 <tr className="bg-gradient-to-r from-orange-500 to-amber-500">
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white">Product Code</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white">Product Name</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white">Size</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white">Category</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white">Location</th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-white">Current Stock</th>
@@ -630,13 +654,21 @@ export default function WarehouseInventoryPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 font-medium">
                         <div className="flex items-center gap-2">
-                          {item.product?.name || 'Unknown Product'}
+                          <div>
+                            {item.product?.code && (
+                              <div className="text-xs text-gray-500 font-normal">{item.product.code}</div>
+                            )}
+                            <div>{item.product?.name || 'Unknown Product'}</div>
+                          </div>
                           {item.current_stock === 0 && (
                             <span className="px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded">
                               Not in warehouse
                             </span>
                           )}
                         </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 font-medium">
+                        {item.product?.description || '-'}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(item.product?.category || '')}`}>

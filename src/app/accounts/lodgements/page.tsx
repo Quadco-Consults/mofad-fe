@@ -145,7 +145,7 @@ function LodgementsPage() {
       const params: Record<string, any> = {
         page: lodgementPage,
         page_size: pageSize,
-        lodgement_type: 'customer',
+        // Remove lodgement_type filter to show all lodgements
       }
       if (searchTerm) params.search = searchTerm
       return apiClient.getLodgements(params)

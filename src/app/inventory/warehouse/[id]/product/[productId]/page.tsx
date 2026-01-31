@@ -34,11 +34,67 @@ export default function WarehouseProductDetailPage() {
     queryKey: ['warehouse-inventory', warehouseId, productId],
     queryFn: async () => {
       const response = await api.getWarehouseInventory(warehouseId)
-      const items = response?.results || []
-      return items.find((item: any) => item.product?.id === productId)
+      // Backend returns inventory in "inventory" field, and product is just an ID number
+      const items = response?.inventory || response?.results || []
+      const inventoryItem = items.find((item: any) => item.product === productId)
+
+      if (inventoryItem) {
+        // Transform to match expected structure
+        return {
+          id: inventoryItem.id,
+          current_stock: parseFloat(inventoryItem.quantity_on_hand || 0),
+          reorder_level: parseFloat(inventoryItem.reorder_point || inventoryItem.minimum_level || 0),
+          unit_cost: parseFloat(inventoryItem.average_cost || 0),
+          total_value: parseFloat(inventoryItem.total_cost_value || 0),
+          last_updated: inventoryItem.updated_at,
+          status: parseFloat(inventoryItem.quantity_on_hand || 0) === 0 ? 'out-of-stock' :
+                  parseFloat(inventoryItem.quantity_on_hand || 0) <= parseFloat(inventoryItem.reorder_point || inventoryItem.minimum_level || 0) ? 'low-stock' :
+                  'in-stock',
+        }
+      }
+      return null
     },
     enabled: !!(warehouseId && productId)
   })
+
+  // Fetch stock transactions (bin card data)
+  const { data: transactionsResponse, isLoading: transactionsLoading } = useQuery({
+    queryKey: ['stock-transactions', warehouseId, productId],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/v1/stock-transactions/', {
+          warehouse: warehouseId,
+          product: productId,
+          ordering: '-created_at',
+          page_size: 100
+        })
+        return response
+      } catch (error) {
+        console.error('Error fetching stock transactions:', error)
+        return { data: { results: [], paginator: { count: 0 } } }
+      }
+    },
+    enabled: !!(warehouseId && productId)
+  })
+
+  // Extract transactions from response
+  const transactionsData = transactionsResponse?.data || transactionsResponse
+  const transactions = transactionsData?.results || []
+  const transactionCount = transactionsData?.paginator?.count || transactions.length
+
+  // Calculate totals from transactions
+  const totals = transactions.reduce((acc: any, txn: any) => {
+    const qty = parseFloat(txn.quantity || 0)
+    const type = txn.transaction_type?.toUpperCase()
+
+    if (['RECEIVE', 'RETURN', 'ADJUSTMENT_IN', 'TRANSFER_IN', 'OPENING_BALANCE'].includes(type)) {
+      acc.received += qty
+    } else if (['ISSUE', 'TRANSFER_OUT', 'ADJUSTMENT_OUT', 'SALE'].includes(type)) {
+      acc.issued += qty
+    }
+
+    return acc
+  }, { received: 0, issued: 0 })
 
   const isLoading = warehouseLoading || productLoading || inventoryLoading
   const inventoryItem = inventoryResponse
@@ -220,48 +276,119 @@ export default function WarehouseProductDetailPage() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full">
-                        <thead className="bg-gradient-to-r from-orange-500 to-amber-500">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Date</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Ref. No</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Description</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Type</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Received</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Issued</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Balance</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Performed By</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          <tr>
-                            <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
-                              <Package className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                              <p>No transaction history available for this product in this warehouse</p>
-                              <p className="text-sm text-gray-400 mt-1">Transactions will appear here once goods are received or issued</p>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                  {transactionsLoading ? (
+                    <div className="flex items-center justify-center p-12">
+                      <div className="text-center">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-orange-500 mb-4" />
+                        <p className="text-gray-600">Loading bin card transactions...</p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="bg-white rounded-lg shadow-sm overflow-hidden border">
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full">
+                            <thead className="bg-gradient-to-r from-orange-500 to-amber-500">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Date</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Ref. No</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Description</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Type</th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Received</th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Issued</th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Balance</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Performed By</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {transactions.length > 0 ? (
+                                transactions.map((txn: any, index: number) => {
+                                  const qty = parseFloat(txn.quantity || 0)
+                                  const type = txn.transaction_type?.toUpperCase()
+                                  const isReceive = ['RECEIVE', 'RETURN', 'ADJUSTMENT_IN', 'TRANSFER_IN', 'OPENING_BALANCE'].includes(type)
+                                  const isIssue = ['ISSUE', 'TRANSFER_OUT', 'ADJUSTMENT_OUT', 'SALE'].includes(type)
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <div className="text-sm text-green-800 font-medium">Total Received</div>
-                      <div className="text-2xl font-bold text-green-600">0</div>
-                    </div>
-                    <div className="bg-red-50 p-4 rounded-lg">
-                      <div className="text-sm text-red-800 font-medium">Total Issued</div>
-                      <div className="text-2xl font-bold text-red-600">0</div>
-                    </div>
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="text-sm text-blue-800 font-medium">Current Balance</div>
-                      <div className="text-2xl font-bold text-blue-600">{inventoryItem?.current_stock?.toLocaleString() || 0}</div>
-                    </div>
-                  </div>
+                                  const typeColors: Record<string, string> = {
+                                    'RECEIVE': 'bg-green-100 text-green-800',
+                                    'ISSUE': 'bg-red-100 text-red-800',
+                                    'TRANSFER_IN': 'bg-blue-100 text-blue-800',
+                                    'TRANSFER_OUT': 'bg-orange-100 text-orange-800',
+                                    'ADJUSTMENT_IN': 'bg-purple-100 text-purple-800',
+                                    'ADJUSTMENT_OUT': 'bg-pink-100 text-pink-800',
+                                    'OPENING_BALANCE': 'bg-gray-100 text-gray-800',
+                                    'RETURN': 'bg-teal-100 text-teal-800',
+                                    'SALE': 'bg-yellow-100 text-yellow-800',
+                                  }
+
+                                  return (
+                                    <tr key={txn.id || index} className="hover:bg-gray-50">
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                        {new Date(txn.created_at).toLocaleDateString('en-GB')}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-blue-600">
+                                        {txn.reference_number || txn.transaction_number || 'N/A'}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-gray-600">
+                                        {txn.notes || txn.reason || type.replace(/_/g, ' ')}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${typeColors[type] || 'bg-gray-100 text-gray-800'}`}>
+                                          {type.replace(/_/g, ' ')}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                                        {isReceive ? (
+                                          <span className="font-semibold text-green-600">{qty.toLocaleString()}</span>
+                                        ) : (
+                                          <span className="text-gray-400">-</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                                        {isIssue ? (
+                                          <span className="font-semibold text-red-600">{qty.toLocaleString()}</span>
+                                        ) : (
+                                          <span className="text-gray-400">-</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                                        {parseFloat(txn.quantity_after || txn.stock_balance || 0).toLocaleString()}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                        {txn.created_by?.username || txn.created_by?.first_name || 'System'}
+                                      </td>
+                                    </tr>
+                                  )
+                                })
+                              ) : (
+                                <tr>
+                                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                                    <Package className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                                    <p>No transaction history available for this product in this warehouse</p>
+                                    <p className="text-sm text-gray-400 mt-1">Transactions will appear here once goods are received or issued</p>
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                        <div className="bg-green-50 p-4 rounded-lg">
+                          <div className="text-sm text-green-800 font-medium">Total Received</div>
+                          <div className="text-2xl font-bold text-green-600">{totals.received.toLocaleString()}</div>
+                        </div>
+                        <div className="bg-red-50 p-4 rounded-lg">
+                          <div className="text-sm text-red-800 font-medium">Total Issued</div>
+                          <div className="text-2xl font-bold text-red-600">{totals.issued.toLocaleString()}</div>
+                        </div>
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <div className="text-sm text-blue-800 font-medium">Current Balance</div>
+                          <div className="text-2xl font-bold text-blue-600">{inventoryItem?.current_stock?.toLocaleString() || 0}</div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
