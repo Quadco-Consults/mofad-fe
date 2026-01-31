@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import apiClient from '@/lib/apiClient'
 import { formatCurrency } from '@/lib/utils'
@@ -62,6 +62,7 @@ interface ProductSelection {
 }
 
 const StorekeeperPage = () => {
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<'issue' | 'receive'>('issue')
   const [searchTerm, setSearchTerm] = useState('')
   const [timeFilter, setTimeFilter] = useState('Last 30 days')
@@ -213,9 +214,17 @@ const StorekeeperPage = () => {
     return <span className="text-gray-500 text-sm">{checkout}</span>
   }
 
+  // Fetch selected PRO details for receiving
+  const { data: selectedProData, isLoading: proDetailsLoading } = useQuery({
+    queryKey: ['pro-details', selectedItem?.id],
+    queryFn: () => apiClient.getProById(selectedItem!.id),
+    enabled: !!selectedItem && showReceiveGoodsModal,
+  })
+
   // Event handlers
   const handleReceiveGoods = (item: StoreKeeperItem) => {
     setSelectedItem(item)
+    setSelectedProducts([]) // Reset selected products
     setShowReceiveGoodsModal(true)
   }
 
@@ -239,9 +248,36 @@ const StorekeeperPage = () => {
     setShowWaybillModal(true)
   }
 
+  // Receive goods mutation
+  const receiveGoodsMutation = useMutation({
+    mutationFn: async ({ proId, items }: { proId: number, items: Array<{ product_id: number, quantity_received: number }> }) => {
+      return apiClient.receivePro(proId, { items })
+    },
+    onSuccess: () => {
+      setShowReceiveGoodsModal(false)
+      setShowSuccessModal(true)
+      queryClient.invalidateQueries({ queryKey: ['pros-for-receive'] })
+    },
+    onError: (error: any) => {
+      alert(`Error receiving goods: ${error.message || 'Unknown error'}`)
+    }
+  })
+
   const handleConfirmReceiveGoods = () => {
-    setShowReceiveGoodsModal(false)
-    setShowSuccessModal(true)
+    if (!selectedItem || selectedProducts.length === 0) {
+      alert('Please add at least one product with quantity to receive')
+      return
+    }
+
+    const items = selectedProducts.map(p => ({
+      product_id: parseInt(p.productId),
+      quantity_received: p.quantity
+    }))
+
+    receiveGoodsMutation.mutate({
+      proId: parseInt(selectedItem.id),
+      items
+    })
   }
 
   const currentData = activeTab === 'issue' ? filteredIssuedGoods : filteredReceivedGoods
@@ -534,9 +570,11 @@ const StorekeeperPage = () => {
         {/* Receive Goods Modal */}
         {showReceiveGoodsModal && selectedItem && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Received Goods - ABM TECH LIMITED</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Receive Goods - PRO #{selectedItem.invoiceId}
+                </h3>
                 <button
                   onClick={() => setShowReceiveGoodsModal(false)}
                   className="text-gray-400 hover:text-gray-600"
@@ -545,129 +583,172 @@ const StorekeeperPage = () => {
                 </button>
               </div>
 
-              <p className="text-gray-600 mb-4">List of Received good from this PRO</p>
-
-              {/* Product List */}
-              <div className="mb-6">
-                <table className="w-full border border-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Products</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Ordered Quantity</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Received Quantity</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b">
-                      <td className="px-4 py-3 text-sm">MAGNETEC 10W40-1L</td>
-                      <td className="px-4 py-3 text-sm">100</td>
-                      <td className="px-4 py-3 text-sm">0</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="px-4 py-3 text-sm">PETRONAS 2W 50-4L</td>
-                      <td className="px-4 py-3 text-sm">54</td>
-                      <td className="px-4 py-3 text-sm">1</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="px-4 py-3 text-sm">EDGE 5W40-4L</td>
-                      <td className="px-4 py-3 text-sm">60</td>
-                      <td className="px-4 py-3 text-sm">0</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="px-4 py-3 text-sm">MAGNETEC 10W30-4L</td>
-                      <td className="px-4 py-3 text-sm">15</td>
-                      <td className="px-4 py-3 text-sm">0</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Form Section */}
-              <div className="space-y-6">
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-4">Receiving Purchase Items</h4>
-
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Requesting Staff *</label>
-                      <input
-                        type="text"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        placeholder="ELISHA DANIEL"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
-                      <input
-                        type="date"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        defaultValue="2024-05-31"
-                      />
+              {proDetailsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading PRO details...</p>
+                </div>
+              ) : selectedProData ? (
+                <>
+                  {/* PRO Info */}
+                  <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Supplier:</span>
+                        <span className="ml-2 font-medium">{selectedProData.supplier || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Total Amount:</span>
+                        <span className="ml-2 font-medium">{formatCurrency(selectedProData.total_amount)}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Destination Warehouse:</span>
+                        <span className="ml-2 font-medium text-orange-600">
+                          {selectedProData.delivery_location_name || 'Not specified'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">PRO Number:</span>
+                        <span className="ml-2 font-medium">{selectedProData.pro_number}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-4">Select Received Products and Quantity</h4>
+                  {/* Product List */}
+                  <div className="mb-6">
+                    <h4 className="font-medium text-gray-900 mb-4">Items to Receive</h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border border-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Product</th>
+                            <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Ordered Qty</th>
+                            <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Already Received</th>
+                            <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Remaining</th>
+                            <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Receive Now</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedProData.items && selectedProData.items.length > 0 ? (
+                            selectedProData.items.map((item: any, index: number) => {
+                              const remaining = parseFloat(item.quantity_remaining || item.quantity || 0)
+                              const currentQty = selectedProducts.find(p => p.productId === String(item.product))?.quantity || 0
 
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Select Product *</label>
-                          <select className="w-full p-3 border border-gray-300 rounded-lg">
-                            <option>ABSALCO OIL</option>
-                            <option>MAGNETEC 10W40-1L</option>
-                            <option>PETRONAS 2W 50-4L</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Quantity *</label>
-                          <input
-                            type="number"
-                            className="w-full p-3 border border-gray-300 rounded-lg"
-                            placeholder="1"
-                          />
-                        </div>
-                      </div>
+                              return (
+                                <tr key={index} className="border-b">
+                                  <td className="px-4 py-3 text-sm">
+                                    <div>{item.product_name}</div>
+                                    <div className="text-xs text-gray-500">{item.product_code}</div>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
+                                  <td className="px-4 py-3 text-sm text-right">
+                                    {item.quantity_delivered || 0}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-right font-medium">
+                                    {remaining}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-right">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max={remaining}
+                                      value={currentQty}
+                                      onChange={(e) => {
+                                        const qty = parseFloat(e.target.value) || 0
+                                        const productId = String(item.product)
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Select Product *</label>
-                          <select className="w-full p-3 border border-gray-300 rounded-lg">
-                            <option>Select Product</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Quantity *</label>
-                          <input
-                            type="number"
-                            className="w-full p-3 border border-gray-300 rounded-lg"
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-
-                      <button className="text-orange-500 text-sm hover:text-orange-600">
-                        + Add Product
-                      </button>
+                                        if (qty <= 0) {
+                                          // Remove from list
+                                          setSelectedProducts(prev => prev.filter(p => p.productId !== productId))
+                                        } else if (qty <= remaining) {
+                                          // Add or update
+                                          setSelectedProducts(prev => {
+                                            const existing = prev.find(p => p.productId === productId)
+                                            if (existing) {
+                                              return prev.map(p =>
+                                                p.productId === productId
+                                                  ? { ...p, quantity: qty }
+                                                  : p
+                                              )
+                                            } else {
+                                              return [...prev, {
+                                                productId,
+                                                productCode: item.product_code,
+                                                productName: item.product_name,
+                                                quantity: qty,
+                                                unitPrice: item.unit_price || 0,
+                                                totalPrice: qty * (item.unit_price || 0)
+                                              }]
+                                            }
+                                          })
+                                        }
+                                      }}
+                                      className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
+                                      placeholder="0"
+                                    />
+                                  </td>
+                                </tr>
+                              )
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                                No items found in this PRO
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex justify-end space-x-4">
-                  <button
-                    onClick={() => setShowReceiveGoodsModal(false)}
-                    className="px-6 py-2 text-gray-600 hover:text-gray-800"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleConfirmReceiveGoods}
-                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                  >
-                    Confirm Receive
-                  </button>
+                  {/* Summary */}
+                  {selectedProducts.length > 0 && (
+                    <div className="mb-6 bg-blue-50 p-4 rounded-lg">
+                      <h5 className="font-medium text-gray-900 mb-2">Receiving Summary</h5>
+                      <div className="space-y-1 text-sm">
+                        {selectedProducts.map((p, idx) => (
+                          <div key={idx} className="flex justify-between">
+                            <span>{p.productName}</span>
+                            <span className="font-medium">Qty: {p.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end space-x-4">
+                    <button
+                      onClick={() => setShowReceiveGoodsModal(false)}
+                      className="px-6 py-2 text-gray-600 hover:text-gray-800"
+                      disabled={receiveGoodsMutation.isPending}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmReceiveGoods}
+                      disabled={receiveGoodsMutation.isPending || selectedProducts.length === 0}
+                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+                    >
+                      {receiveGoodsMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Confirm Receive ({selectedProducts.length} items)
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Failed to load PRO details
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}

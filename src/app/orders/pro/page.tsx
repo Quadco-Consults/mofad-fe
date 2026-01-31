@@ -442,6 +442,7 @@ export default function PROPage() {
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">PRO Number</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Title</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Supplier</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Warehouse</th>
                       <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total Amount</th>
                       <th className="text-right py-3 px-4 font-medium text-muted-foreground">Received Value</th>
                       <th className="text-right py-3 px-4 font-medium text-muted-foreground">Pending Value</th>
@@ -487,6 +488,13 @@ export default function PROPage() {
                             </div>
                           </td>
                           <td className="py-3 px-4">{pro.supplier || '-'}</td>
+                          <td className="py-3 px-4">
+                            {pro.delivery_location_name ? (
+                              <span className="text-sm">{pro.delivery_location_name}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400">Not specified</span>
+                            )}
+                          </td>
                           <td className="py-3 px-4 text-right font-medium">
                             {formatCurrency(totalOrderValue)}
                           </td>
