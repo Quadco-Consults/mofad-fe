@@ -2652,6 +2652,28 @@ class ApiClient {
     })
   }
 
+  // PRO Payment Management
+  async recordProPayment(proId: number | string, data: {
+    amount: number
+    payment_date: string
+    payment_method?: string
+    description?: string
+    notes?: string
+    transaction_reference?: string
+    bank_account?: string
+    cheque_number?: string
+    status?: string
+  }): Promise<any> {
+    return this.request(`/pros/${proId}/record-payment/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async getProPayments(proId: number | string): Promise<any> {
+    return this.request(`/pros/${proId}/payments/`)
+  }
+
   // Stock Transfer Management
   async getStockTransfers(params?: {
     search?: string

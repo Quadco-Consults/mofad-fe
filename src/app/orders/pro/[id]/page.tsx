@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
+import { PROPaymentSection } from '@/components/orders/PROPaymentSection'
 import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import {
@@ -74,6 +75,7 @@ interface PRO {
   status: 'draft' | 'pending_review' | 'reviewed' | 'pending_approval' | 'approved' | 'rejected' | 'sent' | 'confirmed' | 'partially_delivered' | 'delivered' | 'cancelled'
   delivery_status: 'pending' | 'partial' | 'completed'
   total_amount: string | number
+  paid_amount?: string | number
   subtotal?: string | number
   tax_amount?: string | number
   discount_amount?: string | number
@@ -927,6 +929,17 @@ export default function PRODetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Payment History Section */}
+            {pro.status !== 'draft' && pro.status !== 'cancelled' && pro.status !== 'rejected' && (
+              <PROPaymentSection
+                proId={pro.id}
+                proNumber={pro.pro_number}
+                supplierName={pro.supplier || 'Unknown Supplier'}
+                totalAmount={parseFloat(String(pro.total_amount)) || 0}
+                paidAmount={parseFloat(String(pro.paid_amount || 0))}
+              />
+            )}
           </div>
         )}
 
