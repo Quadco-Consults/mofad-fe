@@ -17,18 +17,31 @@ import apiClient from '@/lib/apiClient'
 import { useToast } from '@/components/ui/Toast'
 
 interface Lubebay {
-  id: string
+  id: string | number
   name: string
-  location: string
-  state: string
-  manager: string
-  phone: string
-  status: 'active' | 'maintenance' | 'inactive'
-  bays: number
-  monthlyRevenue: number
-  lastInspection: string
-  services: string[]
-  rating: number
+  code: string
+  address: string | null
+  state_name: string | null
+  location_name: string | null
+  manager_name: string | null
+  phone: string | null
+  email: string | null
+  is_active: boolean
+  current_balance: string
+  warehouse_name: string | null
+  substore_name: string | null
+  opening_time: string | null
+  closing_time: string | null
+  // Legacy support for mock data
+  location?: string
+  state?: string
+  manager?: string
+  status?: 'active' | 'maintenance' | 'inactive'
+  bays?: number
+  monthlyRevenue?: number
+  lastInspection?: string
+  services?: string[]
+  rating?: number
 }
 
 export default function LubebaysPage() {
@@ -73,13 +86,22 @@ export default function LubebaysPage() {
   const { data: lubebaysData, isLoading, error, refetch } = useQuery({
     queryKey: ['lubebays', currentPage, pageSize, searchTerm, statusFilter],
     queryFn: async () => {
-      const params: Record<string, string> = {
-        page: String(currentPage),
-        size: String(pageSize),
+      try {
+        const params: Record<string, string> = {
+          page: String(currentPage),
+          size: String(pageSize),
+        }
+        if (statusFilter !== 'all') params.is_active = statusFilter === 'active' ? 'true' : 'false'
+        if (searchTerm) params.search = searchTerm
+
+        console.log('Fetching lubebays with params:', params)
+        const response = await apiClient.get('/lubebays/', params)
+        console.log('Lubebays response:', response)
+        return response
+      } catch (err) {
+        console.error('Error fetching lubebays:', err)
+        throw err
       }
-      if (statusFilter !== 'all') params.is_active = statusFilter === 'active' ? 'true' : 'false'
-      if (searchTerm) params.search = searchTerm
-      return apiClient.get('/lubebays/', params)
     },
   })
 
@@ -244,11 +266,20 @@ export default function LubebaysPage() {
   }
 
   const filteredLubebays = lubebays.filter((lubebay: any) => {
-    const matchesSearch = lubebay.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lubebay.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lubebay.state.toLowerCase().includes(searchTerm.toLowerCase())
+    const name = lubebay.name || ''
+    const address = lubebay.address || lubebay.location || ''
+    const state = lubebay.state_name || lubebay.state || ''
 
-    const matchesStatus = statusFilter === 'all' || lubebay.status === statusFilter
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         state.toLowerCase().includes(searchTerm.toLowerCase())
+
+    // For API data, use is_active; for mock data use status
+    const isActiveStatus = lubebay.is_active !== undefined
+      ? (lubebay.is_active ? 'active' : 'inactive')
+      : (lubebay.status || 'active')
+
+    const matchesStatus = statusFilter === 'all' || isActiveStatus === statusFilter
 
     return matchesSearch && matchesStatus
   })
@@ -271,9 +302,14 @@ export default function LubebaysPage() {
   }
 
   const totalLubebays = lubebays.length
-  const activeLubebays = lubebays.filter((l: Lubebay) => l.status === 'active').length
-  const totalRevenue = lubebays.reduce((sum: number, l: Lubebay) => sum + l.monthlyRevenue, 0)
-  const averageRating = lubebays.reduce((sum: number, l: Lubebay) => sum + l.rating, 0) / lubebays.length
+  const activeLubebays = lubebays.filter((l: Lubebay) => {
+    // For API data use is_active, for mock data use status
+    return l.is_active !== undefined ? l.is_active : (l.status === 'active')
+  }).length
+  const totalRevenue = lubebays.reduce((sum: number, l: Lubebay) => sum + (l.monthlyRevenue || 0), 0)
+  const averageRating = lubebays.length > 0
+    ? lubebays.reduce((sum: number, l: Lubebay) => sum + (l.rating || 0), 0) / lubebays.length
+    : 0
 
   return (
     <AppLayout>
@@ -385,6 +421,20 @@ export default function LubebaysPage() {
                 ))}
               </div>
             </div>
+          ) : error ? (
+            <div className="p-12 text-center">
+              <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Lubebays</h3>
+              <p className="text-gray-500 mb-2">
+                {error instanceof Error ? error.message : 'Failed to load lubebays'}
+              </p>
+              <p className="text-sm text-gray-400 mb-4">
+                Check your internet connection or try logging in again.
+              </p>
+              <Button className="mofad-btn-primary" onClick={() => refetch()}>
+                Try Again
+              </Button>
+            </div>
           ) : filteredLubebays.length === 0 ? (
             <div className="p-12 text-center">
               <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -394,6 +444,16 @@ export default function LubebaysPage() {
                   ? 'Try adjusting your search or filters'
                   : 'Get started by adding your first lubebay'}
               </p>
+              {!searchTerm && statusFilter === 'all' && (
+                <>
+                  <p className="text-sm text-gray-400 mb-4">
+                    Total records from API: {lubebaysData?.count || lubebaysData?.paginator?.count || 0}
+                  </p>
+                  <p className="text-xs text-gray-400 mb-4">
+                    Debug: {JSON.stringify({ hasData: !!lubebaysData, dataKeys: lubebaysData ? Object.keys(lubebaysData) : [] })}
+                  </p>
+                </>
+              )}
               <Button className="mofad-btn-primary" onClick={handleCreateClick}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Lubebay
@@ -448,43 +508,63 @@ export default function LubebaysPage() {
                         <div className="flex items-center gap-2">
                           <MapPin className="w-3 h-3 text-gray-400" />
                           <div>
-                            <div className="text-sm text-gray-900 max-w-[200px] truncate">{lubebay.location}</div>
-                            <div className="text-sm text-gray-500">{lubebay.state}</div>
+                            <div className="text-sm text-gray-900 max-w-[200px] truncate">
+                              {lubebay.address || lubebay.location || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {lubebay.state_name || lubebay.state || 'N/A'}
+                            </div>
                           </div>
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="text-sm font-medium text-gray-900">{lubebay.manager}</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {lubebay.manager_name || lubebay.manager || 'N/A'}
+                        </span>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2 text-sm">
                           <Phone className="w-3 h-3 text-gray-400" />
-                          <span className="text-gray-600">{lubebay.phone}</span>
+                          <span className="text-gray-600">{lubebay.phone || 'N/A'}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className="font-bold text-primary">{lubebay.bays}</span>
+                        <span className="font-bold text-primary">{lubebay.bays || '-'}</span>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <span className="font-bold text-green-600">{formatCurrency(lubebay.monthlyRevenue)}</span>
+                        <span className="font-bold text-green-600">
+                          {lubebay.monthlyRevenue ? formatCurrency(lubebay.monthlyRevenue) : 'N/A'}
+                        </span>
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                          <span className="font-medium text-gray-900">{lubebay.rating || 'N/A'}</span>
+                          {lubebay.rating ? (
+                            <>
+                              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                              <span className="font-medium text-gray-900">{lubebay.rating}</span>
+                            </>
+                          ) : (
+                            <span className="text-sm text-gray-400">N/A</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex flex-wrap gap-1 max-w-[200px]">
-                          {(lubebay.services || []).slice(0, 2).map((service, index) => (
-                            <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                              {service}
-                            </span>
-                          ))}
-                          {(lubebay.services || []).length > 2 && (
-                            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                              +{(lubebay.services || []).length - 2} more
-                            </span>
+                          {(lubebay.services && lubebay.services.length > 0) ? (
+                            <>
+                              {lubebay.services.slice(0, 2).map((service, index) => (
+                                <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                  {service}
+                                </span>
+                              ))}
+                              {lubebay.services.length > 2 && (
+                                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                  +{lubebay.services.length - 2} more
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-sm text-gray-400">N/A</span>
                           )}
                         </div>
                       </td>
@@ -495,12 +575,22 @@ export default function LubebaysPage() {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center">
-                          {lubebay.status === 'maintenance' && (
-                            <AlertTriangle className="w-4 h-4 text-yellow-500 mr-2" />
-                          )}
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(lubebay.status || 'unknown')}`}>
-                            {(lubebay.status || 'Unknown').charAt(0).toUpperCase() + (lubebay.status || 'unknown').slice(1)}
-                          </span>
+                          {(() => {
+                            // Determine status from either is_active (API) or status (mock)
+                            const status = lubebay.is_active !== undefined
+                              ? (lubebay.is_active ? 'active' : 'inactive')
+                              : (lubebay.status || 'active')
+                            return (
+                              <>
+                                {status === 'maintenance' && (
+                                  <AlertTriangle className="w-4 h-4 text-yellow-500 mr-2" />
+                                )}
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(status)}`}>
+                                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                                </span>
+                              </>
+                            )
+                          })()}
                         </div>
                       </td>
                       <td className="py-3 px-4">

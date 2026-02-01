@@ -108,6 +108,21 @@ const getCategoryLabel = (category: string) => {
   return labels[category] || category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
+// Helper to get price from price schemes
+const getPriceFromSchemes = (product: any, type: 'direct' | 'lubebay' | 'station'): number => {
+  if (!product.price_schemes || !Array.isArray(product.price_schemes)) return 0
+
+  const scheme = product.price_schemes.find((s: any) => {
+    const name = (s.name || '').toLowerCase()
+    if (type === 'direct') return name.includes('direct')
+    if (type === 'lubebay') return name.includes('lubebay') || name.includes('lube')
+    if (type === 'station') return name.includes('station')
+    return false
+  })
+
+  return scheme?.price || 0
+}
+
 const getStatusBadge = (isActive: boolean) => {
   return isActive ? (
     <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -773,8 +788,9 @@ export default function ProductsPage() {
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Category</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Brand</th>
                       <th className="text-right py-3 px-4 font-medium text-gray-900">Cost Price</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-900">Retail Price</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-900">Margin</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Direct (Wholesale)</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">LubeBay</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-900">Station (Retail)</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Stock</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
@@ -813,21 +829,23 @@ export default function ProductsPage() {
                           <span className="text-sm text-gray-700 capitalize">{product.brand || '-'}</span>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <span className="font-medium text-gray-900">
+                          <span className="font-medium text-gray-700">
                             {formatCurrency(product.cost_price)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <span className="font-bold text-primary">
-                            {formatCurrency(product.retail_selling_price || product.bulk_selling_price || 0)}
+                          <span className="font-semibold text-blue-600">
+                            {formatCurrency(getPriceFromSchemes(product, 'direct'))}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <span className="font-bold text-green-600">
-                            {calculateProfitMargin(
-                              product.retail_selling_price || product.bulk_selling_price || 0,
-                              product.cost_price
-                            ).toFixed(1)}%
+                          <span className="font-semibold text-orange-600">
+                            {formatCurrency(getPriceFromSchemes(product, 'lubebay'))}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="font-bold text-primary">
+                            {formatCurrency(getPriceFromSchemes(product, 'station'))}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center">

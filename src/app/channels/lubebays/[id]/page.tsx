@@ -32,16 +32,22 @@ import { formatCurrency, formatDateTime } from '@/lib/utils'
 interface Lubebay {
   id: string
   name: string
-  location: string
-  state: string
-  manager: string
-  phone: string
-  status: 'active' | 'maintenance' | 'inactive'
-  bays: number
-  monthlyRevenue: number
-  lastInspection: string
-  services: string[]
-  rating: number
+  // API fields
+  address?: string
+  state_name?: string
+  manager_name?: string
+  phone?: string | null
+  is_active?: boolean
+  // Mock data fields (optional for compatibility)
+  location?: string
+  state?: string
+  manager?: string
+  status?: 'active' | 'maintenance' | 'inactive'
+  bays?: number
+  monthlyRevenue?: number
+  lastInspection?: string
+  services?: string[]
+  rating?: number
 }
 
 interface LubricantSale {
@@ -252,40 +258,70 @@ export default function LubebayDashboardPage() {
   })
 
   // Fetch lubebay transactions
-  const { data: transactions = [] } = useQuery({
+  const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
     queryKey: ['lubebay-transactions', lubebayId],
     queryFn: async () => {
       try {
-        return await apiClient.get(`/lubebay-transactions/`, { lubebay: lubebayId })
+        const response = await apiClient.get(`/lubebay-transactions/?lubebay=${lubebayId}`)
+        return response
       } catch (error) {
-        return []
+        console.error('Error fetching lubebay transactions:', error)
+        return null
       }
     },
   })
 
   // Fetch service transactions
-  const { data: serviceTransactions = [] } = useQuery({
+  const { data: serviceTransactionsData, isLoading: serviceTransactionsLoading } = useQuery({
     queryKey: ['lubebay-service-transactions', lubebayId],
     queryFn: async () => {
       try {
-        return await apiClient.get(`/lubebay-service-transactions/`, { lubebay: lubebayId })
+        const response = await apiClient.get(`/lubebay-service-transactions/?lubebay=${lubebayId}`)
+        return response
       } catch (error) {
-        return []
+        console.error('Error fetching service transactions:', error)
+        return null
       }
     },
   })
 
-  // Use API data or fallback to mock data
-  const lubricantSales = transactions.length > 0 ? transactions : mockLubricantSales
-  const serviceRecords = serviceTransactions.length > 0 ? serviceTransactions : mockServiceRecords
+  // Extract results from API response
+  const extractResults = (data: any) => {
+    if (!data) return []
+    if (Array.isArray(data)) return data
+    if (data.results) return data.results
+    if (data.data) return Array.isArray(data.data) ? data.data : data.data.results || []
+    return []
+  }
 
-  const getStatusBadge = (status: string) => {
+  const transactions = extractResults(transactionsData)
+  const serviceTransactions = extractResults(serviceTransactionsData)
+
+  // Use API data or fallback to mock data
+  const lubricantSales = (transactions && transactions.length > 0) ? transactions : mockLubricantSales
+  const serviceRecords = (serviceTransactions && serviceTransactions.length > 0) ? serviceTransactions : mockServiceRecords
+
+  const getStatusBadge = (status: string | boolean) => {
+    // Handle is_active boolean from API
+    if (typeof status === 'boolean') {
+      return status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+    }
     const styles = {
       active: 'bg-green-100 text-green-800',
       maintenance: 'bg-yellow-100 text-yellow-800',
       inactive: 'bg-red-100 text-red-800'
     }
     return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800'
+  }
+
+  const getStatusText = (lubebay: Lubebay) => {
+    if (typeof lubebay.is_active === 'boolean') {
+      return lubebay.is_active ? 'Active' : 'Inactive'
+    }
+    if (lubebay.status) {
+      return lubebay.status.charAt(0).toUpperCase() + lubebay.status.slice(1)
+    }
+    return 'Unknown'
   }
 
   const getServiceStatusBadge = (status: string) => {
@@ -297,9 +333,20 @@ export default function LubebayDashboardPage() {
     return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800'
   }
 
-  const totalSalesToday = lubricantSales.reduce((sum, sale) => sum + sale.total, 0)
-  const totalServicesToday = serviceRecords.reduce((sum, service) => sum + service.total, 0)
-  const totalRevenueToday = totalSalesToday + totalServicesToday
+  // Safely calculate totals with fallback
+  const totalSalesToday = Array.isArray(lubricantSales)
+    ? lubricantSales.reduce((sum, sale) => {
+        const amount = sale?.total_amount || sale?.total || sale?.amount || 0
+        return sum + (typeof amount === 'number' ? amount : 0)
+      }, 0)
+    : 0
+  const totalServicesToday = Array.isArray(serviceRecords)
+    ? serviceRecords.reduce((sum, service) => {
+        const amount = service?.total_amount || service?.total || service?.amount || 0
+        return sum + (typeof amount === 'number' ? amount : 0)
+      }, 0)
+    : 0
+  const totalRevenueToday = (totalSalesToday || 0) + (totalServicesToday || 0)
 
   // Available products for sale
   const availableProducts = [
@@ -494,40 +541,46 @@ export default function LubebayDashboardPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h1 className="text-2xl font-bold text-foreground">{lubebay.name}</h1>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(lubebay.status || 'unknown')}`}>
-                        {(lubebay.status || 'Unknown').charAt(0).toUpperCase() + (lubebay.status || 'unknown').slice(1)}
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(lubebay.is_active !== undefined ? lubebay.is_active : lubebay.status || 'unknown')}`}>
+                        {getStatusText(lubebay)}
                       </span>
                     </div>
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4" />
-                        <span>{lubebay.location}, {lubebay.state}</span>
+                        <span>{lubebay.address || lubebay.location || 'Unknown'}, {lubebay.state_name || lubebay.state || 'Unknown'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4" />
-                        <span>Manager: {lubebay.manager}</span>
+                        <span>Manager: {lubebay.manager_name || lubebay.manager || 'N/A'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Phone className="w-4 h-4" />
-                        <span>{lubebay.phone}</span>
+                        <span>{lubebay.phone || 'N/A'}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                        <span>{lubebay.rating} rating</span>
-                      </div>
+                      {lubebay.rating && (
+                        <div className="flex items-center gap-2">
+                          <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                          <span>{lubebay.rating} rating</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
               <div className="space-y-4">
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-muted-foreground">Service Bays</div>
-                  <div className="text-2xl font-bold text-primary">{lubebay.bays}</div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-muted-foreground">Monthly Revenue</div>
-                  <div className="text-xl font-bold text-green-600">{formatCurrency(lubebay.monthlyRevenue)}</div>
-                </div>
+                {lubebay.bays !== undefined && (
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Service Bays</div>
+                    <div className="text-2xl font-bold text-primary">{lubebay.bays}</div>
+                  </div>
+                )}
+                {lubebay.monthlyRevenue !== undefined && (
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Monthly Revenue</div>
+                    <div className="text-xl font-bold text-green-600">{formatCurrency(lubebay.monthlyRevenue || 0)}</div>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -576,7 +629,10 @@ export default function LubebayDashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Transactions</p>
-                  <p className="text-2xl font-bold text-purple-600">{lubricantSales.length + serviceRecords.length}</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {(Array.isArray(lubricantSales) ? lubricantSales.length : 0) +
+                     (Array.isArray(serviceRecords) ? serviceRecords.length : 0)}
+                  </p>
                 </div>
                 <Receipt className="w-8 h-8 text-purple-600/60" />
               </div>
@@ -636,20 +692,20 @@ export default function LubebayDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {lubricantSales.slice(0, 3).map((sale) => (
+                  {Array.isArray(lubricantSales) && lubricantSales.slice(0, 3).map((sale) => (
                     <div key={sale.id} className="flex justify-between items-start p-4 border rounded-lg">
                       <div>
-                        <div className="font-medium">{sale.customerName}</div>
+                        <div className="font-medium">{sale.customerName || sale.customer_name || 'N/A'}</div>
                         <div className="text-sm text-muted-foreground">
-                          {sale.products.length} product(s) • {formatDateTime(sale.date)}
+                          {sale.products?.length || 0} product(s) • {formatDateTime(sale.date || sale.transaction_date || sale.created_datetime || sale.created_at)}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Sales Rep: {sale.salesRep}
+                          Sales Rep: {sale.salesRep || sale.sales_rep || 'N/A'}
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold text-primary">{formatCurrency(sale.total)}</div>
-                        <div className="text-sm text-muted-foreground">{sale.paymentMethod}</div>
+                        <div className="font-bold text-primary">{formatCurrency(sale.total_amount || sale.total || sale.amount || 0)}</div>
+                        <div className="text-sm text-muted-foreground">{sale.paymentMethod || sale.payment_method || 'N/A'}</div>
                       </div>
                     </div>
                   ))}
@@ -672,23 +728,25 @@ export default function LubebayDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {serviceRecords.slice(0, 3).map((service) => (
+                  {Array.isArray(serviceRecords) && serviceRecords.slice(0, 3).map((service) => (
                     <div key={service.id} className="flex justify-between items-start p-4 border rounded-lg">
                       <div>
-                        <div className="font-medium">{service.customerName}</div>
+                        <div className="font-medium">{service.customerName || service.customer_name || 'N/A'}</div>
                         <div className="text-sm text-muted-foreground">
-                          {service.vehicleInfo.make} {service.vehicleInfo.model} • Bay {service.bayNumber}
+                          {service.vehicleInfo?.make || service.vehicle_info?.make || 'N/A'} {service.vehicleInfo?.model || service.vehicle_info?.model || ''} • Bay {service.bayNumber || service.bay_number || 'N/A'}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Technician: {service.technician}
+                          Technician: {service.technician || 'N/A'}
                         </div>
-                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium mt-1 ${getServiceStatusBadge(service.status)}`}>
-                          {service.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                        </span>
+                        {service.status && (
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium mt-1 ${getServiceStatusBadge(service.status || 'completed')}`}>
+                            {(service.status || 'completed').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </span>
+                        )}
                       </div>
                       <div className="text-right">
-                        <div className="font-bold text-primary">{formatCurrency(service.total)}</div>
-                        <div className="text-sm text-muted-foreground">{formatDateTime(service.date)}</div>
+                        <div className="font-bold text-primary">{formatCurrency(service.total_amount || service.total || service.amount || 0)}</div>
+                        <div className="text-sm text-muted-foreground">{formatDateTime(service.date || service.transaction_date || service.created_datetime || service.created_at)}</div>
                       </div>
                     </div>
                   ))}
@@ -725,31 +783,34 @@ export default function LubebayDashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {lubricantSales.map((sale) => (
+                      {Array.isArray(lubricantSales) && lubricantSales.map((sale) => (
                         <tr key={sale.id} className="hover:bg-gray-50">
                           <td className="py-3 px-4">
                             <div>
-                              {sale.products.slice(0, 2).map((product, index) => (
+                              {sale.products && Array.isArray(sale.products) && sale.products.slice(0, 2).map((product, index) => (
                                 <div key={index} className="text-sm">
-                                  {product.name} (x{product.quantity})
+                                  {product.name || product.product_name || 'N/A'} (x{product.quantity || 1})
                                 </div>
                               ))}
-                              {sale.products.length > 2 && (
+                              {sale.products && sale.products.length > 2 && (
                                 <div className="text-sm text-muted-foreground">
                                   +{sale.products.length - 2} more
                                 </div>
                               )}
+                              {(!sale.products || !Array.isArray(sale.products)) && (
+                                <div className="text-sm">Product sale</div>
+                              )}
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right">
-                            <div className="font-bold text-primary">{formatCurrency(sale.total)}</div>
+                            <div className="font-bold text-primary">{formatCurrency(sale.total_amount || sale.total || sale.amount || 0)}</div>
                           </td>
                           <td className="py-3 px-4">
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                              {sale.paymentMethod}
+                              {sale.paymentMethod || sale.payment_method || 'N/A'}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-sm">{formatDateTime(sale.date)}</td>
+                          <td className="py-3 px-4 text-sm">{formatDateTime(sale.date || sale.transaction_date || sale.created_datetime || sale.created_at)}</td>
                           <td className="py-3 px-4 text-center">
                             <Button variant="ghost" size="sm">
                               <Eye className="w-4 h-4" />
@@ -793,37 +854,54 @@ export default function LubebayDashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {serviceRecords.map((service) => (
+                      {Array.isArray(serviceRecords) && serviceRecords.map((service) => (
                         <tr key={service.id} className="hover:bg-gray-50">
                           <td className="py-3 px-4">
                             <div>
-                              <div className="font-medium">{service.vehicleInfo.make} {service.vehicleInfo.model}</div>
-                              <div className="text-sm text-muted-foreground">{service.vehicleInfo.plateNumber}</div>
+                              <div className="font-medium">
+                                {service.vehicleInfo?.make || service.vehicle_info?.make || 'N/A'} {service.vehicleInfo?.model || service.vehicle_info?.model || ''}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {service.vehicleInfo?.plateNumber || service.vehicle_info?.plate_number || 'N/A'}
+                              </div>
                             </div>
                           </td>
                           <td className="py-3 px-4">
                             <div>
-                              {service.services.slice(0, 2).map((svc, index) => (
+                              {service.services && Array.isArray(service.services) && service.services.slice(0, 2).map((svc, index) => (
                                 <div key={index} className="text-sm">
-                                  {svc.name}
+                                  {svc.name || svc.service_name || 'N/A'}
                                 </div>
                               ))}
-                              {service.services.length > 2 && (
+                              {service.services && service.services.length > 2 && (
                                 <div className="text-sm text-muted-foreground">
                                   +{service.services.length - 2} more
                                 </div>
                               )}
+                              {(!service.services || !Array.isArray(service.services)) && (
+                                <div className="text-sm">Service completed</div>
+                              )}
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right">
-                            <div className="font-bold text-primary">{formatCurrency(service.total)}</div>
+                            <div className="font-bold text-primary">{formatCurrency(service.total_amount || service.total || service.amount || 0)}</div>
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusBadge(service.status)}`}>
-                              {service.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                            </span>
+                            {service.approval_status ? (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusBadge(service.approval_status)}`}>
+                                {service.approval_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </span>
+                            ) : service.status ? (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusBadge(service.status)}`}>
+                                {service.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                N/A
+                              </span>
+                            )}
                           </td>
-                          <td className="py-3 px-4 text-sm">{formatDateTime(service.date)}</td>
+                          <td className="py-3 px-4 text-sm">{formatDateTime(service.date || service.transaction_date || service.created_datetime || service.created_at)}</td>
                           <td className="py-3 px-4 text-center">
                             <Button variant="ghost" size="sm">
                               <Eye className="w-4 h-4" />

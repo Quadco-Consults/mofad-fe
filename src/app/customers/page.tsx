@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import api from '@/lib/api-client'
 import {
@@ -36,7 +37,7 @@ interface Customer {
   notes: string | null
   status: 'active' | 'inactive' | 'suspended'
   is_verified: boolean
-  balance: number
+  current_balance: number
   total_orders: number
   total_spent: number
   created_at: string
@@ -51,6 +52,7 @@ interface CustomerType {
 }
 
 export default function CustomersPage() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -116,9 +118,9 @@ export default function CustomersPage() {
     }
   })
 
-  const customers = customersResponse?.results || []
-  const totalCount = customersResponse?.count || 0
-  const totalPages = Math.ceil(totalCount / itemsPerPage)
+  const customers = customersResponse?.results || customersResponse?.data?.results || []
+  const totalCount = customersResponse?.paginator?.count || customersResponse?.data?.paginator?.count || customersResponse?.count || 0
+  const totalPages = customersResponse?.paginator?.total_pages || customersResponse?.data?.paginator?.total_pages || Math.ceil(totalCount / itemsPerPage)
 
   const filteredCustomers = customers
   const paginatedCustomers = customers
@@ -272,7 +274,7 @@ export default function CustomersPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                          {formatCurrency(customer.balance || 0)}
+                          {formatCurrency(customer.current_balance || 0)}
                         </td>
                         <td className="px-6 py-4 text-center">
                           <button className="text-orange-600 hover:text-orange-800 font-medium text-sm">
@@ -296,6 +298,7 @@ export default function CustomersPage() {
                         <td className="px-6 py-4">
                           <div className="flex justify-center gap-2">
                             <button
+                              onClick={() => router.push(`/customers/${customer.id}`)}
                               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                               title="View Customer"
                             >

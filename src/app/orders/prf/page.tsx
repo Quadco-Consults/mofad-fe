@@ -298,6 +298,8 @@ export default function PRFPage() {
       // Use real API
       try {
         return await apiClient.getPrfs({
+          page: currentPage,
+          page_size: pageSize,
           status: statusFilter !== 'all' ? statusFilter : undefined,
           priority: priorityFilter !== 'all' ? priorityFilter : undefined,
           search: searchTerm || undefined,

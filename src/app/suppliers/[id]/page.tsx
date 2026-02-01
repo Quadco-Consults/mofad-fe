@@ -363,7 +363,7 @@ export default function SupplierDetailPage() {
                     <Package className="w-12 h-12 mx-auto text-gray-400" />
                     <p className="mt-4 text-gray-600">No PROs found for this supplier</p>
                     <p className="text-sm text-gray-500 mt-2">
-                      PROs with supplier "{supplier.name}" will appear here
+                      PROs with supplier &quot;{supplier.name}&quot; will appear here
                     </p>
                   </div>
                 ) : (
@@ -456,7 +456,7 @@ export default function SupplierDetailPage() {
                     <CreditCard className="w-12 h-12 mx-auto text-gray-400" />
                     <p className="mt-4 text-gray-600">No payments found for this supplier</p>
                     <p className="text-sm text-gray-500 mt-2">
-                      Payments made to "{supplier.name}" will appear here
+                      Payments made to &quot;{supplier.name}&quot; will appear here
                     </p>
                   </div>
                 ) : (

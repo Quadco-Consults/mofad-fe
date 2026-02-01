@@ -166,9 +166,9 @@ function LodgementsPage() {
 
   const prfs = extractResults(prfData)
   const lodgements = extractResults(lodgementsData)
-  const prfTotalCount = prfData?.count || prfs.length
+  const prfTotalCount = prfData?.paginator?.count || prfData?.count || prfs.length
   const prfTotalPages = Math.ceil(prfTotalCount / pageSize) || 1
-  const lodgementTotalCount = lodgementsData?.count || lodgements.length
+  const lodgementTotalCount = lodgementsData?.paginator?.count || lodgementsData?.count || lodgements.length
   const lodgementTotalPages = Math.ceil(lodgementTotalCount / pageSize) || 1
 
   // Calculate payment status for each PRF
@@ -464,34 +464,34 @@ function LodgementsPage() {
                   </div>
 
                   {/* Pagination */}
-                  {prfTotalPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 border-t">
-                      <div className="text-sm text-gray-600">
-                        Showing {((prfPage - 1) * pageSize) + 1} to {Math.min(prfPage * pageSize, prfTotalCount)} of {prfTotalCount} PRFs
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setprfPage(p => Math.max(1, p - 1))}
-                          disabled={prfPage === 1}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="text-sm">
-                          Page {prfPage} of {prfTotalPages}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setprfPage(p => Math.min(prfTotalPages, p + 1))}
-                          disabled={prfPage === prfTotalPages}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
+                  <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
+                    <div className="text-sm text-gray-600">
+                      Showing {((prfPage - 1) * pageSize) + 1} to {Math.min(prfPage * pageSize, prfTotalCount)} of {prfTotalCount} PRFs
                     </div>
-                  )}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setprfPage(p => Math.max(1, p - 1))}
+                        disabled={prfPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </Button>
+                      <span className="text-sm font-medium px-3">
+                        Page {prfPage} of {prfTotalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setprfPage(p => Math.min(prfTotalPages, p + 1))}
+                        disabled={prfPage === prfTotalPages}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </>
               )}
             </CardContent>
@@ -529,6 +529,7 @@ function LodgementsPage() {
                       <thead className="bg-gray-50 border-b">
                         <tr>
                           <th className="text-left py-3 px-4 font-medium text-gray-900">Lodgement</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">Customer Details</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-900">PRF Number</th>
                           <th className="text-right py-3 px-4 font-medium text-gray-900">Amount</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-900">Method</th>
@@ -547,11 +548,21 @@ function LodgementsPage() {
                                 </div>
                                 <div>
                                   <div className="font-medium text-gray-900">{lodgement.lodgement_number}</div>
-                                  <div className="text-sm text-gray-500">
-                                    {lodgement.entity_name || lodgement.customer_name || lodgement.lodged_by_name || 'Unknown'}
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(lodgement.created_at).toLocaleDateString()}
                                   </div>
                                 </div>
                               </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="text-sm text-gray-900 font-medium">
+                                {lodgement.entity_name || lodgement.customer_name || lodgement.lodged_by_name || 'Unknown'}
+                              </div>
+                              {lodgement.lodgement_type && (
+                                <div className="text-xs text-gray-500 capitalize">
+                                  {lodgement.lodgement_type.replace('_', ' ')}
+                                </div>
+                              )}
                             </td>
                             <td className="py-3 px-4">
                               <span className="text-sm text-gray-900">{lodgement.prf_number || 'N/A'}</span>
@@ -597,34 +608,34 @@ function LodgementsPage() {
                   </div>
 
                   {/* Pagination */}
-                  {lodgementTotalPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 border-t">
-                      <div className="text-sm text-gray-600">
-                        Showing {((lodgementPage - 1) * pageSize) + 1} to {Math.min(lodgementPage * pageSize, lodgementTotalCount)} of {lodgementTotalCount} lodgements
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setLodgementPage(p => Math.max(1, p - 1))}
-                          disabled={lodgementPage === 1}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="text-sm">
-                          Page {lodgementPage} of {lodgementTotalPages}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setLodgementPage(p => Math.min(lodgementTotalPages, p + 1))}
-                          disabled={lodgementPage === lodgementTotalPages}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
+                  <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
+                    <div className="text-sm text-gray-600">
+                      Showing {((lodgementPage - 1) * pageSize) + 1} to {Math.min(lodgementPage * pageSize, lodgementTotalCount)} of {lodgementTotalCount} lodgements
                     </div>
-                  )}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLodgementPage(p => Math.max(1, p - 1))}
+                        disabled={lodgementPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </Button>
+                      <span className="text-sm font-medium px-3">
+                        Page {lodgementPage} of {lodgementTotalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLodgementPage(p => Math.min(lodgementTotalPages, p + 1))}
+                        disabled={lodgementPage === lodgementTotalPages}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </>
               )}
             </CardContent>

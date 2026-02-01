@@ -2985,6 +2985,7 @@ class ApiClient {
     priority?: string
     department?: string
     ordering?: string
+    client_id?: number
   }): Promise<any> {
     return this.get('/prfs/', params)
   }

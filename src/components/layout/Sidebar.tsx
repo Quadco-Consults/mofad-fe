@@ -317,6 +317,7 @@ const navigationSections = [
           { label: 'States', href: '/settings/states', icon: Building2 },
           { label: 'Locations', href: '/settings/locations', icon: MapPin },
           { label: 'Price Schemes', href: '/settings/price-schemes', icon: DollarSign },
+          { label: 'Lubebay Catalog', href: '/settings/lubebay-catalog', icon: Wrench },
           { label: 'Expense Types', href: '/settings/expense-types', icon: Receipt },
           { label: 'Audit Logs', href: '/settings/audit-logs', icon: ClipboardCheck },
         ],

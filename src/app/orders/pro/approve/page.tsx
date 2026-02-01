@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -83,6 +83,7 @@ export default function ApprovePROPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
+  const [searchInput, setSearchInput] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [showRejectModal, setShowRejectModal] = useState(false)
@@ -90,6 +91,9 @@ export default function ApprovePROPage() {
   const [selectedProAction, setSelectedProAction] = useState<'review_reject' | 'reject' | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const pageSize = 20
+
+  // Debounce search to reduce API calls
+  const debounceTimeout = useMemo(() => ({ current: null as NodeJS.Timeout | null }), [])
 
   // Fetch PROs pending review or approval
   const { data: proData, isLoading } = useQuery({
@@ -100,6 +104,8 @@ export default function ApprovePROPage() {
       search: searchTerm || undefined,
       status: 'pending_review,pending_approval', // Show PROs pending review or approval
     }),
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
   })
 
   // Extract results and pagination info
@@ -107,10 +113,27 @@ export default function ApprovePROPage() {
   const totalCount = proData?.paginator?.count ?? proData?.count ?? pros.length
   const totalPages = proData?.paginator?.total_pages ?? (totalCount > 0 ? Math.ceil(totalCount / pageSize) : 1)
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value)
-    setCurrentPage(1)
-  }
+  // Memoize stats calculations to avoid recalculating on every render
+  const stats = useMemo(() => {
+    const pendingReviewCount = pros.filter(p => p.status === 'pending_review').length
+    const pendingApprovalCount = pros.filter(p => p.status === 'pending_approval').length
+    return { pendingReviewCount, pendingApprovalCount }
+  }, [pros])
+
+  const handleSearch = useCallback((value: string) => {
+    setSearchInput(value)
+
+    // Clear existing timeout
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current)
+    }
+
+    // Set new timeout for 500ms
+    debounceTimeout.current = setTimeout(() => {
+      setSearchTerm(value)
+      setCurrentPage(1)
+    }, 500)
+  }, [debounceTimeout])
 
   const handleView = (id: number) => {
     router.push(`/orders/pro/${id}`)
@@ -229,7 +252,7 @@ export default function ApprovePROPage() {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Pending Review</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {pros.filter(p => p.status === 'pending_review').length}
+                    {stats.pendingReviewCount}
                   </p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -245,7 +268,7 @@ export default function ApprovePROPage() {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Pending Approval</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {pros.filter(p => p.status === 'pending_approval').length}
+                    {stats.pendingApprovalCount}
                   </p>
                 </div>
                 <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
@@ -267,7 +290,7 @@ export default function ApprovePROPage() {
                     type="text"
                     placeholder="Search by PRO number, supplier..."
                     className="w-full pl-10 pr-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    value={searchTerm}
+                    value={searchInput}
                     onChange={(e) => handleSearch(e.target.value)}
                   />
                 </div>
@@ -311,16 +334,10 @@ export default function ApprovePROPage() {
                   </thead>
                   <tbody>
                     {pros.map((pro) => {
-                      // Calculate received and pending values
-                      const items = pro.items || []
-                      const receivedValue = items.reduce((sum: number, item: any) => {
-                        const received = Number(item.received_quantity || item.quantity_delivered || 0)
-                        const unitPrice = Number(item.unit_price || 0)
-                        return sum + (received * unitPrice)
-                      }, 0)
-
+                      // Use pre-calculated values from backend if available, otherwise calculate
                       const totalOrderValue = Number(pro.total_amount) || 0
-                      const pendingValue = totalOrderValue - receivedValue
+                      const receivedValue = Number(pro.received_value) || 0
+                      const pendingValue = Number(pro.pending_value) ?? (totalOrderValue - receivedValue)
 
                       return (
                         <tr key={pro.id} className="border-b border-border hover:bg-muted/50">
