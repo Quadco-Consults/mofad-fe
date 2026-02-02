@@ -102,13 +102,13 @@ export function DialogContent({ children, className, ...props }: DialogContentPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
       role="dialog"
       aria-modal="true"
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 transition-opacity"
+        className="fixed inset-0 bg-black/50 transition-opacity"
         onClick={handleBackdropClick}
         aria-hidden="true"
       />
@@ -118,9 +118,10 @@ export function DialogContent({ children, className, ...props }: DialogContentPr
         ref={dialogRef}
         tabIndex={-1}
         className={cn(
-          'relative bg-white rounded-lg shadow-xl w-full',
+          'relative bg-white rounded-lg shadow-xl w-full my-8',
           'transform transition-all',
           'focus:outline-none',
+          'max-h-[calc(100vh-4rem)] overflow-y-auto',
           className
         )}
         {...props}

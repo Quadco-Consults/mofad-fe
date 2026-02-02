@@ -43,6 +43,9 @@ interface ServiceFormDialogProps {
   onOpenChange: (open: boolean) => void
   service?: Service
   onSuccess: () => void
+  defaultCategory?: string
+  dialogTitle?: string
+  dialogDescription?: string
 }
 
 interface ServiceFormData {
@@ -63,6 +66,7 @@ const CATEGORY_CHOICES = [
   { value: 'brake_service', label: 'Brake Service' },
   { value: 'diagnostic', label: 'Diagnostic' },
   { value: 'ac_service', label: 'AC Service' },
+  { value: 'filter', label: 'Filter' },
   { value: 'commission', label: 'Commission' },
   { value: 'other', label: 'Other' },
 ]
@@ -72,6 +76,9 @@ export default function ServiceFormDialog({
   onOpenChange,
   service,
   onSuccess,
+  defaultCategory = 'oil_change',
+  dialogTitle,
+  dialogDescription,
 }: ServiceFormDialogProps) {
   const isEditing = !!service
   const { addToast } = useToast()
@@ -87,7 +94,7 @@ export default function ServiceFormDialog({
     defaultValues: {
       name: '',
       code: '',
-      category: 'oil_change',
+      category: defaultCategory,
       base_price: '0.00',
       tax_rate: '7.5',
       tax_inclusive: false,
@@ -114,14 +121,14 @@ export default function ServiceFormDialog({
       reset({
         name: '',
         code: '',
-        category: 'oil_change',
+        category: defaultCategory,
         base_price: '0.00',
         tax_rate: '7.5',
         tax_inclusive: false,
         description: '',
       })
     }
-  }, [service, reset])
+  }, [service, reset, defaultCategory])
 
   const mutation = useMutation({
     mutationFn: async (data: ServiceFormData) => {
@@ -163,12 +170,14 @@ export default function ServiceFormDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? 'Edit Service' : 'Create New Service'}
+            {isEditing
+              ? dialogTitle?.replace('Create', 'Edit').replace('New', '') || 'Edit Service'
+              : dialogTitle || 'Create New Service'}
           </DialogTitle>
           <DialogDescription>
             {isEditing
               ? 'Update the service details below'
-              : 'Add a new service to your lubebay catalog'}
+              : dialogDescription || 'Add a new service to your lubebay catalog'}
           </DialogDescription>
         </DialogHeader>
 

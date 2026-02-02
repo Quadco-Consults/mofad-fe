@@ -266,6 +266,9 @@ export default function CarWashServicesTab() {
       <ServiceFormDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
+        defaultCategory="car_wash"
+        dialogTitle="Create New Car Wash Service"
+        dialogDescription="Add a new car wash service to your lubebay catalog"
         onSuccess={() => {
           setIsCreateDialogOpen(false)
           queryClient.invalidateQueries({ queryKey: ['services'] })
@@ -276,6 +279,7 @@ export default function CarWashServicesTab() {
         open={!!editingService}
         onOpenChange={(open) => !open && setEditingService(null)}
         service={editingService || undefined}
+        dialogTitle="Edit Car Wash Service"
         onSuccess={() => {
           setEditingService(null)
           queryClient.invalidateQueries({ queryKey: ['services'] })

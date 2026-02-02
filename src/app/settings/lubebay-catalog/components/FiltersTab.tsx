@@ -272,6 +272,9 @@ export default function FiltersTab() {
       <ServiceFormDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
+        defaultCategory="filter"
+        dialogTitle="Create New Filter"
+        dialogDescription="Add a new filter replacement service to your lubebay catalog"
         onSuccess={() => {
           setIsCreateDialogOpen(false)
           queryClient.invalidateQueries({ queryKey: ['services'] })
@@ -282,6 +285,7 @@ export default function FiltersTab() {
         open={!!editingService}
         onOpenChange={(open) => !open && setEditingService(null)}
         service={editingService || undefined}
+        dialogTitle="Edit Filter"
         onSuccess={() => {
           setEditingService(null)
           queryClient.invalidateQueries({ queryKey: ['services'] })
