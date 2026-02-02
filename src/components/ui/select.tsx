@@ -1,10 +1,35 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
-const Select = React.forwardRef<
+interface SelectContextValue {
+  value?: string
+  onValueChange?: (value: string) => void
+}
+
+const SelectContext = React.createContext<SelectContextValue>({})
+
+interface SelectProps extends SelectContextValue {
+  children: React.ReactNode
+}
+
+const Select = ({ value, onValueChange, children }: SelectProps) => {
+  return (
+    <SelectContext.Provider value={{ value, onValueChange }}>
+      {children}
+    </SelectContext.Provider>
+  )
+}
+
+const SelectTrigger = React.forwardRef<
   HTMLSelectElement,
   React.SelectHTMLAttributes<HTMLSelectElement>
 >(({ className, children, ...props }, ref) => {
+  const { value, onValueChange } = React.useContext(SelectContext)
+
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onValueChange?.(e.target.value)
+  }
+
   return (
     <select
       className={cn(
@@ -15,21 +40,24 @@ const Select = React.forwardRef<
         className
       )}
       ref={ref}
+      value={value}
+      onChange={handleChange}
       {...props}
     >
       {children}
     </select>
   )
 })
-Select.displayName = 'Select'
+SelectTrigger.displayName = 'SelectTrigger'
 
-const SelectTrigger = Select
 const SelectValue = ({ placeholder }: { placeholder?: string }) => (
   <option value="" disabled>
     {placeholder}
   </option>
 )
+
 const SelectContent = ({ children }: { children: React.ReactNode }) => <>{children}</>
+
 const SelectItem = ({ value, children }: { value: string; children: React.ReactNode }) => (
   <option value={value}>{children}</option>
 )
