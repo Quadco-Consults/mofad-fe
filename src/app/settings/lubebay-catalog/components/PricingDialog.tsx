@@ -11,10 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Checkbox } from '@/components/ui/Checkbox'
 import { useToast } from '@/components/ui/Toast'
 import apiClient from '@/lib/apiClient'
 
