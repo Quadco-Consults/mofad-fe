@@ -283,6 +283,27 @@ class ApiClient {
         } as ApiError
       }
 
+      // If forbidden (403), check if user is authenticated
+      if (response.status === 403) {
+        if (!this.authToken) {
+          // No token - redirect to login
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth/login?redirect=' + encodeURIComponent(window.location.pathname)
+          }
+          throw {
+            message: 'Authentication required. Please log in.',
+            status: 403
+          } as ApiError
+        }
+        // User is authenticated but doesn't have permission
+        const errorData = await response.json().catch(() => ({}))
+        throw {
+          message: errorData.detail || errorData.message || 'You do not have permission to access this resource.',
+          status: 403,
+          errors: errorData.errors || {}
+        } as ApiError
+      }
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
 
