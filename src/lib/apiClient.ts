@@ -209,7 +209,7 @@ class ApiClient {
           return false
         }
 
-        const url = `http://localhost:8000/api/token/refresh/`
+        const url = `${this.baseURL}/token/refresh/`
         const response = await fetch(url, {
           method: 'POST',
           headers: {
