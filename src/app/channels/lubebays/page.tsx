@@ -54,7 +54,7 @@ export default function LubebaysPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize] = useState(20)
+  const [pageSize] = useState(10)
 
   // Selection hook
   const selection = useSelection<Lubebay>()

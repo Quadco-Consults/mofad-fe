@@ -48,13 +48,17 @@ interface Lodgement {
   amount_lodged: number
   expected_amount: number
   variance: number
+  variance_reason?: string
   lodgement_date: string
   payment_method: string
   bank_name?: string
+  account_number?: string
   deposit_slip_number?: string
   reference_number?: string
   description?: string
+  notes?: string
   approval_status: string
+  rejection_reason?: string
   lodged_by_name?: string
   created_at: string
 }
@@ -95,8 +99,10 @@ function LubebayLodgementsPage() {
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
+  const [showRejectModal, setShowRejectModal] = useState(false)
   const [selectedSummary, setSelectedSummary] = useState<DailySalesSummary | null>(null)
   const [selectedLodgement, setSelectedLodgement] = useState<Lodgement | null>(null)
+  const [rejectionReason, setRejectionReason] = useState('')
 
   // Form state
   const [formData, setFormData] = useState<LodgementFormData>({
@@ -185,6 +191,48 @@ function LubebayLodgementsPage() {
     },
   })
 
+  // Approve lodgement mutation
+  const approveMutation = useMutation({
+    mutationFn: (lodgementId: number) => {
+      return apiClient.request(`/lodgements/${lodgementId}/approve/`, {
+        method: 'POST',
+        body: JSON.stringify({ notes: '' }),
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lubebay-daily-summaries'] })
+      queryClient.invalidateQueries({ queryKey: ['lubebay-lodgements'] })
+      setShowViewModal(false)
+      setSelectedLodgement(null)
+      addToast({ type: 'success', title: 'Success', message: 'Lodgement approved successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to approve lodgement' })
+    },
+  })
+
+  // Reject lodgement mutation
+  const rejectMutation = useMutation({
+    mutationFn: ({ lodgementId, reason }: { lodgementId: number; reason: string }) => {
+      return apiClient.request(`/lodgements/${lodgementId}/reject/`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lubebay-daily-summaries'] })
+      queryClient.invalidateQueries({ queryKey: ['lubebay-lodgements'] })
+      setShowViewModal(false)
+      setShowRejectModal(false)
+      setSelectedLodgement(null)
+      setRejectionReason('')
+      addToast({ type: 'success', title: 'Success', message: 'Lodgement rejected successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to reject lodgement' })
+    },
+  })
+
   const resetForm = () => {
     setFormData({
       lubebay: 0,
@@ -250,7 +298,7 @@ function LubebayLodgementsPage() {
 
   const getTransactionTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      lubricant_sales: 'Lubricant Sales',
+      lubricant_sales: 'Product Sales',
       services: 'Service Revenue',
     }
     return labels[type] || type
@@ -362,7 +410,7 @@ function LubebayLodgementsPage() {
                 }}
               >
                 <option value="all">All Types</option>
-                <option value="lubricant_sales">Lubricant Sales</option>
+                <option value="lubricant_sales">Product Sales</option>
                 <option value="services">Service Revenue</option>
               </select>
             </>
@@ -808,6 +856,351 @@ function LubebayLodgementsPage() {
                   </Button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* View Daily Summary Modal */}
+        {showViewModal && selectedSummary && !selectedLodgement && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-4 border-b">
+                <div>
+                  <h2 className="text-lg font-semibold">Daily Sales Summary</h2>
+                  <p className="text-sm text-gray-600">{selectedSummary.lubebay_name} - {formatDate(selectedSummary.transaction_date)}</p>
+                </div>
+                <button onClick={() => { setShowViewModal(false); setSelectedSummary(null) }}>
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Summary Stats */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Transaction Type</p>
+                      <div className="flex items-center gap-2">
+                        {getTransactionTypeIcon(selectedSummary.transaction_type)}
+                        <span className="font-medium">{getTransactionTypeLabel(selectedSummary.transaction_type)}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Total Transactions</p>
+                      <p className="font-bold text-lg">{selectedSummary.total_transactions}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Total Amount</p>
+                      <p className="text-2xl font-bold text-blue-600">{formatCurrency(selectedSummary.total_amount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Lodgement Status</p>
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getLodgementStatusBadge(selectedSummary.lodgement_status)}`}>
+                        {selectedSummary.lodgement_status === 'fully_lodged' ? <CheckCircle className="w-3 h-3" /> :
+                         selectedSummary.lodgement_status === 'unlodged' ? <XCircle className="w-3 h-3" /> :
+                         <AlertCircle className="w-3 h-3" />}
+                        {getLodgementStatusLabel(selectedSummary.lodgement_status)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lodgement Breakdown */}
+                <div>
+                  <h3 className="font-semibold mb-3">Lodgement Breakdown</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="text-sm text-gray-600">Total Amount</p>
+                        <p className="font-bold text-lg">{formatCurrency(selectedSummary.total_amount)}</p>
+                      </div>
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <CreditCard className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                      <div>
+                        <p className="text-sm text-gray-600">Already Lodged</p>
+                        <p className="font-bold text-lg text-green-600">{formatCurrency(selectedSummary.lodged_amount)}</p>
+                      </div>
+                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                        <CheckCircle className="w-6 h-6 text-green-600" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                      <div>
+                        <p className="text-sm text-gray-600">Outstanding Balance</p>
+                        <p className={`font-bold text-xl ${selectedSummary.outstanding_amount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {formatCurrency(selectedSummary.outstanding_amount)}
+                        </p>
+                      </div>
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${selectedSummary.outstanding_amount > 0 ? 'bg-red-100' : 'bg-green-100'}`}>
+                        {selectedSummary.outstanding_amount > 0 ? (
+                          <AlertCircle className="w-6 h-6 text-red-600" />
+                        ) : (
+                          <CheckCircle className="w-6 h-6 text-green-600" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Transaction Details */}
+                <div>
+                  <h3 className="font-semibold mb-2">Transaction Details</h3>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-gray-600">Lubebay</p>
+                        <p className="font-medium">{selectedSummary.lubebay_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Transaction Date</p>
+                        <p className="font-medium">{formatDate(selectedSummary.transaction_date)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Number of Transactions</p>
+                        <p className="font-medium">{selectedSummary.total_transactions} transactions</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Average per Transaction</p>
+                        <p className="font-medium">{formatCurrency(selectedSummary.total_amount / selectedSummary.total_transactions)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                {selectedSummary.lodgement_status !== 'fully_lodged' && (
+                  <div className="flex gap-3 pt-4 border-t">
+                    <Button
+                      onClick={() => {
+                        setShowViewModal(false)
+                        handleCreateLodgement(selectedSummary)
+                      }}
+                      className="flex-1 mofad-btn-primary"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Lodgement
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* View Lodgement Modal */}
+        {showViewModal && selectedLodgement && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-4 border-b">
+                <div>
+                  <h2 className="text-lg font-semibold">Lodgement Details</h2>
+                  <p className="text-sm text-gray-600">{selectedLodgement.lodgement_number}</p>
+                </div>
+                <button onClick={() => { setShowViewModal(false); setSelectedLodgement(null) }}>
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Status and Amount */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Status</p>
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+                        selectedLodgement.approval_status === 'approved' ? 'bg-green-100 text-green-800' :
+                        selectedLodgement.approval_status === 'awaiting_approval' ? 'bg-blue-100 text-blue-800' :
+                        selectedLodgement.approval_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        selectedLodgement.approval_status === 'rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {selectedLodgement.approval_status === 'awaiting_approval' ? 'Awaiting Approval' :
+                         selectedLodgement.approval_status.charAt(0).toUpperCase() + selectedLodgement.approval_status.slice(1)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Amount Lodged</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(selectedLodgement.amount_lodged)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lubebay and Date Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Lubebay</p>
+                    <p className="font-medium">{selectedLodgement.lubebay_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Lodgement Date</p>
+                    <p className="font-medium">{formatDate(selectedLodgement.lodgement_date)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Payment Method</p>
+                    <p className="font-medium">{getPaymentMethodLabel(selectedLodgement.payment_method)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Lodged By</p>
+                    <p className="font-medium">{selectedLodgement.lodged_by_name || 'Unknown'}</p>
+                  </div>
+                </div>
+
+                {/* Bank Details */}
+                {(selectedLodgement.bank_name || selectedLodgement.account_number || selectedLodgement.deposit_slip_number) && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Bank Details</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {selectedLodgement.bank_name && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">Bank Name</p>
+                          <p className="font-medium">{selectedLodgement.bank_name}</p>
+                        </div>
+                      )}
+                      {selectedLodgement.account_number && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">Account Number</p>
+                          <p className="font-medium">{selectedLodgement.account_number}</p>
+                        </div>
+                      )}
+                      {selectedLodgement.deposit_slip_number && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">Deposit Slip #</p>
+                          <p className="font-medium">{selectedLodgement.deposit_slip_number}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Variance */}
+                {selectedLodgement.variance !== 0 && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="w-5 h-5 text-yellow-600" />
+                      <h3 className="font-semibold text-yellow-900">Variance Detected</h3>
+                    </div>
+                    <p className="text-sm text-gray-700">
+                      Expected: {formatCurrency(selectedLodgement.expected_amount)} |
+                      Lodged: {formatCurrency(selectedLodgement.amount_lodged)} |
+                      <span className={`font-bold ${selectedLodgement.variance < 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                        {' '}Variance: {formatCurrency(selectedLodgement.variance)}
+                      </span>
+                    </p>
+                    {selectedLodgement.variance_reason && (
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-600 mb-1">Variance Reason</p>
+                        <p className="text-sm">{selectedLodgement.variance_reason}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Description/Notes */}
+                {(selectedLodgement.description || selectedLodgement.notes) && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Additional Information</h3>
+                    {selectedLodgement.description && (
+                      <div className="mb-2">
+                        <p className="text-sm text-gray-600 mb-1">Description</p>
+                        <p className="text-sm">{selectedLodgement.description}</p>
+                      </div>
+                    )}
+                    {selectedLodgement.notes && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Notes</p>
+                        <p className="text-sm">{selectedLodgement.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Rejection Reason */}
+                {selectedLodgement.approval_status === 'rejected' && selectedLodgement.rejection_reason && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-1">Rejection Reason</p>
+                    <p className="text-sm text-red-900">{selectedLodgement.rejection_reason}</p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                {(selectedLodgement.approval_status === 'pending' || selectedLodgement.approval_status === 'awaiting_approval') && (
+                  <div className="flex gap-3 pt-4 border-t">
+                    <Button
+                      onClick={() => {
+                        if (confirm('Are you sure you want to approve this lodgement?')) {
+                          approveMutation.mutate(selectedLodgement.id)
+                        }
+                      }}
+                      disabled={approveMutation.isPending}
+                      className="flex-1 mofad-btn-primary"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      {approveMutation.isPending ? 'Approving...' : 'Approve'}
+                    </Button>
+                    <Button
+                      onClick={() => setShowRejectModal(true)}
+                      disabled={rejectMutation.isPending}
+                      variant="outline"
+                      className="flex-1 border-red-300 text-red-700 hover:bg-red-50"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Reject
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reject Modal */}
+        {showRejectModal && selectedLodgement && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-xl max-w-md w-full">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-lg font-semibold">Reject Lodgement</h2>
+                <button onClick={() => { setShowRejectModal(false); setRejectionReason('') }}>
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <p className="text-sm text-gray-600">
+                  Please provide a reason for rejecting lodgement {selectedLodgement.lodgement_number}
+                </p>
+                <textarea
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[100px]"
+                  placeholder="Enter rejection reason..."
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                />
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => { setShowRejectModal(false); setRejectionReason('') }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (!rejectionReason.trim()) {
+                        addToast({ type: 'error', title: 'Error', message: 'Rejection reason is required' })
+                        return
+                      }
+                      rejectMutation.mutate({ lodgementId: selectedLodgement.id, reason: rejectionReason })
+                    }}
+                    disabled={rejectMutation.isPending || !rejectionReason.trim()}
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  >
+                    {rejectMutation.isPending ? 'Rejecting...' : 'Reject'}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )}
