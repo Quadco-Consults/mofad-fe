@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { AppLayout } from '@/components/layout/AppLayout'
-import ServicesTab from './components/ServicesTab'
-import CarWashServicesTab from './components/CarWashServicesTab'
-import ProductsTab from './components/ProductsTab'
-import FiltersTab from './components/FiltersTab'
+import ServicesTab from '@/components/settings/lubebay-catalog/ServicesTab'
+import CarWashServicesTab from '@/components/settings/lubebay-catalog/CarWashServicesTab'
+import ProductsTab from '@/components/settings/lubebay-catalog/ProductsTab'
+import FiltersTab from '@/components/settings/lubebay-catalog/FiltersTab'
 
 export default function LubebayCatalogPage() {
   const [activeTab, setActiveTab] = useState('services')

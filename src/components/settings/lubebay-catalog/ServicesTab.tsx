@@ -2,16 +2,16 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, Filter, Plus, Edit, Power, DollarSign } from 'lucide-react'
+import { Plus, Search, Edit, Power, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from '@/components/ui/Select'
 import {
   Table,
   TableBody,
@@ -19,15 +19,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+} from '@/components/ui/Table'
+import { Badge } from '@/components/ui/Badge'
 import { Pagination } from '@/components/ui/Pagination'
 import ServiceFormDialog from './ServiceFormDialog'
 import PricingDialog from './PricingDialog'
 import { useToast } from '@/components/ui/Toast'
 import apiClient from '@/lib/apiClient'
 
-interface FilterService {
+interface Service {
   id: number
   name: string
   code: string
@@ -36,29 +36,44 @@ interface FilterService {
   tax_rate: string
   tax_inclusive: boolean
   is_active: boolean
+  description?: string
 }
 
-export default function FiltersTab() {
+const CATEGORY_CHOICES = [
+  { value: '', label: 'All Categories' },
+  { value: 'oil_change', label: 'Oil Change' },
+  { value: 'tire_service', label: 'Tire Service' },
+  { value: 'car_wash', label: 'Car Wash' },
+  { value: 'battery_service', label: 'Battery Service' },
+  { value: 'brake_service', label: 'Brake Service' },
+  { value: 'diagnostic', label: 'Diagnostic' },
+  { value: 'ac_service', label: 'AC Service' },
+  { value: 'commission', label: 'Commission' },
+  { value: 'other', label: 'Other' },
+]
+
+export default function ServicesTab() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [editingService, setEditingService] = useState<FilterService | null>(null)
-  const [pricingService, setPricingService] = useState<FilterService | null>(null)
+  const [editingService, setEditingService] = useState<Service | null>(null)
+  const [pricingService, setPricingService] = useState<Service | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
 
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
-  // Fetch filter services (services with category='filter') with pagination
+  // Fetch services with pagination
   const { data, isLoading } = useQuery({
-    queryKey: ['services', 'filter', statusFilter, searchTerm, currentPage],
+    queryKey: ['services', categoryFilter, statusFilter, searchTerm, currentPage],
     queryFn: async () => {
       const params: Record<string, string> = {
-        category: 'filter',
         page: currentPage.toString(),
         page_size: pageSize.toString(),
       }
+      if (categoryFilter) params.category = categoryFilter
       if (statusFilter) params.is_active = statusFilter
       if (searchTerm) params.search = searchTerm
 
@@ -82,8 +97,8 @@ export default function FiltersTab() {
       addToast({
         type: 'success',
         title: variables.is_active
-          ? 'Filter service deactivated successfully'
-          : 'Filter service activated successfully'
+          ? 'Service deactivated successfully'
+          : 'Service activated successfully'
       })
     },
     onError: (error) => {
@@ -94,6 +109,21 @@ export default function FiltersTab() {
       console.error(error)
     },
   })
+
+  const calculatePriceAfterTax = (service: Service) => {
+    const basePrice = parseFloat(service.base_price)
+    const taxRate = parseFloat(service.tax_rate || '0')
+
+    if (service.tax_inclusive) {
+      return basePrice
+    }
+
+    return basePrice * (1 + taxRate / 100)
+  }
+
+  const getCategoryLabel = (value: string) => {
+    return CATEGORY_CHOICES.find((c) => c.value === value)?.label || value
+  }
 
   // Reset to page 1 when filters change
   const handleFilterChange = (setter: (value: string) => void) => (value: string) => {
@@ -115,12 +145,26 @@ export default function FiltersTab() {
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Search filters..."
+              placeholder="Search services..."
               value={searchTerm}
               onChange={handleSearchChange}
               className="pl-10"
             />
           </div>
+
+          {/* Category Filter */}
+          <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORY_CHOICES.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
@@ -137,30 +181,18 @@ export default function FiltersTab() {
 
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Add Filter Service
+          Add Service
         </Button>
       </div>
 
-      {/* Info Message */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-        <Filter className="h-5 w-5 text-blue-600 mt-0.5" />
-        <div className="flex-1">
-          <h3 className="font-semibold text-blue-900">Filter Services</h3>
-          <p className="text-sm text-blue-700 mt-1">
-            Filter replacement services offered at lubebays (BMW filter, Toyota filter, etc.).
-            These are service charges for replacing different types of filters.
-          </p>
-        </div>
-      </div>
-
-      {/* Filters Table */}
+      {/* Services Table */}
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Service Name</TableHead>
               <TableHead>Code</TableHead>
-              <TableHead className="text-right">Cost Price</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead className="text-right">Base Price</TableHead>
               <TableHead className="text-right">Price After Tax</TableHead>
               <TableHead>Status</TableHead>
@@ -171,87 +203,78 @@ export default function FiltersTab() {
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8">
-                  Loading filter services...
+                  Loading services...
                 </TableCell>
               </TableRow>
             ) : services.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8">
-                  No filter services found
+                  No services found
                 </TableCell>
               </TableRow>
             ) : (
-              services.map((service: FilterService) => {
-                const basePrice = parseFloat(service.base_price)
-                const taxRate = parseFloat(service.tax_rate || '0')
-                const priceAfterTax = service.tax_inclusive
-                  ? basePrice
-                  : basePrice * (1 + taxRate / 100)
-
-                return (
-                  <TableRow key={service.id}>
-                    <TableCell className="font-medium">{service.name}</TableCell>
-                    <TableCell className="text-gray-600">{service.code}</TableCell>
-                    <TableCell className="text-right text-gray-600">
-                      ₦{basePrice.toLocaleString('en-NG', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      ₦{basePrice.toLocaleString('en-NG', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      ₦{priceAfterTax.toLocaleString('en-NG', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={service.is_active ? 'default' : 'secondary'}>
-                        {service.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingService(service)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setPricingService(service)}
-                        >
-                          <DollarSign className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            toggleStatusMutation.mutate({
-                              id: service.id,
-                              is_active: service.is_active,
-                            })
-                          }
-                        >
-                          <Power
-                            className={`h-4 w-4 ${
-                              service.is_active ? 'text-red-500' : 'text-green-500'
-                            }`}
-                          />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
+              services.map((service: Service) => (
+                <TableRow key={service.id}>
+                  <TableCell className="font-medium">{service.name}</TableCell>
+                  <TableCell className="text-gray-600">{service.code}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {getCategoryLabel(service.category)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    ₦{parseFloat(service.base_price).toLocaleString('en-NG', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    ₦{calculatePriceAfterTax(service).toLocaleString('en-NG', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={service.is_active ? 'default' : 'secondary'}>
+                      {service.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingService(service)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPricingService(service)}
+                      >
+                        <DollarSign className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          toggleStatusMutation.mutate({
+                            id: service.id,
+                            is_active: service.is_active,
+                          })
+                        }
+                      >
+                        <Power
+                          className={`h-4 w-4 ${
+                            service.is_active ? 'text-red-500' : 'text-green-500'
+                          }`}
+                        />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
@@ -272,9 +295,6 @@ export default function FiltersTab() {
       <ServiceFormDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
-        defaultCategory="filter"
-        dialogTitle="Create New Filter"
-        dialogDescription="Add a new filter replacement service to your lubebay catalog"
         onSuccess={() => {
           setIsCreateDialogOpen(false)
           queryClient.invalidateQueries({ queryKey: ['services'] })
@@ -285,7 +305,6 @@ export default function FiltersTab() {
         open={!!editingService}
         onOpenChange={(open) => !open && setEditingService(null)}
         service={editingService || undefined}
-        dialogTitle="Edit Filter"
         onSuccess={() => {
           setEditingService(null)
           queryClient.invalidateQueries({ queryKey: ['services'] })
