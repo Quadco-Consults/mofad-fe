@@ -204,7 +204,7 @@ const navigationSections = [
       },
       {
         label: 'Expenses',
-        href: '/expenses',
+        href: '/accounts/expenses',
         icon: Receipt,
         color: 'from-gray-500 to-gray-600',
         roles: ['admin', 'manager', 'accountant'],

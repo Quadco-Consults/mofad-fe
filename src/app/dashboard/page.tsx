@@ -640,7 +640,7 @@ export default function Dashboard() {
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-gray-900">Recent Expenses</CardTitle>
-                <Link href="/expenses" className="text-sm text-orange-600 hover:text-orange-700 font-medium">
+                <Link href="/accounts/expenses" className="text-sm text-orange-600 hover:text-orange-700 font-medium">
                   View All
                 </Link>
               </div>
@@ -678,7 +678,7 @@ export default function Dashboard() {
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-gray-900">LubeBay Services</CardTitle>
-                <Link href="/lubebays" className="text-sm text-orange-600 hover:text-orange-700 font-medium">
+                <Link href="/channels/lubebays" className="text-sm text-orange-600 hover:text-orange-700 font-medium">
                   View All
                 </Link>
               </div>
