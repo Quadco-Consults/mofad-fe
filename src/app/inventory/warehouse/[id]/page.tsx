@@ -234,8 +234,8 @@ export default function WarehouseInventoryPage() {
       try {
         const response = await api.getPros({
           delivery_location: warehouseId,
-          status: 'approved,sent,confirmed',
-          delivery_status: 'pending,partially_delivered',
+          status: 'approved,sent,confirmed,partially_delivered',
+          delivery_status: 'pending,partial',
           page_size: 100
         })
         console.log('Pending PROs for warehouse:', response)
