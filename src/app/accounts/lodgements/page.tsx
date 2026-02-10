@@ -219,6 +219,34 @@ function LodgementsPage() {
     },
   })
 
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => apiClient.approveLodgement(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prfs-for-lodgement'] })
+      queryClient.invalidateQueries({ queryKey: ['customer-lodgements'] })
+      setShowViewModal(false)
+      setSelectedLodgement(null)
+      addToast({ type: 'success', title: 'Success', message: 'Lodgement approved successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to approve lodgement' })
+    },
+  })
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) => apiClient.rejectLodgement(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prfs-for-lodgement'] })
+      queryClient.invalidateQueries({ queryKey: ['customer-lodgements'] })
+      setShowViewModal(false)
+      setSelectedLodgement(null)
+      addToast({ type: 'success', title: 'Success', message: 'Lodgement rejected successfully' })
+    },
+    onError: (error: any) => {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to reject lodgement' })
+    },
+  })
+
   const resetForm = () => {
     setFormData({
       prf: 0,
@@ -300,6 +328,19 @@ function LodgementsPage() {
       mobile_money: 'Mobile Money',
     }
     return labels[method] || method
+  }
+
+  const handleApproveLodgement = (lodgement: Lodgement) => {
+    if (window.confirm('Are you sure you want to approve this lodgement?')) {
+      approveMutation.mutate(lodgement.id)
+    }
+  }
+
+  const handleRejectLodgement = (lodgement: Lodgement) => {
+    const reason = window.prompt('Please enter rejection reason:')
+    if (reason && reason.trim()) {
+      rejectMutation.mutate({ id: lodgement.id, reason: reason.trim() })
+    }
   }
 
   return (
@@ -610,10 +651,30 @@ function LodgementsPage() {
                                 <button
                                   onClick={() => { setSelectedLodgement(lodgement); setShowViewModal(true) }}
                                   className="p-1 text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded"
-                                  title="View"
+                                  title="View Details"
                                 >
                                   <Eye className="h-4 w-4" />
                                 </button>
+                                {(lodgement.approval_status === 'pending' || lodgement.approval_status === 'awaiting_approval') && (
+                                  <>
+                                    <button
+                                      onClick={() => handleApproveLodgement(lodgement)}
+                                      className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded"
+                                      title="Approve"
+                                      disabled={approveMutation.isPending}
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectLodgement(lodgement)}
+                                      className="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                                      title="Reject"
+                                      disabled={rejectMutation.isPending}
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -1000,7 +1061,29 @@ function LodgementsPage() {
                   </div>
                 )}
 
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-between items-center gap-2 pt-4 border-t">
+                  {selectedLodgement.approval_status === 'pending' || selectedLodgement.approval_status === 'awaiting_approval' ? (
+                    <div className="flex gap-2">
+                      <Button
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => handleApproveLodgement(selectedLodgement)}
+                        disabled={approveMutation.isPending}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        {approveMutation.isPending ? 'Approving...' : 'Approve'}
+                      </Button>
+                      <Button
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                        onClick={() => handleRejectLodgement(selectedLodgement)}
+                        disabled={rejectMutation.isPending}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        {rejectMutation.isPending ? 'Rejecting...' : 'Reject'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div></div>
+                  )}
                   <Button variant="outline" onClick={() => { setShowViewModal(false); setSelectedLodgement(null) }}>
                     Close
                   </Button>
