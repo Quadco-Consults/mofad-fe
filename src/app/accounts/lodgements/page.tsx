@@ -194,10 +194,15 @@ function LodgementsPage() {
   // Mutations
   const createMutation = useMutation({
     mutationFn: (data: LodgementFormData) => {
+      // Validate that the PRF has a customer
+      if (!selectedPRF?.client_id) {
+        throw new Error('This PRF does not have a customer assigned. Please update the PRF with a customer before creating a lodgement.')
+      }
+
       const payload = {
         ...data,
         lodgement_type: 'customer',
-        customer: selectedPRF?.client_id,
+        customer: selectedPRF.client_id,
         expected_amount: selectedPRF?.estimated_total || 0,
       }
       return apiClient.createLodgement(payload)
@@ -246,6 +251,16 @@ function LodgementsPage() {
   }
 
   const handleCreateLodgement = (prf: PRF) => {
+    // Validate that the PRF has a customer
+    if (!prf.client_id) {
+      addToast({
+        type: 'error',
+        title: 'No Customer',
+        message: 'This PRF does not have a customer assigned. Please update the PRF with a customer before creating a lodgement.'
+      })
+      return
+    }
+
     const prfWithStatus = getPRFWithPaymentStatus(prf)
     setSelectedPRF(prfWithStatus)
     setFormData({
@@ -394,7 +409,7 @@ function LodgementsPage() {
                       <tbody className="divide-y divide-gray-200">
                         {prfs.map((prf: PRF) => {
                           const prfWithStatus = getPRFWithPaymentStatus(prf)
-                          const canCreateLodgement = prfWithStatus.payment_status !== 'paid'
+                          const canCreateLodgement = prfWithStatus.payment_status !== 'paid' && prf.client_id
 
                           return (
                             <tr key={prf.id} className="hover:bg-gray-50">
