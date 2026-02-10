@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search,
@@ -139,6 +139,8 @@ function LodgementsPage() {
       if (searchTerm) params.search = searchTerm
       return apiClient.getPrfs(params)
     },
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 
   // Fetch lodgements
@@ -170,6 +172,13 @@ function LodgementsPage() {
   const prfTotalPages = Math.ceil(prfTotalCount / pageSize) || 1
   const lodgementTotalCount = lodgementsData?.paginator?.count || lodgementsData?.count || lodgements.length
   const lodgementTotalPages = Math.ceil(lodgementTotalCount / pageSize) || 1
+
+  // Refetch PRFs when switching to PRF tab
+  useEffect(() => {
+    if (activeTab === 'prfs') {
+      refetchPRFs()
+    }
+  }, [activeTab, refetchPRFs])
 
   // Calculate payment status for each PRF
   const getPRFWithPaymentStatus = (prf: PRF) => {
