@@ -766,9 +766,9 @@ export default function WarehouseInventoryPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.supplierName}</td>
                         <td className="px-6 py-4">
                           <div className="text-sm">
-                            <div className="text-gray-900">Ordered: {receipt.orderedQty.toLocaleString()}</div>
-                            <div className="text-green-600">Received: {receipt.receivedQty.toLocaleString()}</div>
-                            <div className="text-orange-600 font-medium">Pending: {receipt.pendingQty.toLocaleString()}</div>
+                            <div className="text-gray-900">Ordered: {(receipt.orderedQty || 0).toLocaleString()}</div>
+                            <div className="text-green-600">Received: {(receipt.receivedQty || 0).toLocaleString()}</div>
+                            <div className="text-orange-600 font-medium">Pending: {(receipt.pendingQty || 0).toLocaleString()}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.expectedDate}</td>
@@ -841,9 +841,9 @@ export default function WarehouseInventoryPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm">
-                            <div className="text-gray-900">Requested: {issue.requestedQty.toLocaleString()}</div>
-                            <div className="text-green-600">Issued: {issue.issuedQty.toLocaleString()}</div>
-                            <div className="text-orange-600 font-medium">Pending: {issue.pendingQty.toLocaleString()}</div>
+                            <div className="text-gray-900">Requested: {(issue.requestedQty || 0).toLocaleString()}</div>
+                            <div className="text-green-600">Issued: {(issue.issuedQty || 0).toLocaleString()}</div>
+                            <div className="text-orange-600 font-medium">Pending: {(issue.pendingQty || 0).toLocaleString()}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1017,15 +1017,15 @@ export default function WarehouseInventoryPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <p className="text-sm text-blue-800 font-medium">Requested Quantity</p>
-                    <p className="text-2xl font-bold text-blue-600">{selectedIssue.requestedQty.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-blue-600">{(selectedIssue.requestedQty || 0).toLocaleString()}</p>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg">
                     <p className="text-sm text-green-800 font-medium">Already Issued</p>
-                    <p className="text-2xl font-bold text-green-600">{selectedIssue.issuedQty.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-green-600">{(selectedIssue.issuedQty || 0).toLocaleString()}</p>
                   </div>
                   <div className="bg-orange-50 p-4 rounded-lg">
                     <p className="text-sm text-orange-800 font-medium">Pending</p>
-                    <p className="text-2xl font-bold text-orange-600">{selectedIssue.pendingQty.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-orange-600">{(selectedIssue.pendingQty || 0).toLocaleString()}</p>
                   </div>
                 </div>
 
@@ -1047,7 +1047,7 @@ export default function WarehouseInventoryPage() {
                         placeholder="Enter quantity to issue"
                       />
                       <p className="text-sm text-gray-500 mt-1">
-                        Maximum: {selectedIssue.pendingQty.toLocaleString()} units
+                        Maximum: {(selectedIssue.pendingQty || 0).toLocaleString()} units
                       </p>
                     </div>
 
@@ -1056,7 +1056,7 @@ export default function WarehouseInventoryPage() {
                       <input
                         type="text"
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50"
-                        value={`₦${selectedIssue.unitPrice.toLocaleString()}`}
+                        value={`₦${(selectedIssue.unitPrice || 0).toLocaleString()}`}
                         disabled
                       />
                     </div>
@@ -1065,7 +1065,7 @@ export default function WarehouseInventoryPage() {
                       <div className="flex justify-between items-center">
                         <span className="text-gray-700 font-medium">Total Value of This Issue:</span>
                         <span className="text-2xl font-bold text-gray-900">
-                          ₦{(issueQuantity * selectedIssue.unitPrice).toLocaleString()}
+                          ₦{(issueQuantity * (selectedIssue.unitPrice || 0)).toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -1196,15 +1196,15 @@ export default function WarehouseInventoryPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <p className="text-sm text-blue-800 font-medium">Ordered Quantity</p>
-                    <p className="text-2xl font-bold text-blue-600">{selectedReceipt.orderedQty.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-blue-600">{(selectedReceipt.orderedQty || 0).toLocaleString()}</p>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg">
                     <p className="text-sm text-green-800 font-medium">Already Received</p>
-                    <p className="text-2xl font-bold text-green-600">{selectedReceipt.receivedQty.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-green-600">{(selectedReceipt.receivedQty || 0).toLocaleString()}</p>
                   </div>
                   <div className="bg-orange-50 p-4 rounded-lg">
                     <p className="text-sm text-orange-800 font-medium">Pending</p>
-                    <p className="text-2xl font-bold text-orange-600">{selectedReceipt.pendingQty.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-orange-600">{(selectedReceipt.pendingQty || 0).toLocaleString()}</p>
                   </div>
                 </div>
 
@@ -1226,7 +1226,7 @@ export default function WarehouseInventoryPage() {
                         placeholder="Enter quantity received"
                       />
                       <p className="text-sm text-gray-500 mt-1">
-                        Maximum: {selectedReceipt.pendingQty.toLocaleString()} units
+                        Maximum: {(selectedReceipt.pendingQty || 0).toLocaleString()} units
                       </p>
                     </div>
 
@@ -1235,7 +1235,7 @@ export default function WarehouseInventoryPage() {
                       <input
                         type="text"
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50"
-                        value={`₦${selectedReceipt.unitPrice.toLocaleString()}`}
+                        value={`₦${(selectedReceipt.unitPrice || 0).toLocaleString()}`}
                         disabled
                       />
                     </div>
@@ -1244,7 +1244,7 @@ export default function WarehouseInventoryPage() {
                       <div className="flex justify-between items-center">
                         <span className="text-gray-700 font-medium">Total Value of This Receipt:</span>
                         <span className="text-2xl font-bold text-gray-900">
-                          ₦{(receiveQuantity * selectedReceipt.unitPrice).toLocaleString()}
+                          ₦{(receiveQuantity * (selectedReceipt.unitPrice || 0)).toLocaleString()}
                         </span>
                       </div>
                     </div>
