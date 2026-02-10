@@ -341,32 +341,54 @@ export interface PRF {
   department: string
   purpose: string
   priority: 'low' | 'medium' | 'high' | 'urgent'
-  delivery_location: number
+  delivery_location: number | null
   expected_delivery_date: string
-  estimated_total: number
-  budget_code?: string
-  status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'partially_fulfilled' | 'fulfilled' | 'cancelled'
+  estimated_total: number | string
+  budget_code?: string | null
+  status: 'draft' | 'pending_review' | 'reviewed' | 'pending_approval' | 'approved' | 'rejected' | 'partially_fulfilled' | 'fulfilled' | 'cancelled'
   requested_by: number
-  approved_by?: number
+  requested_by_name?: string
+  reviewer?: number | null
+  reviewer_name?: string | null
+  reviewed_by?: number | null
+  reviewed_by_name?: string | null
+  reviewed_at?: string | null
+  approver?: number | null
+  approver_name?: string | null
+  approved_by?: number | null
+  approved_by_name?: string | null
+  approved_at?: string | null
+  rejected_at?: string | null
+  approval_notes?: string | null
+  rejection_reason?: string | null
   created_at: string
-  submitted_at?: string
-  approved_at?: string
-  rejected_at?: string
-  approval_notes?: string
-  rejection_reason?: string
+  submitted_at?: string | null
+  items?: PRFItem[]
+  total_items?: number
+  // Additional fields for specific PRF types
+  client_type?: string | null
+  client_id?: number | null
+  order_snapshot?: any
+  order_total?: number | null
+  customer_name?: string | null
+  total_lodged?: number
+  outstanding_balance?: number
+  lodgements?: any[]
 }
 
 export interface PRFItem {
   id: number
-  prf: number
+  prf?: number
   product: number
-  quantity_requested: number
-  unit_price_estimate: number
-  total_estimate: number
-  quantity_approved: number
-  quantity_fulfilled: number
-  specifications?: string
-  preferred_supplier?: string
+  product_name?: string
+  product_code?: string
+  quantity_requested: number | string
+  unit_price_estimate: number | string
+  total_estimate: number | string
+  quantity_approved: number | string
+  quantity_fulfilled: number | string
+  specifications?: string | null
+  preferred_supplier?: string | null
   status: 'pending' | 'approved' | 'rejected' | 'fulfilled'
 }
 
