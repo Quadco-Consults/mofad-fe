@@ -253,15 +253,20 @@ export default function WarehouseInventoryPage() {
   const { data: pendingIssues = [], isLoading: issuesLoading } = useQuery({
     queryKey: ['pending-issues', warehouseId],
     queryFn: async () => {
-      // Fetch PRFs that are approved and need to pick items from this warehouse
+      // Fetch PRFs that are approved and have payment (lodgement approved)
       try {
         const response = await api.getPrfs({
-          delivery_location: warehouseId,
-          status: 'approved,partially_fulfilled',
+          status: 'approved,partially_fulfilled,fulfilled',
           page_size: 100
         })
-        console.log('Pending PRFs for warehouse:', response)
-        return response.results || []
+        console.log('All approved PRFs:', response)
+        // Filter to show only PRFs with approved lodgements (payment made)
+        const results = response.results || []
+        return results.filter((prf: any) => {
+          const totalLodged = Number(prf.total_lodged || 0)
+          // Show if payment has been made (total_lodged > 0)
+          return totalLodged > 0
+        })
       } catch (error) {
         console.error('Error fetching pending PRFs:', error)
         return []
