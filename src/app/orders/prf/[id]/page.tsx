@@ -770,7 +770,7 @@ export default function PRFViewPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {((prf as any).order_snapshot || []).map((item: any, index: number) => (
+                    {(prf.items || []).map((item: any, index: number) => (
                       <tr key={index} className={`border-b border-gray-200 transition-colors ${
                         index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                       } hover:bg-blue-50/30`}>
@@ -782,7 +782,7 @@ export default function PRFViewPage() {
                         <td className="px-6 py-4 border-r border-gray-200">
                           <div>
                             <p className="font-semibold text-gray-900 mb-1">{item.product_name || 'Unknown Product'}</p>
-                            {item.notes && <p className="text-sm text-gray-600 italic">{item.notes}</p>}
+                            {item.specifications && <p className="text-sm text-gray-600 italic">{item.specifications}</p>}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-center border-r border-gray-200">
@@ -790,9 +790,9 @@ export default function PRFViewPage() {
                             {item.product_code || 'N/A'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center font-bold text-lg text-gray-900 border-r border-gray-200">{item.product_quantity}</td>
-                        <td className="px-6 py-4 text-right font-semibold text-gray-900 border-r border-gray-200">{formatCurrency(item.product_price)}</td>
-                        <td className="px-6 py-4 text-right font-bold text-lg" style={{ color: '#1B4F3A' }}>{formatCurrency(parseFloat(item.product_price) * parseFloat(item.product_quantity))}</td>
+                        <td className="px-6 py-4 text-center font-bold text-lg text-gray-900 border-r border-gray-200">{item.quantity_requested}</td>
+                        <td className="px-6 py-4 text-right font-semibold text-gray-900 border-r border-gray-200">{formatCurrency(item.unit_price_estimate)}</td>
+                        <td className="px-6 py-4 text-right font-bold text-lg" style={{ color: '#1B4F3A' }}>{formatCurrency(item.total_estimate)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -809,7 +809,7 @@ export default function PRFViewPage() {
                           {formatCurrency(prf.estimated_total)}
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
-                          {((prf as any).order_snapshot || []).length} item(s)
+                          {(prf.items || []).length} item(s)
                         </div>
                       </td>
                     </tr>
