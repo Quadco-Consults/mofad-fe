@@ -77,43 +77,38 @@ const navigation: NavItem[] = [
 // Navigation sections based on MOFAD screenshot
 const navigationSections = [
   {
-    title: 'APPLICATIONS',
+    title: 'CORE OPERATIONS',
     items: [
       {
-        label: 'PRO',
-        href: '/orders/pro',
+        label: 'Orders',
+        href: '/orders',
         icon: ShoppingCart,
         color: 'from-gray-500 to-gray-600',
         roles: PRIVILEGED_ROLES,
         children: [
-          { label: 'PRO', href: '/orders/pro', icon: ShoppingCart },
+          { label: 'PRF - Purchase Requisition', href: '/orders/prf', icon: FileText },
+          { label: 'View/Approve PRF', href: '/orders/prf/approve', icon: ClipboardCheck },
+          { label: 'Approved PRF', href: '/orders/prf/approved', icon: FileCheck },
+          { label: 'PRO - Purchase Request', href: '/orders/pro', icon: ShoppingCart },
           { label: 'View/Approve PRO', href: '/orders/pro/approve', icon: ClipboardCheck },
           { label: 'Approved PRO', href: '/orders/pro/approved', icon: FileCheck },
         ],
       },
       {
-        label: 'PRF',
-        href: '/orders/prf',
-        icon: FileText,
+        label: 'Warehouse Operations',
+        href: '/inventory/warehouse',
+        icon: Warehouse,
         color: 'from-gray-500 to-gray-600',
-        roles: PRIVILEGED_ROLES,
+        roles: ['admin', 'manager', 'storekeeper'],
         children: [
-          { label: 'PRF', href: '/orders/prf', icon: FileText },
-          { label: 'View/Approve PRF', href: '/orders/prf/approve', icon: ClipboardCheck },
-          { label: 'Approved PRF', href: '/orders/prf/approved', icon: FileCheck },
+          { label: 'Warehouse Overview', href: '/inventory/warehouse', icon: Warehouse },
+          { label: 'Stock Transfers', href: '/inventory/transfers', icon: Truck },
         ],
       },
       {
-        label: 'Lodgement',
-        href: '/accounts/lodgements',
-        icon: DollarSign,
-        color: 'from-gray-500 to-gray-600',
-        roles: PRIVILEGED_ROLES,
-      },
-      {
-        label: 'WH Stock Transfer',
-        href: '/inventory/transfers',
-        icon: Truck,
+        label: 'Product Inventory',
+        href: '/products',
+        icon: Box,
         color: 'from-gray-500 to-gray-600',
         roles: PRIVILEGED_ROLES,
       },
@@ -128,27 +123,6 @@ const navigationSections = [
           { label: 'Lodgements', href: '/channels/lubebays/lodgements', icon: DollarSign },
           { label: 'Expenses', href: '/channels/lubebays/expenses', icon: Receipt },
         ],
-      },
-      {
-        label: 'Store Keeper',
-        href: '/inventory/warehouse',
-        icon: Package,
-        color: 'from-gray-500 to-gray-600',
-        roles: ['admin', 'manager', 'storekeeper'],
-      },
-      {
-        label: 'Accounts',
-        href: '/accounts',
-        icon: Calculator,
-        color: 'from-gray-500 to-gray-600',
-        roles: ['admin', 'manager', 'accountant'],
-      },
-      {
-        label: 'Product Inventory',
-        href: '/products',
-        icon: Box,
-        color: 'from-gray-500 to-gray-600',
-        roles: PRIVILEGED_ROLES,
       },
       {
         label: 'Customers',
@@ -179,46 +153,6 @@ const navigationSections = [
     ]
   },
   {
-    title: 'INCIDENT AND EXPENSE MANAGEMENT',
-    items: [
-      {
-        label: 'Payroll Management',
-        href: '/hr/payroll',
-        icon: Users,
-        color: 'from-gray-500 to-gray-600',
-        roles: ADMIN_ROLES,
-      },
-      {
-        label: 'Reversal/Return',
-        href: '/accounts/reversals',
-        icon: ArrowUpRight,
-        color: 'from-gray-500 to-gray-600',
-        roles: ['admin', 'manager', 'accountant'],
-      },
-      {
-        label: 'Leakages',
-        href: '/incidents/leakages',
-        icon: AlertTriangle,
-        color: 'from-gray-500 to-gray-600',
-        roles: ADMIN_ROLES,
-      },
-      {
-        label: 'Expenses',
-        href: '/accounts/expenses',
-        icon: Receipt,
-        color: 'from-gray-500 to-gray-600',
-        roles: ['admin', 'manager', 'accountant'],
-      },
-      {
-        label: 'Damages',
-        href: '/incidents/damages',
-        icon: AlertTriangle,
-        color: 'from-gray-500 to-gray-600',
-        roles: ADMIN_ROLES,
-      },
-    ]
-  },
-  {
     title: 'FINANCE & ACCOUNTING',
     items: [
       {
@@ -237,13 +171,58 @@ const navigationSections = [
           { label: 'Budget Management', href: '/finance/budget', icon: DollarSign },
         ],
       },
+      {
+        label: 'Accounting Dashboard',
+        href: '/accounts',
+        icon: BookOpen,
+        color: 'from-gray-500 to-gray-600',
+        roles: ['admin', 'manager', 'accountant'],
+      },
+      {
+        label: 'Lodgements',
+        href: '/accounts/lodgements',
+        icon: DollarSign,
+        color: 'from-gray-500 to-gray-600',
+        roles: PRIVILEGED_ROLES,
+      },
     ]
   },
   {
-    title: 'ADMIN MODULES',
+    title: 'OPERATIONS & HR',
     items: [
       {
-        label: 'Inventory Management',
+        label: 'Payroll Management',
+        href: '/hr/payroll',
+        icon: Users,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+      },
+      {
+        label: 'Incidents',
+        href: '/incidents',
+        icon: AlertTriangle,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+        children: [
+          { label: 'Leakages', href: '/incidents/leakages', icon: AlertTriangle },
+          { label: 'Damages', href: '/incidents/damages', icon: AlertTriangle },
+          { label: 'Reversal/Return', href: '/accounts/reversals', icon: ArrowUpRight },
+        ],
+      },
+      {
+        label: 'Expenses',
+        href: '/accounts/expenses',
+        icon: Receipt,
+        color: 'from-gray-500 to-gray-600',
+        roles: ['admin', 'manager', 'accountant'],
+      },
+    ]
+  },
+  {
+    title: 'ADMINISTRATION',
+    items: [
+      {
+        label: 'Asset Management',
         href: '/admin/inventory-management',
         icon: Box,
         color: 'from-gray-500 to-gray-600',
@@ -292,7 +271,7 @@ const navigationSections = [
     ]
   },
   {
-    title: 'CONFIGURATIONS',
+    title: 'SYSTEM SETTINGS',
     items: [
       {
         label: 'User & Employee Management',
@@ -307,7 +286,7 @@ const navigationSections = [
         ],
       },
       {
-        label: 'System Settings',
+        label: 'System Configuration',
         href: '/settings/system',
         icon: Settings,
         color: 'from-gray-500 to-gray-600',
