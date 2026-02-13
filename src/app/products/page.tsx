@@ -198,6 +198,12 @@ export default function ProductsPage() {
     queryFn: () => apiClient.getWarehouses({ is_active: true }),
   })
 
+  // Fetch suppliers for dropdown
+  const { data: suppliersData } = useQuery({
+    queryKey: ['suppliers-for-products'],
+    queryFn: () => apiClient.getSuppliers({ status: 'active' }),
+  })
+
   // Fetch bin card data when warehouse is selected and view modal is shown for bin card tab
   const { data: binCardData, isLoading: binCardLoading, error: binCardError } = useQuery({
     queryKey: ['bincard', selectedWarehouseId, selectedProduct?.id],
@@ -263,6 +269,9 @@ export default function ProductsPage() {
 
   // Extract warehouses data
   const warehouses = warehousesData?.results || (Array.isArray(warehousesData) ? warehousesData : [])
+
+  // Extract suppliers data
+  const suppliers = suppliersData?.results || (Array.isArray(suppliersData) ? suppliersData : [])
 
   // Calculate low stock from the same products data
   const lowStockProducts = allProducts.filter((product: any) => {
@@ -1213,6 +1222,35 @@ export default function ProductsPage() {
                 </div>
 
                 {/* Supplier Section */}
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="font-medium text-gray-900 mb-3">Supplier</h3>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Primary Supplier
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={formData.primary_supplier || ''}
+                      onChange={(e) => setFormData({...formData, primary_supplier: e.target.value})}
+                    >
+                      <option value="">Select supplier...</option>
+                      {suppliers.map((supplier: any) => (
+                        <option key={supplier.id} value={supplier.name}>
+                          {supplier.name}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.brand && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formData.brand === 'castrol' && 'Recommended: Eterna'}
+                        {formData.brand === 'shell' && 'Recommended: Ardova'}
+                        {formData.brand === 'mobil' && 'Recommended: MRS Oil'}
+                        {formData.brand === 'total' && 'Recommended: Total'}
+                        {formData.brand === 'nnpc' && 'Recommended: NNPC'}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="flex justify-end gap-2 p-6 border-t sticky bottom-0 bg-white">
                 <Button variant="outline" onClick={() => setShowAddModal(false)}>
@@ -1515,13 +1553,32 @@ export default function ProductsPage() {
 
                 <div className="border-t pt-4">
                   <h3 className="font-medium text-gray-900 mb-3">Supplier</h3>
-                  <FormInput
-                    label="Primary Supplier"
-                    name="primary_supplier"
-                    placeholder="Supplier name"
-                    value={formData.primary_supplier || ''}
-                    onChange={(e) => setFormData({...formData, primary_supplier: e.target.value})}
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Primary Supplier
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={formData.primary_supplier || ''}
+                      onChange={(e) => setFormData({...formData, primary_supplier: e.target.value})}
+                    >
+                      <option value="">Select supplier...</option>
+                      {suppliers.map((supplier: any) => (
+                        <option key={supplier.id} value={supplier.name}>
+                          {supplier.name}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.brand && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formData.brand === 'castrol' && 'Recommended: Eterna'}
+                        {formData.brand === 'shell' && 'Recommended: Ardova'}
+                        {formData.brand === 'mobil' && 'Recommended: MRS Oil'}
+                        {formData.brand === 'total' && 'Recommended: Total'}
+                        {formData.brand === 'nnpc' && 'Recommended: NNPC'}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end gap-2 p-6 border-t sticky bottom-0 bg-white">
