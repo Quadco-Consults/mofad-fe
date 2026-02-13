@@ -979,20 +979,40 @@ export default function ProductsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormInput
-                    label="Brand"
-                    name="brand"
-                    placeholder="Brand name"
-                    value={formData.brand || ''}
-                    onChange={(e) => setFormData({...formData, brand: e.target.value})}
-                  />
-                  <FormInput
-                    label="Subcategory"
-                    name="subcategory"
-                    placeholder="Subcategory"
-                    value={formData.subcategory || ''}
-                    onChange={(e) => setFormData({...formData, subcategory: e.target.value})}
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={formData.brand || ''}
+                      onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                    >
+                      <option value="">Select brand...</option>
+                      <option value="castrol">Castrol</option>
+                      <option value="shell">Shell</option>
+                      <option value="nnpc">NNPC</option>
+                      <option value="total">Total</option>
+                      <option value="mobil">Mobil</option>
+                      <option value="eterna">Eterna</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Subcategory</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={formData.subcategory || ''}
+                      onChange={(e) => setFormData({...formData, subcategory: e.target.value})}
+                    >
+                      <option value="">Select subcategory...</option>
+                      <option value="automotive">Automotive</option>
+                      <option value="industrial">Industrial</option>
+                      <option value="marine">Marine</option>
+                      <option value="agriculture">Agriculture</option>
+                      <option value="mining">Mining</option>
+                      <option value="construction">Construction</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Unit of Measure <span className="text-red-500">*</span>
@@ -1022,7 +1042,10 @@ export default function ProductsPage() {
                       required
                       placeholder="0.00"
                       value={formData.cost_price}
-                      onChange={(e) => setFormData({...formData, cost_price: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setFormData({...formData, cost_price: value === '' ? 0 : parseFloat(value)})
+                      }}
                       min="0"
                       step="0.01"
                     />
@@ -1033,7 +1056,10 @@ export default function ProductsPage() {
                       required
                       placeholder="0.00"
                       value={formData.direct_sales_price}
-                      onChange={(e) => setFormData({...formData, direct_sales_price: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setFormData({...formData, direct_sales_price: value === '' ? 0 : parseFloat(value)})
+                      }}
                       min="0"
                       step="0.01"
                     />
@@ -1043,7 +1069,10 @@ export default function ProductsPage() {
                       type="number"
                       placeholder="0.00"
                       value={formData.retail_sales_price || 0}
-                      onChange={(e) => setFormData({...formData, retail_sales_price: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setFormData({...formData, retail_sales_price: value === '' ? 0 : parseFloat(value)})
+                      }}
                       min="0"
                       step="0.01"
                     />
@@ -1230,20 +1259,40 @@ export default function ProductsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormInput
-                    label="Brand"
-                    name="brand"
-                    placeholder="Brand name"
-                    value={formData.brand || ''}
-                    onChange={(e) => setFormData({...formData, brand: e.target.value})}
-                  />
-                  <FormInput
-                    label="Subcategory"
-                    name="subcategory"
-                    placeholder="Subcategory"
-                    value={formData.subcategory || ''}
-                    onChange={(e) => setFormData({...formData, subcategory: e.target.value})}
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={formData.brand || ''}
+                      onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                    >
+                      <option value="">Select brand...</option>
+                      <option value="castrol">Castrol</option>
+                      <option value="shell">Shell</option>
+                      <option value="nnpc">NNPC</option>
+                      <option value="total">Total</option>
+                      <option value="mobil">Mobil</option>
+                      <option value="eterna">Eterna</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Subcategory</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={formData.subcategory || ''}
+                      onChange={(e) => setFormData({...formData, subcategory: e.target.value})}
+                    >
+                      <option value="">Select subcategory...</option>
+                      <option value="automotive">Automotive</option>
+                      <option value="industrial">Industrial</option>
+                      <option value="marine">Marine</option>
+                      <option value="agriculture">Agriculture</option>
+                      <option value="mining">Mining</option>
+                      <option value="construction">Construction</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Unit of Measure</label>
                     <select
@@ -1269,25 +1318,34 @@ export default function ProductsPage() {
                       name="cost_price"
                       type="number"
                       value={formData.cost_price}
-                      onChange={(e) => setFormData({...formData, cost_price: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setFormData({...formData, cost_price: value === '' ? 0 : parseFloat(value)})
+                      }}
                       min="0"
                       step="0.01"
                     />
                     <FormInput
                       label="Direct Sales Price (₦)"
-                      name="direct_sale_price"
+                      name="direct_sales_price"
                       type="number"
                       value={formData.direct_sales_price}
-                      onChange={(e) => setFormData({...formData, direct_sales_price: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setFormData({...formData, direct_sales_price: value === '' ? 0 : parseFloat(value)})
+                      }}
                       min="0"
                       step="0.01"
                     />
                     <FormInput
-                      label="Retail Sales Price"
+                      label="Retail Sales Price (₦)"
                       name="retail_sales_price"
                       type="number"
                       value={formData.retail_sales_price || 0}
-                      onChange={(e) => setFormData({...formData, retail_sales_price: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setFormData({...formData, retail_sales_price: value === '' ? 0 : parseFloat(value)})
+                      }}
                       min="0"
                       step="0.01"
                     />
