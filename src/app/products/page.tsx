@@ -1088,16 +1088,21 @@ export default function ProductsPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <FormInput
-                      label="Tax Rate (%)"
-                      name="tax_rate"
-                      type="number"
-                      placeholder="7.5"
-                      value={formData.tax_rate}
-                      onChange={(e) => setFormData({...formData, tax_rate: parseFloat(e.target.value) || 0})}
-                      min="0"
-                      step="0.01"
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tax Rate (%)
+                      </label>
+                      <input
+                        type="number"
+                        name="tax_rate"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="7.5"
+                        value={formData.tax_rate}
+                        onChange={(e) => setFormData({...formData, tax_rate: e.target.valueAsNumber || 0})}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
                     <div className="flex items-center gap-2 mt-6">
                       <input
                         type="checkbox"
@@ -1124,33 +1129,48 @@ export default function ProductsPage() {
                 <div className="border-t pt-4 mt-4">
                   <h3 className="font-medium text-gray-900 mb-3">Inventory Settings</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormInput
-                      label="Minimum Stock Level"
-                      name="minimum_stock_level"
-                      type="number"
-                      placeholder="0"
-                      value={formData.minimum_stock_level}
-                      onChange={(e) => setFormData({...formData, minimum_stock_level: parseFloat(e.target.value) || 0})}
-                      min="0"
-                    />
-                    <FormInput
-                      label="Maximum Stock Level"
-                      name="maximum_stock_level"
-                      type="number"
-                      placeholder="0"
-                      value={formData.maximum_stock_level || 0}
-                      onChange={(e) => setFormData({...formData, maximum_stock_level: parseFloat(e.target.value) || 0})}
-                      min="0"
-                    />
-                    <FormInput
-                      label="Reorder Point"
-                      name="reorder_point"
-                      type="number"
-                      placeholder="0"
-                      value={formData.reorder_point || 0}
-                      onChange={(e) => setFormData({...formData, reorder_point: parseFloat(e.target.value) || 0})}
-                      min="0"
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Minimum Stock Level
+                      </label>
+                      <input
+                        type="number"
+                        name="minimum_stock_level"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                        value={formData.minimum_stock_level}
+                        onChange={(e) => setFormData({...formData, minimum_stock_level: e.target.valueAsNumber || 0})}
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Maximum Stock Level
+                      </label>
+                      <input
+                        type="number"
+                        name="maximum_stock_level"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                        value={formData.maximum_stock_level || 0}
+                        onChange={(e) => setFormData({...formData, maximum_stock_level: e.target.valueAsNumber || 0})}
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Reorder Point
+                      </label>
+                      <input
+                        type="number"
+                        name="reorder_point"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                        value={formData.reorder_point || 0}
+                        onChange={(e) => setFormData({...formData, reorder_point: e.target.valueAsNumber || 0})}
+                        min="0"
+                      />
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-4 mt-4">
                     <label className="flex items-center gap-2">
@@ -1373,15 +1393,20 @@ export default function ProductsPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <FormInput
-                      label="Tax Rate (%)"
-                      name="tax_rate"
-                      type="number"
-                      value={formData.tax_rate}
-                      onChange={(e) => setFormData({...formData, tax_rate: parseFloat(e.target.value) || 0})}
-                      min="0"
-                      step="0.01"
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tax Rate (%)
+                      </label>
+                      <input
+                        type="number"
+                        name="tax_rate"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={formData.tax_rate}
+                        onChange={(e) => setFormData({...formData, tax_rate: e.target.valueAsNumber || 0})}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
                     <div className="flex items-center gap-2 mt-6">
                       <input
                         type="checkbox"
@@ -1408,30 +1433,45 @@ export default function ProductsPage() {
                 <div className="border-t pt-4">
                   <h3 className="font-medium text-gray-900 mb-3">Inventory Settings</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormInput
-                      label="Minimum Stock Level"
-                      name="minimum_stock_level"
-                      type="number"
-                      value={formData.minimum_stock_level}
-                      onChange={(e) => setFormData({...formData, minimum_stock_level: parseFloat(e.target.value) || 0})}
-                      min="0"
-                    />
-                    <FormInput
-                      label="Maximum Stock Level"
-                      name="maximum_stock_level"
-                      type="number"
-                      value={formData.maximum_stock_level || 0}
-                      onChange={(e) => setFormData({...formData, maximum_stock_level: parseFloat(e.target.value) || 0})}
-                      min="0"
-                    />
-                    <FormInput
-                      label="Reorder Point"
-                      name="reorder_point"
-                      type="number"
-                      value={formData.reorder_point || 0}
-                      onChange={(e) => setFormData({...formData, reorder_point: parseFloat(e.target.value) || 0})}
-                      min="0"
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Minimum Stock Level
+                      </label>
+                      <input
+                        type="number"
+                        name="minimum_stock_level"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={formData.minimum_stock_level}
+                        onChange={(e) => setFormData({...formData, minimum_stock_level: e.target.valueAsNumber || 0})}
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Maximum Stock Level
+                      </label>
+                      <input
+                        type="number"
+                        name="maximum_stock_level"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={formData.maximum_stock_level || 0}
+                        onChange={(e) => setFormData({...formData, maximum_stock_level: e.target.valueAsNumber || 0})}
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Reorder Point
+                      </label>
+                      <input
+                        type="number"
+                        name="reorder_point"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={formData.reorder_point || 0}
+                        onChange={(e) => setFormData({...formData, reorder_point: e.target.valueAsNumber || 0})}
+                        min="0"
+                      />
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-4 mt-4">
                     <label className="flex items-center gap-2">
