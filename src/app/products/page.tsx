@@ -519,8 +519,10 @@ export default function ProductsPage() {
     const backendData = {
       ...formData,
       bulk_selling_price: formData.direct_sales_price, // Map direct_sales_price to bulk_selling_price
+      retail_selling_price: formData.retail_sales_price, // Map retail_sales_price to retail_selling_price
     }
     delete (backendData as any).direct_sales_price // Remove the frontend-only field
+    delete (backendData as any).retail_sales_price // Remove the frontend-only field
     createMutation.mutate(backendData)
   }
 
@@ -530,8 +532,10 @@ export default function ProductsPage() {
     const backendData = {
       ...formData,
       bulk_selling_price: formData.direct_sales_price, // Map direct_sales_price to bulk_selling_price
+      retail_selling_price: formData.retail_sales_price, // Map retail_sales_price to retail_selling_price
     }
     delete (backendData as any).direct_sales_price // Remove the frontend-only field
+    delete (backendData as any).retail_sales_price // Remove the frontend-only field
     updateMutation.mutate({ id: selectedProduct.id, data: backendData })
   }
 
