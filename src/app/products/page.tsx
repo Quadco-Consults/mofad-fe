@@ -305,8 +305,9 @@ export default function ProductsPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<ProductFormData> }) =>
       apiClient.patch(`/products/${id}/`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['products'] })
+      await refetch()
       setShowEditModal(false)
       resetForm()
       addToast({ type: 'success', title: 'Success', message: 'Product updated successfully' })
@@ -482,8 +483,8 @@ export default function ProductsPage() {
       brand: product.brand || '',
       unit_of_measure: product.unit_of_measure,
       cost_price: product.cost_price,
-      direct_sales_price: product.direct_sales_price,
-      retail_sales_price: product.retail_sales_price || 0,
+      direct_sales_price: (product as any).bulk_selling_price || 0, // Map backend bulk_selling_price to form direct_sales_price
+      retail_sales_price: product.retail_selling_price || 0,
       tax_rate: product.tax_rate,
       tax_inclusive: product.tax_inclusive,
       track_inventory: product.track_inventory,
@@ -514,12 +515,24 @@ export default function ProductsPage() {
 
   const handleSaveNew = () => {
     if (!validateForm()) return
-    createMutation.mutate(formData)
+    // Map form data to backend field names
+    const backendData = {
+      ...formData,
+      bulk_selling_price: formData.direct_sales_price, // Map direct_sales_price to bulk_selling_price
+    }
+    delete (backendData as any).direct_sales_price // Remove the frontend-only field
+    createMutation.mutate(backendData)
   }
 
   const handleSaveEdit = () => {
     if (!validateForm() || !selectedProduct) return
-    updateMutation.mutate({ id: selectedProduct.id, data: formData })
+    // Map form data to backend field names
+    const backendData = {
+      ...formData,
+      bulk_selling_price: formData.direct_sales_price, // Map direct_sales_price to bulk_selling_price
+    }
+    delete (backendData as any).direct_sales_price // Remove the frontend-only field
+    updateMutation.mutate({ id: selectedProduct.id, data: backendData })
   }
 
   const confirmDelete = () => {
