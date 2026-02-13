@@ -1035,47 +1035,57 @@ export default function ProductsPage() {
                 <div className="border-t pt-4 mt-4">
                   <h3 className="font-medium text-gray-900 mb-3">Pricing</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormInput
-                      label="Cost Price (₦)"
-                      name="cost_price"
-                      type="number"
-                      required
-                      placeholder="0.00"
-                      value={formData.cost_price}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        setFormData({...formData, cost_price: value === '' ? 0 : parseFloat(value)})
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    <FormInput
-                      label="Direct Sales Price (₦)"
-                      name="direct_sales_price"
-                      type="number"
-                      required
-                      placeholder="0.00"
-                      value={formData.direct_sales_price}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        setFormData({...formData, direct_sales_price: value === '' ? 0 : parseFloat(value)})
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    <FormInput
-                      label="Retail Sales Price (₦)"
-                      name="retail_sales_price"
-                      type="number"
-                      placeholder="0.00"
-                      value={formData.retail_sales_price || 0}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        setFormData({...formData, retail_sales_price: value === '' ? 0 : parseFloat(value)})
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Cost Price (₦) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="cost_price"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0.00"
+                        value={formData.cost_price}
+                        onChange={(e) => {
+                          setFormData({...formData, cost_price: e.target.valueAsNumber || 0})
+                        }}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Direct Sales Price (₦) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="direct_sales_price"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0.00"
+                        value={formData.direct_sales_price}
+                        onChange={(e) => {
+                          setFormData({...formData, direct_sales_price: e.target.valueAsNumber || 0})
+                        }}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Retail Sales Price (₦)
+                      </label>
+                      <input
+                        type="number"
+                        name="retail_sales_price"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0.00"
+                        value={formData.retail_sales_price || 0}
+                        onChange={(e) => {
+                          setFormData({...formData, retail_sales_price: e.target.valueAsNumber || 0})
+                        }}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <FormInput
@@ -1313,42 +1323,54 @@ export default function ProductsPage() {
                 <div className="border-t pt-4">
                   <h3 className="font-medium text-gray-900 mb-3">Pricing</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormInput
-                      label="Cost Price (₦)"
-                      name="cost_price"
-                      type="number"
-                      value={formData.cost_price}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        setFormData({...formData, cost_price: value === '' ? 0 : parseFloat(value)})
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    <FormInput
-                      label="Direct Sales Price (₦)"
-                      name="direct_sales_price"
-                      type="number"
-                      value={formData.direct_sales_price}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        setFormData({...formData, direct_sales_price: value === '' ? 0 : parseFloat(value)})
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    <FormInput
-                      label="Retail Sales Price (₦)"
-                      name="retail_sales_price"
-                      type="number"
-                      value={formData.retail_sales_price || 0}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        setFormData({...formData, retail_sales_price: value === '' ? 0 : parseFloat(value)})
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Cost Price (₦)
+                      </label>
+                      <input
+                        type="number"
+                        name="cost_price"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={formData.cost_price}
+                        onChange={(e) => {
+                          setFormData({...formData, cost_price: e.target.valueAsNumber || 0})
+                        }}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Direct Sales Price (₦)
+                      </label>
+                      <input
+                        type="number"
+                        name="direct_sales_price"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={formData.direct_sales_price}
+                        onChange={(e) => {
+                          setFormData({...formData, direct_sales_price: e.target.valueAsNumber || 0})
+                        }}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Retail Sales Price (₦)
+                      </label>
+                      <input
+                        type="number"
+                        name="retail_sales_price"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={formData.retail_sales_price || 0}
+                        onChange={(e) => {
+                          setFormData({...formData, retail_sales_price: e.target.valueAsNumber || 0})
+                        }}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <FormInput
