@@ -4059,6 +4059,90 @@ class ApiClient {
     }
   }
 
+  async getDirectSalesReport(period: string = 'ytd'): Promise<{
+    business_type: string
+    period: string
+    date_range: { start: string; end: string }
+    summary: {
+      total_revenue: number
+      total_expenses: number
+      net_profit: number
+      profit_margin: number
+      total_orders: number
+      avg_order_value: number
+    }
+    monthly_breakdown: Array<{
+      month: string
+      revenue: number
+      orders: number
+      avg_order_value: number
+    }>
+    top_products: Array<any>
+  }> {
+    try {
+      return await this.request(`/reports/direct-sales-report/?period=${period}`)
+    } catch (error) {
+      return {
+        business_type: 'Direct Sales',
+        period,
+        date_range: { start: '', end: '' },
+        summary: {
+          total_revenue: 0,
+          total_expenses: 0,
+          net_profit: 0,
+          profit_margin: 0,
+          total_orders: 0,
+          avg_order_value: 0
+        },
+        monthly_breakdown: [],
+        top_products: []
+      }
+    }
+  }
+
+  async getLubebayReport(period: string = 'ytd'): Promise<{
+    business_type: string
+    period: string
+    date_range: { start: string; end: string }
+    summary: {
+      total_revenue: number
+      total_expenses: number
+      net_profit: number
+      profit_margin: number
+      total_transactions: number
+      avg_transaction_value: number
+    }
+    monthly_breakdown: Array<{
+      month: string
+      revenue: number
+      transactions: number
+      avg_transaction_value: number
+    }>
+    top_lubebays: Array<any>
+    revenue_by_type: Array<any>
+  }> {
+    try {
+      return await this.request(`/reports/lubebay-report/?period=${period}`)
+    } catch (error) {
+      return {
+        business_type: 'Lubebay Services',
+        period,
+        date_range: { start: '', end: '' },
+        summary: {
+          total_revenue: 0,
+          total_expenses: 0,
+          net_profit: 0,
+          profit_margin: 0,
+          total_transactions: 0,
+          avg_transaction_value: 0
+        },
+        monthly_breakdown: [],
+        top_lubebays: [],
+        revenue_by_type: []
+      }
+    }
+  }
+
   async getCashFlowReport(params?: {
     start_date?: string
     end_date?: string

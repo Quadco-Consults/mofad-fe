@@ -2,67 +2,16 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Download, Filter, Calendar, DollarSign, TrendingUp, TrendingDown, CreditCard, Building, RefreshCw, FileSpreadsheet, Loader2 } from 'lucide-react'
+import { Download, Filter, Calendar, DollarSign, TrendingUp, TrendingDown, FileSpreadsheet, Loader2, ShoppingCart, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { AppLayout } from '@/components/layout/AppLayout'
 import apiClient from '@/lib/apiClient'
 import { useToast } from '@/components/ui/Toast'
 
-interface FinancialDashboardData {
-  summary: {
-    total_revenue: number
-    total_expenses: number
-    net_profit: number
-    profit_margin: number
-  }
-  monthly_trends: Array<{
-    month: string
-    revenue: number
-    expenses: number
-    profit: number
-  }>
-  revenue_breakdown: {
-    substore_sales: number
-    lubebay_services: number
-    other: number
-  }
-  expense_breakdown: Record<string, number>
-  accounts_receivable: number
-  accounts_payable: number
-  cash_position: number
-}
-
-interface ProfitLossData {
-  period: { start: string; end: string }
-  revenue: {
-    substore_sales: number
-    lubebay_services: number
-    other_income: number
-    total: number
-  }
-  cost_of_goods_sold: number
-  gross_profit: number
-  operating_expenses: {
-    salaries: number
-    rent: number
-    utilities: number
-    marketing: number
-    other: number
-    total: number
-  }
-  operating_income: number
-  other_expenses: number
-  net_profit: number
-  profit_margin: number
-  monthly_breakdown: Array<{
-    month: string
-    revenue: number
-    expenses: number
-    profit: number
-  }>
-}
+type BusinessTab = 'overview' | 'direct_sales' | 'lubebay'
 
 function FinancialReportsPage() {
+  const [activeTab, setActiveTab] = useState<BusinessTab>('overview')
   const [period, setPeriod] = useState<string>('ytd')
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
@@ -71,23 +20,28 @@ function FinancialReportsPage() {
   const [exportingPdf, setExportingPdf] = useState(false)
   const { addToast } = useToast()
 
-  // Fetch financial dashboard data
-  const { data: dashboardData, isLoading: dashboardLoading, refetch: refetchDashboard } = useQuery<FinancialDashboardData>({
+  // Fetch overview dashboard data
+  const { data: dashboardData, isLoading: dashboardLoading, refetch: refetchDashboard } = useQuery({
     queryKey: ['financialDashboard', period],
     queryFn: () => apiClient.getFinancialDashboard(period),
+    enabled: activeTab === 'overview'
   })
 
-  // Fetch profit & loss data
-  const { data: profitLossData, isLoading: plLoading } = useQuery<ProfitLossData>({
-    queryKey: ['profitLoss', period, startDate, endDate],
-    queryFn: () => apiClient.getProfitLossReport({
-      period,
-      start_date: startDate || undefined,
-      end_date: endDate || undefined,
-    }),
+  // Fetch direct sales report
+  const { data: directSalesData, isLoading: directSalesLoading, refetch: refetchDirectSales } = useQuery({
+    queryKey: ['directSalesReport', period],
+    queryFn: () => apiClient.getDirectSalesReport(period),
+    enabled: activeTab === 'direct_sales'
   })
 
-  const isLoading = dashboardLoading || plLoading
+  // Fetch lubebay report
+  const { data: lubebayData, isLoading: lubebayLoading, refetch: refetchLubebay } = useQuery({
+    queryKey: ['lubebayReport', period],
+    queryFn: () => apiClient.getLubebayReport(period),
+    enabled: activeTab === 'lubebay'
+  })
+
+  const isLoading = dashboardLoading || directSalesLoading || lubebayLoading
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
@@ -144,46 +98,11 @@ function FinancialReportsPage() {
     }
   }
 
-  const summary = dashboardData?.summary || {
-    total_revenue: 0,
-    total_expenses: 0,
-    net_profit: 0,
-    profit_margin: 0
+  const handleRefresh = () => {
+    if (activeTab === 'overview') refetchDashboard()
+    else if (activeTab === 'direct_sales') refetchDirectSales()
+    else if (activeTab === 'lubebay') refetchLubebay()
   }
-
-  const monthlyTrends = dashboardData?.monthly_trends || []
-  const revenueBreakdown = dashboardData?.revenue_breakdown || { substore_sales: 0, lubebay_services: 0, other: 0 }
-  const expenseBreakdown = dashboardData?.expense_breakdown || {}
-  const accountsReceivable = dashboardData?.accounts_receivable || 0
-  const accountsPayable = dashboardData?.accounts_payable || 0
-  const cashPosition = dashboardData?.cash_position || 0
-
-  const plData = profitLossData || {
-    period: { start: '', end: '' },
-    revenue: { substore_sales: 0, lubebay_services: 0, other_income: 0, total: 0 },
-    cost_of_goods_sold: 0,
-    gross_profit: 0,
-    operating_expenses: { salaries: 0, rent: 0, utilities: 0, marketing: 0, other: 0, total: 0 },
-    operating_income: 0,
-    other_expenses: 0,
-    net_profit: 0,
-    profit_margin: 0,
-    monthly_breakdown: []
-  }
-
-  const totalRevenue = revenueBreakdown.substore_sales + revenueBreakdown.lubebay_services + revenueBreakdown.other
-  const revenueItems = [
-    { source: 'Product Sales (Substores)', amount: revenueBreakdown.substore_sales, percentage: totalRevenue > 0 ? (revenueBreakdown.substore_sales / totalRevenue) * 100 : 0 },
-    { source: 'Service Revenue (Lubebays)', amount: revenueBreakdown.lubebay_services, percentage: totalRevenue > 0 ? (revenueBreakdown.lubebay_services / totalRevenue) * 100 : 0 },
-    { source: 'Other Income', amount: revenueBreakdown.other, percentage: totalRevenue > 0 ? (revenueBreakdown.other / totalRevenue) * 100 : 0 },
-  ].filter(r => r.amount > 0)
-
-  const totalExpenses = Object.values(expenseBreakdown).reduce((sum, val) => sum + val, 0)
-  const expenseItems = Object.entries(expenseBreakdown).map(([category, amount]) => ({
-    category,
-    amount,
-    percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
-  })).filter(e => e.amount > 0)
 
   return (
     <AppLayout>
@@ -192,7 +111,7 @@ function FinancialReportsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Financial Reports</h1>
-            <p className="text-gray-600">Comprehensive financial performance analysis and insights</p>
+            <p className="text-gray-600">Comprehensive financial performance analysis by business type</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -204,10 +123,10 @@ function FinancialReportsPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => refetchDashboard()}
+              onClick={handleRefresh}
               disabled={isLoading}
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              <TrendingUp className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button
@@ -288,7 +207,7 @@ function FinancialReportsPage() {
           </div>
         )}
 
-        {/* Period Selector */}
+        {/* Period Indicator */}
         <div className="flex items-center gap-4 p-4 bg-white rounded-lg shadow">
           <Calendar className="h-5 w-5 text-gray-600" />
           <span className="text-sm font-medium text-gray-700">Report Period:</span>
@@ -303,314 +222,342 @@ function FinancialReportsPage() {
           )}
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="mofad-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(summary.total_revenue)}</p>
-              </div>
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-green-600" />
-              </div>
-            </div>
+        {/* Tabs */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'overview'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <TrendingUp className="h-5 w-5 mr-2" />
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('direct_sales')}
+                className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'direct_sales'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                Direct Sales
+              </button>
+              <button
+                onClick={() => setActiveTab('lubebay')}
+                className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'lubebay'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Wrench className="h-5 w-5 mr-2" />
+                Lubebay Services
+              </button>
+            </nav>
           </div>
 
-          <div className="mofad-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Expenses</p>
-                <p className="text-2xl font-bold text-red-600">{formatCurrency(summary.total_expenses)}</p>
-              </div>
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <TrendingDown className="h-5 w-5 text-red-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="mofad-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Net Profit</p>
-                <p className={`text-2xl font-bold ${summary.net_profit >= 0 ? 'text-primary-600' : 'text-red-600'}`}>
-                  {formatCurrency(summary.net_profit)}
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-primary-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="mofad-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Profit Margin</p>
-                <p className={`text-2xl font-bold ${summary.profit_margin >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
-                  {formatPercentage(summary.profit_margin)}
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Financial Position */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="mofad-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Accounts Receivable</p>
-                <p className="text-xl font-bold text-blue-600">{formatCurrency(accountsReceivable)}</p>
-              </div>
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <CreditCard className="h-5 w-5 text-blue-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="mofad-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Accounts Payable</p>
-                <p className="text-xl font-bold text-orange-600">{formatCurrency(accountsPayable)}</p>
-              </div>
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Building className="h-5 w-5 text-orange-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="mofad-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Cash Position</p>
-                <p className={`text-xl font-bold ${cashPosition >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(cashPosition)}
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-green-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Monthly Trend Chart */}
-        {monthlyTrends.length > 0 && (
-          <div className="mofad-card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Financial Trend</h3>
-            <div className="h-64 flex items-end space-x-2">
-              {monthlyTrends.slice(-12).map((item, index) => {
-                const maxValue = Math.max(...monthlyTrends.map(t => Math.max(t.revenue, t.expenses)), 1)
-                const revenueHeight = (item.revenue / maxValue) * 100
-                const expenseHeight = (item.expenses / maxValue) * 100
-                return (
-                  <div key={index} className="flex-1 flex flex-col items-center group">
-                    <div className="w-full flex space-x-1">
-                      <div className="flex-1 relative">
-                        <div
-                          className="w-full bg-gradient-to-t from-green-500 to-green-400 rounded-t"
-                          style={{ height: `${Math.max(revenueHeight, 5)}%`, minHeight: '4px' }}
-                        ></div>
-                      </div>
-                      <div className="flex-1 relative">
-                        <div
-                          className="w-full bg-gradient-to-t from-red-500 to-red-400 rounded-t"
-                          style={{ height: `${Math.max(expenseHeight, 5)}%`, minHeight: '4px' }}
-                        ></div>
-                      </div>
+          {/* Overview Tab Content */}
+          {activeTab === 'overview' && dashboardData && (
+            <div className="p-6 space-y-6">
+              {/* Key Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="mofad-card">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Total Revenue</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(dashboardData.summary.total_revenue)}</p>
                     </div>
-                    <span className="text-xs text-gray-500 mt-2">{item.month}</span>
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                    </div>
                   </div>
-                )
-              })}
-            </div>
-            <div className="flex justify-center gap-6 mt-4">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
-                <span className="text-sm text-gray-600">Revenue</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-red-500 rounded mr-2"></div>
-                <span className="text-sm text-gray-600">Expenses</span>
-              </div>
-            </div>
-          </div>
-        )}
+                </div>
 
-        {/* Expense & Revenue Breakdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Revenue Breakdown */}
-          <div className="mofad-card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Breakdown</h3>
-            {revenueItems.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <DollarSign className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p>No revenue data available</p>
+                <div className="mofad-card">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Total Expenses</p>
+                      <p className="text-2xl font-bold text-red-600">{formatCurrency(dashboardData.summary.total_expenses)}</p>
+                    </div>
+                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                      <TrendingDown className="h-5 w-5 text-red-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mofad-card">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Net Profit</p>
+                      <p className={`text-2xl font-bold ${dashboardData.summary.net_profit >= 0 ? 'text-primary-600' : 'text-red-600'}`}>
+                        {formatCurrency(dashboardData.summary.net_profit)}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-primary-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mofad-card">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Profit Margin</p>
+                      <p className={`text-2xl font-bold ${dashboardData.summary.profit_margin >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
+                        {formatPercentage(dashboardData.summary.profit_margin)}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-purple-600" />
+                    </div>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {revenueItems.map((revenue, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex-1">
+
+              {/* Revenue Breakdown */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="mofad-card">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Business Type</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-4 h-4 bg-green-500 rounded"></div>
+                        <ShoppingCart className="h-5 w-5 text-blue-500" />
                         <div>
-                          <p className="font-medium text-gray-900">{revenue.source}</p>
-                          <p className="text-sm text-gray-500">{formatPercentage(revenue.percentage)}</p>
+                          <p className="font-medium text-gray-900">Direct Sales</p>
+                          <p className="text-sm text-gray-500">
+                            {formatPercentage((dashboardData.revenue_breakdown.substore_sales / dashboardData.summary.total_revenue) * 100 || 0)}
+                          </p>
                         </div>
                       </div>
+                      <p className="font-bold text-gray-900">{formatCurrency(dashboardData.revenue_breakdown.substore_sales)}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">{formatCurrency(revenue.amount)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Expense Breakdown */}
-          <div className="mofad-card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense Breakdown</h3>
-            {expenseItems.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <TrendingDown className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p>No expense data available</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {expenseItems.map((expense, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex-1">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-4 h-4 bg-red-500 rounded"></div>
+                        <Wrench className="h-5 w-5 text-green-500" />
                         <div>
-                          <p className="font-medium text-gray-900">{expense.category}</p>
-                          <p className="text-sm text-gray-500">{formatPercentage(expense.percentage)}</p>
+                          <p className="font-medium text-gray-900">Lubebay Services</p>
+                          <p className="text-sm text-gray-500">
+                            {formatPercentage((dashboardData.revenue_breakdown.lubebay_services / dashboardData.summary.total_revenue) * 100 || 0)}
+                          </p>
                         </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">{formatCurrency(expense.amount)}</p>
+                      <p className="font-bold text-gray-900">{formatCurrency(dashboardData.revenue_breakdown.lubebay_services)}</p>
                     </div>
                   </div>
-                ))}
+                </div>
+
+                <div className="mofad-card">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Position</h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Accounts Receivable</span>
+                      <span className="font-semibold text-blue-600">{formatCurrency(dashboardData.accounts_receivable)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Accounts Payable</span>
+                      <span className="font-semibold text-orange-600">{formatCurrency(dashboardData.accounts_payable)}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t">
+                      <span className="font-medium text-gray-900">Cash Position</span>
+                      <span className={`font-bold ${dashboardData.cash_position >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(dashboardData.cash_position)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* Profit & Loss Statement */}
-        <div className="mofad-card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Profit & Loss Statement</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center py-2 border-b border-gray-200">
-              <span className="font-medium text-gray-900">Total Revenue</span>
-              <span className="font-bold text-green-600">{formatCurrency(plData.revenue.total)}</span>
+              {/* Monthly Trends */}
+              {dashboardData.monthly_trends.length > 0 && (
+                <div className="mofad-card">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Financial Trend</h3>
+                  <div className="h-64 flex items-end space-x-2">
+                    {dashboardData.monthly_trends.slice(-12).map((item, index) => {
+                      const maxValue = Math.max(...dashboardData.monthly_trends.map(t => Math.max(t.revenue, t.expenses)), 1)
+                      const revenueHeight = (item.revenue / maxValue) * 100
+                      const expenseHeight = (item.expenses / maxValue) * 100
+                      return (
+                        <div key={index} className="flex-1 flex flex-col items-center group">
+                          <div className="w-full flex space-x-1">
+                            <div className="flex-1 relative">
+                              <div
+                                className="w-full bg-gradient-to-t from-green-500 to-green-400 rounded-t"
+                                style={{ height: `${Math.max(revenueHeight, 5)}%`, minHeight: '4px' }}
+                              ></div>
+                            </div>
+                            <div className="flex-1 relative">
+                              <div
+                                className="w-full bg-gradient-to-t from-red-500 to-red-400 rounded-t"
+                                style={{ height: `${Math.max(expenseHeight, 5)}%`, minHeight: '4px' }}
+                              ></div>
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-500 mt-2">{item.month}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="flex justify-center gap-6 mt-4">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
+                      <span className="text-sm text-gray-600">Revenue</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-red-500 rounded mr-2"></div>
+                      <span className="text-sm text-gray-600">Expenses</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="flex justify-between items-center py-2 pl-4">
-              <span className="text-sm text-gray-600">Substore Sales</span>
-              <span className="text-gray-900">{formatCurrency(plData.revenue.substore_sales)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 pl-4">
-              <span className="text-sm text-gray-600">Lubebay Services</span>
-              <span className="text-gray-900">{formatCurrency(plData.revenue.lubebay_services)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 pl-4 border-b border-gray-200">
-              <span className="text-sm text-gray-600">Other Income</span>
-              <span className="text-gray-900">{formatCurrency(plData.revenue.other_income)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="font-medium text-gray-900">Cost of Goods Sold</span>
-              <span className="font-bold text-red-600">-{formatCurrency(plData.cost_of_goods_sold)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-200">
-              <span className="font-medium text-gray-900">Gross Profit</span>
-              <span className={`font-bold ${plData.gross_profit >= 0 ? 'text-primary-600' : 'text-red-600'}`}>
-                {formatCurrency(plData.gross_profit)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="font-medium text-gray-900">Operating Expenses</span>
-              <span className="font-bold text-red-600">-{formatCurrency(plData.operating_expenses.total)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 pl-4">
-              <span className="text-sm text-gray-600">Salaries</span>
-              <span className="text-gray-900">{formatCurrency(plData.operating_expenses.salaries)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 pl-4">
-              <span className="text-sm text-gray-600">Rent</span>
-              <span className="text-gray-900">{formatCurrency(plData.operating_expenses.rent)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 pl-4">
-              <span className="text-sm text-gray-600">Utilities</span>
-              <span className="text-gray-900">{formatCurrency(plData.operating_expenses.utilities)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 pl-4">
-              <span className="text-sm text-gray-600">Marketing</span>
-              <span className="text-gray-900">{formatCurrency(plData.operating_expenses.marketing)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 pl-4 border-b border-gray-200">
-              <span className="text-sm text-gray-600">Other</span>
-              <span className="text-gray-900">{formatCurrency(plData.operating_expenses.other)}</span>
-            </div>
-            <div className="flex justify-between items-center py-3 border-t-2 border-gray-300 bg-primary-50 px-4 -mx-4 rounded">
-              <span className="font-bold text-gray-900">Net Profit</span>
-              <span className={`font-bold text-lg ${plData.net_profit >= 0 ? 'text-primary-600' : 'text-red-600'}`}>
-                {formatCurrency(plData.net_profit)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-gray-600">Profit Margin</span>
-              <span className={`font-medium ${plData.profit_margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatPercentage(plData.profit_margin)}
-              </span>
-            </div>
-          </div>
-        </div>
+          )}
 
-        {/* Monthly P&L Breakdown */}
-        {plData.monthly_breakdown.length > 0 && (
-          <div className="mofad-card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Monthly P&L Breakdown</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Month</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Revenue</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Expenses</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Profit</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Margin</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plData.monthly_breakdown.map((item, index) => {
-                    const margin = item.revenue > 0 ? ((item.profit / item.revenue) * 100) : 0
-                    return (
-                      <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4 font-medium text-gray-900">{item.month}</td>
-                        <td className="py-3 px-4 text-green-600">{formatCurrency(item.revenue)}</td>
-                        <td className="py-3 px-4 text-red-600">{formatCurrency(item.expenses)}</td>
-                        <td className={`py-3 px-4 font-bold ${item.profit >= 0 ? 'text-primary-600' : 'text-red-600'}`}>
-                          {formatCurrency(item.profit)}
-                        </td>
-                        <td className={`py-3 px-4 ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatPercentage(margin)}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+          {/* Direct Sales Tab Content */}
+          {activeTab === 'direct_sales' && directSalesData && (
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Revenue</p>
+                  <p className="text-xl font-bold text-green-600">{formatCurrency(directSalesData.summary.total_revenue)}</p>
+                </div>
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Expenses</p>
+                  <p className="text-xl font-bold text-red-600">{formatCurrency(directSalesData.summary.total_expenses)}</p>
+                </div>
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Profit</p>
+                  <p className="text-xl font-bold text-primary-600">{formatCurrency(directSalesData.summary.net_profit)}</p>
+                </div>
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Margin</p>
+                  <p className="text-xl font-bold text-purple-600">{formatPercentage(directSalesData.summary.profit_margin)}</p>
+                </div>
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Orders</p>
+                  <p className="text-xl font-bold text-blue-600">{directSalesData.summary.total_orders}</p>
+                </div>
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Avg Order</p>
+                  <p className="text-xl font-bold text-indigo-600">{formatCurrency(directSalesData.summary.avg_order_value)}</p>
+                </div>
+              </div>
+
+              {/* Monthly Breakdown Table */}
+              {directSalesData.monthly_breakdown.length > 0 && (
+                <div className="mofad-card">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Breakdown</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Month</th>
+                          <th className="text-right py-3 px-4 font-medium text-gray-700">Revenue</th>
+                          <th className="text-right py-3 px-4 font-medium text-gray-700">Orders</th>
+                          <th className="text-right py-3 px-4 font-medium text-gray-700">Avg Order Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {directSalesData.monthly_breakdown.map((item, index) => (
+                          <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-4 font-medium text-gray-900">{item.month}</td>
+                            <td className="py-3 px-4 text-right text-green-600">{formatCurrency(item.revenue)}</td>
+                            <td className="py-3 px-4 text-right text-gray-900">{item.orders}</td>
+                            <td className="py-3 px-4 text-right text-blue-600">{formatCurrency(item.avg_order_value)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Lubebay Tab Content */}
+          {activeTab === 'lubebay' && lubebayData && (
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Revenue</p>
+                  <p className="text-xl font-bold text-green-600">{formatCurrency(lubebayData.summary.total_revenue)}</p>
+                </div>
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Expenses</p>
+                  <p className="text-xl font-bold text-red-600">{formatCurrency(lubebayData.summary.total_expenses)}</p>
+                </div>
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Profit</p>
+                  <p className="text-xl font-bold text-primary-600">{formatCurrency(lubebayData.summary.net_profit)}</p>
+                </div>
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Margin</p>
+                  <p className="text-xl font-bold text-purple-600">{formatPercentage(lubebayData.summary.profit_margin)}</p>
+                </div>
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Transactions</p>
+                  <p className="text-xl font-bold text-blue-600">{lubebayData.summary.total_transactions}</p>
+                </div>
+                <div className="mofad-card">
+                  <p className="text-sm text-gray-600">Avg Value</p>
+                  <p className="text-xl font-bold text-indigo-600">{formatCurrency(lubebayData.summary.avg_transaction_value)}</p>
+                </div>
+              </div>
+
+              {/* Monthly Breakdown Table */}
+              {lubebayData.monthly_breakdown.length > 0 && (
+                <div className="mofad-card">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Breakdown</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Month</th>
+                          <th className="text-right py-3 px-4 font-medium text-gray-700">Revenue</th>
+                          <th className="text-right py-3 px-4 font-medium text-gray-700">Transactions</th>
+                          <th className="text-right py-3 px-4 font-medium text-gray-700">Avg Transaction</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lubebayData.monthly_breakdown.map((item, index) => (
+                          <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-4 font-medium text-gray-900">{item.month}</td>
+                            <td className="py-3 px-4 text-right text-green-600">{formatCurrency(item.revenue)}</td>
+                            <td className="py-3 px-4 text-right text-gray-900">{item.transactions}</td>
+                            <td className="py-3 px-4 text-right text-blue-600">{formatCurrency(item.avg_transaction_value)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Top Lubebays */}
+              {lubebayData.top_lubebays.length > 0 && (
+                <div className="mofad-card">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Performing Lubebays</h3>
+                  <div className="space-y-3">
+                    {lubebayData.top_lubebays.slice(0, 5).map((lubebay, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-900">{lubebay.lubebay__name}</p>
+                          <p className="text-sm text-gray-500">{lubebay.transaction_count} transactions</p>
+                        </div>
+                        <p className="font-bold text-green-600">{formatCurrency(lubebay.total_revenue)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </AppLayout>
   )
