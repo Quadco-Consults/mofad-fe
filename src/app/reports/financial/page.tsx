@@ -448,10 +448,44 @@ function FinancialReportsPage() {
                 </div>
               </div>
 
+              {/* Financial Statement Breakdown */}
+              <div className="mofad-card">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">Profit & Loss Statement - Direct Sales</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b-2 border-gray-300 bg-green-50 px-4 -mx-4">
+                    <span className="font-bold text-gray-900">Revenue (Product Sales)</span>
+                    <span className="font-bold text-xl text-green-600">{formatCurrency(directSalesData.summary.total_revenue)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600 pl-4">Total Orders: {directSalesData.summary.total_orders}</span>
+                    <span className="text-sm text-gray-600">Avg Order: {formatCurrency(directSalesData.summary.avg_order_value)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 mt-4 border-b-2 border-gray-300 bg-red-50 px-4 -mx-4">
+                    <span className="font-bold text-gray-900">Operating Expenses (Allocated)</span>
+                    <span className="font-bold text-xl text-red-600">-{formatCurrency(directSalesData.summary.total_expenses)}</span>
+                  </div>
+                  <div className="text-sm text-gray-500 pl-4">
+                    <p>* 50% allocation of total company expenses</p>
+                  </div>
+                  <div className="flex justify-between items-center py-4 mt-4 border-t-2 border-primary-300 bg-primary-50 px-4 -mx-4 rounded">
+                    <span className="font-bold text-lg text-gray-900">Net Profit</span>
+                    <span className={`font-bold text-2xl ${directSalesData.summary.net_profit >= 0 ? 'text-primary-600' : 'text-red-600'}`}>
+                      {formatCurrency(directSalesData.summary.net_profit)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-600">Profit Margin</span>
+                    <span className={`font-bold text-lg ${directSalesData.summary.profit_margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatPercentage(directSalesData.summary.profit_margin)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Monthly Breakdown Table */}
               {directSalesData.monthly_breakdown.length > 0 && (
                 <div className="mofad-card">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Breakdown</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Performance</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
@@ -466,11 +500,17 @@ function FinancialReportsPage() {
                         {directSalesData.monthly_breakdown.map((item, index) => (
                           <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                             <td className="py-3 px-4 font-medium text-gray-900">{item.month}</td>
-                            <td className="py-3 px-4 text-right text-green-600">{formatCurrency(item.revenue)}</td>
+                            <td className="py-3 px-4 text-right text-green-600 font-semibold">{formatCurrency(item.revenue)}</td>
                             <td className="py-3 px-4 text-right text-gray-900">{item.orders}</td>
                             <td className="py-3 px-4 text-right text-blue-600">{formatCurrency(item.avg_order_value)}</td>
                           </tr>
                         ))}
+                        <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                          <td className="py-3 px-4">TOTAL</td>
+                          <td className="py-3 px-4 text-right text-green-600">{formatCurrency(directSalesData.summary.total_revenue)}</td>
+                          <td className="py-3 px-4 text-right">{directSalesData.summary.total_orders}</td>
+                          <td className="py-3 px-4 text-right text-blue-600">{formatCurrency(directSalesData.summary.avg_order_value)}</td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
@@ -509,10 +549,44 @@ function FinancialReportsPage() {
                 </div>
               </div>
 
+              {/* Financial Statement Breakdown */}
+              <div className="mofad-card">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">Profit & Loss Statement - Lubebay Services</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b-2 border-gray-300 bg-green-50 px-4 -mx-4">
+                    <span className="font-bold text-gray-900">Revenue (Service Revenue)</span>
+                    <span className="font-bold text-xl text-green-600">{formatCurrency(lubebayData.summary.total_revenue)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600 pl-4">Total Transactions: {lubebayData.summary.total_transactions}</span>
+                    <span className="text-sm text-gray-600">Avg Transaction: {formatCurrency(lubebayData.summary.avg_transaction_value)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 mt-4 border-b-2 border-gray-300 bg-red-50 px-4 -mx-4">
+                    <span className="font-bold text-gray-900">Operating Expenses (Allocated)</span>
+                    <span className="font-bold text-xl text-red-600">-{formatCurrency(lubebayData.summary.total_expenses)}</span>
+                  </div>
+                  <div className="text-sm text-gray-500 pl-4">
+                    <p>* 50% allocation of total company expenses</p>
+                  </div>
+                  <div className="flex justify-between items-center py-4 mt-4 border-t-2 border-primary-300 bg-primary-50 px-4 -mx-4 rounded">
+                    <span className="font-bold text-lg text-gray-900">Net Profit</span>
+                    <span className={`font-bold text-2xl ${lubebayData.summary.net_profit >= 0 ? 'text-primary-600' : 'text-red-600'}`}>
+                      {formatCurrency(lubebayData.summary.net_profit)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-600">Profit Margin</span>
+                    <span className={`font-bold text-lg ${lubebayData.summary.profit_margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatPercentage(lubebayData.summary.profit_margin)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Monthly Breakdown Table */}
               {lubebayData.monthly_breakdown.length > 0 && (
                 <div className="mofad-card">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Breakdown</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Performance</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
