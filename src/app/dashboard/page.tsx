@@ -38,7 +38,7 @@ import {
   MapPin,
   Download,
   Filter,
-  Plus,
+  X,
 } from 'lucide-react'
 import { RevenueAreaChart, DonutChart, SalesLineChart } from '@/components/dashboard/EnhancedCharts'
 
@@ -471,6 +471,14 @@ function PendingApprovalsList({ approvals, isLoading }: { approvals: PendingAppr
 export default function Dashboard() {
   const [selectedWarehouse, setSelectedWarehouse] = useState('all')
   const [selectedPeriod, setSelectedPeriod] = useState('last_30_days')
+  const [showFilterModal, setShowFilterModal] = useState(false)
+  const [filters, setFilters] = useState({
+    dateRange: 'last_30_days',
+    warehouse: 'all',
+    status: 'all',
+    minAmount: '',
+    maxAmount: ''
+  })
 
   // Fetch dashboard stats
   const { data: dashboardStats, isLoading: statsLoading, refetch: refetchStats } = useQuery<DashboardStats>({
@@ -572,13 +580,17 @@ export default function Dashboard() {
             <p className="text-gray-600">Welcome back! Here&apos;s what&apos;s happening with your warehouses today.</p>
           </div>
           <div className="flex items-center space-x-3">
-            <button className="flex items-center px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+            <button
+              onClick={() => setShowFilterModal(true)}
+              className="flex items-center px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Filter className="h-4 w-4 mr-2" />
               Filter
-            </button>
-            <button className="flex items-center px-3 py-2 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Add New
+              {(filters.warehouse !== 'all' || filters.status !== 'all' || filters.minAmount || filters.maxAmount) && (
+                <span className="ml-2 px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+                  Active
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -743,6 +755,132 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Filter Modal */}
+      {showFilterModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-gray-900">Filter Dashboard</h3>
+              <button
+                onClick={() => setShowFilterModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Date Range */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date Range
+                </label>
+                <select
+                  value={filters.dateRange}
+                  onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="today">Today</option>
+                  <option value="last_7_days">Last 7 days</option>
+                  <option value="last_30_days">Last 30 days</option>
+                  <option value="last_90_days">Last 90 days</option>
+                  <option value="ytd">Year to Date</option>
+                  <option value="all">All Time</option>
+                </select>
+              </div>
+
+              {/* Warehouse */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Warehouse
+                </label>
+                <select
+                  value={filters.warehouse}
+                  onChange={(e) => setFilters({ ...filters, warehouse: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="all">All Warehouses</option>
+                  <option value="abuja">Abuja Main</option>
+                  <option value="kano">Kano Main</option>
+                  <option value="wuse">Wuse</option>
+                </select>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="all">All Status</option>
+                  <option value="completed">Completed</option>
+                  <option value="pending">Pending</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+
+              {/* Amount Range */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Amount Range
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="number"
+                    placeholder="Min Amount"
+                    value={filters.minAmount}
+                    onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Max Amount"
+                    value={filters.maxAmount}
+                    onChange={(e) => setFilters({ ...filters, maxAmount: e.target.value })}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setFilters({
+                    dateRange: 'last_30_days',
+                    warehouse: 'all',
+                    status: 'all',
+                    minAmount: '',
+                    maxAmount: ''
+                  })
+                  setSelectedPeriod('last_30_days')
+                  setSelectedWarehouse('all')
+                }}
+                className="flex-1 px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Clear All
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedPeriod(filters.dateRange)
+                  setSelectedWarehouse(filters.warehouse)
+                  setShowFilterModal(false)
+                }}
+                className="flex-1 px-4 py-2 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }

@@ -71,16 +71,40 @@ export default function LubebaysPage() {
   // Form states
   const [formData, setFormData] = useState({
     name: '',
-    location: '',
-    state: '',
-    manager: '',
+    address: '',
+    location: null as number | null,
+    state: null as number | null,
+    manager: null as number | null,
     phone: '',
+    email: '',
+    warehouse: null as number | null,
     bays: 1,
     services: [] as string[],
     notes: ''
   })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Fetch states
+  const { data: statesData } = useQuery({
+    queryKey: ['states'],
+    queryFn: () => apiClient.get('/states/')
+  })
+  const states = statesData?.results || (Array.isArray(statesData) ? statesData : [])
+
+  // Fetch locations
+  const { data: locationsData } = useQuery({
+    queryKey: ['locations'],
+    queryFn: () => apiClient.get('/locations/')
+  })
+  const locations = locationsData?.results || (Array.isArray(locationsData) ? locationsData : [])
+
+  // Fetch users (for manager selection)
+  const { data: usersData } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => apiClient.get('/users/')
+  })
+  const users = usersData?.results || (Array.isArray(usersData) ? usersData : [])
 
   // Fetch lubebays
   const { data: lubebaysData, isLoading, error, refetch } = useQuery({
@@ -193,11 +217,8 @@ export default function LubebaysPage() {
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
     if (!formData.name.trim()) errors.name = 'Lubebay name is required'
-    if (!formData.location.trim()) errors.location = 'Location is required'
-    if (!formData.state.trim()) errors.state = 'State is required'
-    if (!formData.manager.trim()) errors.manager = 'Manager name is required'
+    if (!formData.state) errors.state = 'State is required'
     if (!formData.phone.trim()) errors.phone = 'Phone number is required'
-    if (formData.bays < 1) errors.bays = 'Number of bays must be at least 1'
 
     setFormErrors(errors)
     return Object.keys(errors).length === 0
@@ -207,10 +228,13 @@ export default function LubebaysPage() {
   const resetForm = () => {
     setFormData({
       name: '',
-      location: '',
-      state: '',
-      manager: '',
+      address: '',
+      location: null,
+      state: null,
+      manager: null,
       phone: '',
+      email: '',
+      warehouse: null,
       bays: 1,
       services: [],
       notes: ''
@@ -227,10 +251,13 @@ export default function LubebaysPage() {
   const handleEditClick = (lubebay: any) => {
     setFormData({
       name: lubebay.name || '',
-      location: lubebay.location || '',
-      state: lubebay.state || '',
-      manager: lubebay.manager || '',
+      address: lubebay.address || '',
+      location: lubebay.location || null,
+      state: lubebay.state || null,
+      manager: lubebay.manager || null,
       phone: lubebay.phone || '',
+      email: lubebay.email || '',
+      warehouse: lubebay.warehouse || null,
       bays: lubebay.bays || 1,
       services: lubebay.services || [],
       notes: lubebay.notes || ''
@@ -477,9 +504,6 @@ export default function LubebaysPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Contact</th>
                     <th className="text-center py-3 px-4 font-medium text-gray-900">Bays</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-900">Monthly Revenue</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-900">Rating</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Services</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-900">Last Inspection</th>
                     <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
                     <th className="text-center py-3 px-4 font-medium text-gray-900">Actions</th>
                   </tr>
@@ -534,43 +558,6 @@ export default function LubebaysPage() {
                       <td className="py-3 px-4 text-right">
                         <span className="font-bold text-green-600">
                           {lubebay.monthlyRevenue ? formatCurrency(lubebay.monthlyRevenue) : 'N/A'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {lubebay.rating ? (
-                            <>
-                              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                              <span className="font-medium text-gray-900">{lubebay.rating}</span>
-                            </>
-                          ) : (
-                            <span className="text-sm text-gray-400">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1 max-w-[200px]">
-                          {(lubebay.services && lubebay.services.length > 0) ? (
-                            <>
-                              {lubebay.services.slice(0, 2).map((service, index) => (
-                                <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                  {service}
-                                </span>
-                              ))}
-                              {lubebay.services.length > 2 && (
-                                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                  +{lubebay.services.length - 2} more
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            <span className="text-sm text-gray-400">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="text-sm text-gray-600">
-                          {lubebay.lastInspection ? new Date(lubebay.lastInspection).toLocaleDateString() : 'N/A'}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -721,54 +708,66 @@ export default function LubebaysPage() {
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
                           formErrors.state ? 'border-red-300' : 'border-gray-300'
                         }`}
-                        value={formData.state}
-                        onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                        value={formData.state || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value ? Number(e.target.value) : null }))}
                       >
                         <option value="">Select State</option>
-                        <option value="Lagos">Lagos</option>
-                        <option value="FCT">FCT (Abuja)</option>
-                        <option value="Rivers">Rivers</option>
-                        <option value="Kano">Kano</option>
-                        <option value="Kaduna">Kaduna</option>
-                        <option value="Ogun">Ogun</option>
-                        <option value="Katsina">Katsina</option>
-                        <option value="Bauchi">Bauchi</option>
-                        <option value="Jigawa">Jigawa</option>
-                        <option value="Benue">Benue</option>
+                        {states.map((state: any) => (
+                          <option key={state.id} value={state.id}>
+                            {state.name}
+                          </option>
+                        ))}
                       </select>
                       {formErrors.state && <p className="text-red-500 text-xs mt-1">{formErrors.state}</p>}
                     </div>
 
-                    <div className="md:col-span-2">
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Location *
+                        Location
                       </label>
-                      <input
-                        type="text"
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                          formErrors.location ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        value={formData.location}
-                        onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                        placeholder="Enter full address"
-                      />
-                      {formErrors.location && <p className="text-red-500 text-xs mt-1">{formErrors.location}</p>}
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={formData.location || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value ? Number(e.target.value) : null }))}
+                      >
+                        <option value="">Select Location (Optional)</option>
+                        {locations.map((location: any) => (
+                          <option key={location.id} value={location.id}>
+                            {location.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Manager Name *
+                        Address
                       </label>
                       <input
                         type="text"
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                          formErrors.manager ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        value={formData.manager}
-                        onChange={(e) => setFormData(prev => ({ ...prev, manager: e.target.value }))}
-                        placeholder="Enter manager name"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={formData.address}
+                        onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                        placeholder="Enter full address"
                       />
-                      {formErrors.manager && <p className="text-red-500 text-xs mt-1">{formErrors.manager}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Manager
+                      </label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={formData.manager || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, manager: e.target.value ? Number(e.target.value) : null }))}
+                      >
+                        <option value="">Select Manager (Optional)</option>
+                        {users.map((user: any) => (
+                          <option key={user.id} value={user.id}>
+                            {user.first_name} {user.last_name} ({user.email})
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
@@ -787,9 +786,22 @@ export default function LubebaysPage() {
                       {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
                     </div>
 
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={formData.email}
+                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="email@example.com"
+                      />
+                    </div>
+
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Number of Service Bays *
+                        Number of Service Bays
                       </label>
                       <input
                         type="number"
