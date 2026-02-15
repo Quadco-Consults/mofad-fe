@@ -61,10 +61,13 @@ export default function StockReportPage() {
     totalValue: inventoryData.overview?.total_value || 0,
     totalLowStock: inventoryData.overview?.low_stock_items || 0,
     totalOutOfStock: inventoryData.overview?.out_of_stock || 0,
-    warehouseStocks: (inventoryData.warehouse_breakdown || []).map((wh: any) => ({
+    warehouseStocks: (inventoryData.warehouse_breakdown || []).map((wh: any, index: number) => ({
       warehouse: {
+        id: `warehouse-${index}`, // Use index as unique identifier
         name: wh.warehouse__name,
-        warehouse_type: wh.warehouse__warehouse_type
+        warehouse_type: wh.warehouse__warehouse_type,
+        code: wh.warehouse__code || null,
+        location: wh.warehouse__location || null
       },
       inventory: [], // We'll fetch individual warehouse inventory only when needed
       totalProducts: wh.total_products || 0,

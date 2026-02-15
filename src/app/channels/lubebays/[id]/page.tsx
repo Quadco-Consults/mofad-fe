@@ -2804,7 +2804,7 @@ export default function LubebayDashboardPage() {
                     </div>
                   ) : (
                     <p className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded">
-                      No items added yet. Click "Add Item" to start.
+                      No items added yet. Click &ldquo;Add Item&rdquo; to start.
                     </p>
                   )}
                 </div>
