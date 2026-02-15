@@ -57,6 +57,12 @@ function FinancialReportsPage() {
 
   const getPeriodLabel = (p: string) => {
     switch (p) {
+      case 'monthly': return 'This Month'
+      case 'last_month': return 'Last Month'
+      case 'quarterly': return 'This Quarter'
+      case 'last_quarter': return 'Last Quarter'
+      case 'half_year': return 'Half Year'
+      case 'annual': return 'Annual (This Year)'
       case 'ytd': return 'Year to Date'
       case 'last_30_days': return 'Last 30 Days'
       case 'last_90_days': return 'Last 90 Days'
@@ -174,6 +180,12 @@ function FinancialReportsPage() {
                     }
                   }}
                 >
+                  <option value="monthly">This Month</option>
+                  <option value="last_month">Last Month</option>
+                  <option value="quarterly">This Quarter (Q1/Q2/Q3/Q4)</option>
+                  <option value="last_quarter">Last Quarter</option>
+                  <option value="half_year">Half Year (H1/H2)</option>
+                  <option value="annual">Annual (This Year)</option>
                   <option value="ytd">Year to Date</option>
                   <option value="last_7_days">Last 7 Days</option>
                   <option value="last_30_days">Last 30 Days</option>

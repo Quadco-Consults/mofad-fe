@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import apiClient from '@/lib/apiClient'
@@ -41,97 +41,40 @@ interface StockSummary {
 }
 
 export default function StockReportPage() {
-  const [stockSummary, setStockSummary] = useState<StockSummary | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedWarehouse, setSelectedWarehouse] = useState<number | null>(null)
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string | null>(null)
 
-  // Fetch warehouses
-  const { data: warehousesData, isLoading: warehousesLoading, error: warehousesError } = useQuery({
-    queryKey: ['warehouses'],
-    queryFn: () => apiClient.getWarehouses(),
+  // Fetch inventory analytics - SINGLE efficient API call!
+  const { data: inventoryData, isLoading: loading, error: stockError, refetch } = useQuery({
+    queryKey: ['inventory-analytics'],
+    queryFn: async () => {
+      const response = await apiClient.request('/reports/inventory-analytics/')
+      return response
+    },
     refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   })
 
-  const warehouses = warehousesData?.results || []
+  // Transform the data to match our component's needs
+  const stockSummary = inventoryData ? {
+    totalWarehouses: inventoryData.warehouse_breakdown?.length || 0,
+    totalProducts: inventoryData.overview?.total_products || 0,
+    totalValue: inventoryData.overview?.total_value || 0,
+    totalLowStock: inventoryData.overview?.low_stock_items || 0,
+    totalOutOfStock: inventoryData.overview?.out_of_stock || 0,
+    warehouseStocks: (inventoryData.warehouse_breakdown || []).map((wh: any) => ({
+      warehouse: {
+        name: wh.warehouse__name,
+        warehouse_type: wh.warehouse__warehouse_type
+      },
+      inventory: [], // We'll fetch individual warehouse inventory only when needed
+      totalProducts: wh.total_products || 0,
+      totalValue: wh.total_value || 0,
+      lowStockItems: 0, // Not provided in breakdown, could be calculated if needed
+      outOfStockItems: 0 // Not provided in breakdown, could be calculated if needed
+    }))
+  } : null
 
-  // Fetch stock data for all warehouses
-  useEffect(() => {
-    if (warehouses.length > 0) {
-      fetchAllWarehouseStock()
-    }
-  }, [warehouses])
-
-  const fetchAllWarehouseStock = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const warehouseStocks: WarehouseStock[] = []
-      let totalProducts = 0
-      let totalValue = 0
-      let totalLowStock = 0
-      let totalOutOfStock = 0
-
-      for (const warehouse of warehouses) {
-        try {
-          console.log(`Fetching inventory for warehouse: ${warehouse.name}`)
-          const inventoryData = await apiClient.getWarehouseInventory(warehouse.id)
-          const inventory = inventoryData?.inventory || inventoryData?.results || []
-
-          let warehouseTotalValue = 0
-          let lowStockCount = 0
-          let outOfStockCount = 0
-
-          inventory.forEach((item: any) => {
-            const stock = item.quantity_on_hand || item.current_stock || 0
-            const value = item.total_cost_value || item.total_value || 0
-            const reorderLevel = item.minimum_level || item.reorder_level || 0
-
-            warehouseTotalValue += value
-            totalProducts++
-
-            if (stock === 0) {
-              outOfStockCount++
-              totalOutOfStock++
-            } else if (stock <= reorderLevel && reorderLevel > 0) {
-              lowStockCount++
-              totalLowStock++
-            }
-          })
-
-          totalValue += warehouseTotalValue
-
-          warehouseStocks.push({
-            warehouse,
-            inventory,
-            totalProducts: inventory.length,
-            totalValue: warehouseTotalValue,
-            lowStockItems: lowStockCount,
-            outOfStockItems: outOfStockCount
-          })
-
-        } catch (err) {
-          console.error(`Error fetching inventory for warehouse ${warehouse.name}:`, err)
-        }
-      }
-
-      setStockSummary({
-        totalWarehouses: warehouses.length,
-        totalProducts,
-        totalValue,
-        totalLowStock,
-        totalOutOfStock,
-        warehouseStocks
-      })
-
-    } catch (err) {
-      setError('Failed to fetch stock data')
-      console.error('Stock fetch error:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const error = stockError ? 'Failed to fetch stock data' : null
 
   const getStockStatus = (stock: number, reorderLevel: number) => {
     if (stock === 0) return { status: 'Out of Stock', color: 'text-red-600', bg: 'bg-red-100', icon: XCircle }
@@ -140,31 +83,31 @@ export default function StockReportPage() {
   }
 
   const refreshData = () => {
-    window.location.reload()
+    refetch()
   }
 
-  if (warehousesLoading || loading) {
+  if (loading) {
     return (
       <AppLayout>
         <div className="p-6">
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <Loader2 className="h-12 w-12 animate-spin mx-auto text-orange-500 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Stock Data</h3>
-            <p className="text-gray-600">Fetching inventory from all warehouses...</p>
+            <p className="text-gray-600">Fetching inventory analytics...</p>
           </div>
         </div>
       </AppLayout>
     )
   }
 
-  if (warehousesError || error) {
+  if (error) {
     return (
       <AppLayout>
         <div className="p-6">
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <AlertTriangle className="h-12 w-12 mx-auto text-red-500 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Stock Data</h3>
-            <p className="text-gray-600 mb-4">{error || 'Failed to load warehouses'}</p>
+            <p className="text-gray-600 mb-4">{error}</p>
             <button
               onClick={refreshData}
               className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
