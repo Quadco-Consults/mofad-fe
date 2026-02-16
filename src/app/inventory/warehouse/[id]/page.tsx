@@ -45,6 +45,8 @@ interface BinCardEntry {
 
 interface PendingReceipt {
   id: string
+  proId: number
+  productId: number
   proNumber: string
   supplierName: string
   productCode: string
@@ -192,6 +194,10 @@ export default function WarehouseInventoryPage() {
   const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'out-of-stock'>('all')
   const [showReceiveGoodsModal, setShowReceiveGoodsModal] = useState(false)
   const [receiveQuantity, setReceiveQuantity] = useState<number>(0)
+  const [batchNumber, setBatchNumber] = useState('')
+  const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split('T')[0])
+  const [receiveNotes, setReceiveNotes] = useState('')
+  const [isReceiving, setIsReceiving] = useState(false)
   const [showIssueGoodsModal, setShowIssueGoodsModal] = useState(false)
   const [issueQuantity, setIssueQuantity] = useState<number>(0)
 
@@ -255,6 +261,8 @@ export default function WarehouseInventoryPage() {
             if (pendingQty > 0) { // Only show items with pending quantity
               pendingReceipts.push({
                 id: `${pro.id}-${item.id}`,
+                proId: pro.id,
+                productId: item.product,
                 proNumber: pro.pro_number,
                 supplierName: pro.supplier || 'Unknown Supplier',
                 productCode: item.product_code,
@@ -1193,6 +1201,9 @@ export default function WarehouseInventoryPage() {
                     setShowReceiveGoodsModal(false)
                     setSelectedReceipt(null)
                     setReceiveQuantity(0)
+                    setBatchNumber('')
+                    setReceiveNotes('')
+                    setReceiptDate(new Date().toISOString().split('T')[0])
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -1295,6 +1306,8 @@ export default function WarehouseInventoryPage() {
                         type="text"
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                         placeholder="Enter batch number if applicable"
+                        value={batchNumber}
+                        onChange={(e) => setBatchNumber(e.target.value)}
                       />
                     </div>
 
@@ -1303,7 +1316,8 @@ export default function WarehouseInventoryPage() {
                       <input
                         type="date"
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                        defaultValue={new Date().toISOString().split('T')[0]}
+                        value={receiptDate}
+                        onChange={(e) => setReceiptDate(e.target.value)}
                       />
                     </div>
 
@@ -1313,6 +1327,8 @@ export default function WarehouseInventoryPage() {
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                         rows={3}
                         placeholder="Add any notes about this receipt (condition, quality, etc.)"
+                        value={receiveNotes}
+                        onChange={(e) => setReceiveNotes(e.target.value)}
                       />
                     </div>
                   </div>
@@ -1325,26 +1341,53 @@ export default function WarehouseInventoryPage() {
                     setShowReceiveGoodsModal(false)
                     setSelectedReceipt(null)
                     setReceiveQuantity(0)
+                    setBatchNumber('')
+                    setReceiveNotes('')
+                    setReceiptDate(new Date().toISOString().split('T')[0])
                   }}
                   className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  disabled={isReceiving}
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    // TODO: Implement receive goods logic
-                    console.log('Receiving goods:', {
-                      receipt: selectedReceipt,
-                      quantity: receiveQuantity
-                    })
-                    setShowReceiveGoodsModal(false)
-                    setSelectedReceipt(null)
-                    setReceiveQuantity(0)
+                  onClick={async () => {
+                    if (!selectedReceipt) return
+
+                    setIsReceiving(true)
+                    try {
+                      // Call the API to receive goods
+                      await api.receivePro(selectedReceipt.proId, {
+                        items: [{
+                          product_id: selectedReceipt.productId,
+                          quantity_received: receiveQuantity
+                        }],
+                        notes: receiveNotes || `Received ${receiveQuantity} units${batchNumber ? `, Batch: ${batchNumber}` : ''}`
+                      })
+
+                      // Show success message
+                      alert(`Successfully received ${receiveQuantity} units of ${selectedReceipt.productName}!`)
+
+                      // Refresh the pending receipts list
+                      refetch()
+
+                      // Close modal and reset state
+                      setShowReceiveGoodsModal(false)
+                      setSelectedReceipt(null)
+                      setReceiveQuantity(0)
+                      setBatchNumber('')
+                      setReceiveNotes('')
+                    } catch (error: any) {
+                      console.error('Error receiving goods:', error)
+                      alert(`Failed to receive goods: ${error.message || 'Unknown error'}`)
+                    } finally {
+                      setIsReceiving(false)
+                    }
                   }}
                   className="px-6 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={receiveQuantity <= 0 || receiveQuantity > selectedReceipt.pendingQty}
+                  disabled={isReceiving || receiveQuantity <= 0 || receiveQuantity > selectedReceipt.pendingQty}
                 >
-                  Confirm Receipt
+                  {isReceiving ? 'Processing...' : 'Confirm Receipt'}
                 </button>
               </div>
             </div>
