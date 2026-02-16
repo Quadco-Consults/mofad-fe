@@ -239,7 +239,41 @@ export default function WarehouseInventoryPage() {
           page_size: 100
         })
         console.log('Pending PROs for warehouse:', response)
-        return response.results || []
+
+        // Transform PRO items to PendingReceipt format
+        const pendingReceipts: PendingReceipt[] = []
+
+        const pros = response.results || []
+        pros.forEach((pro: any) => {
+          // Each PRO can have multiple items - create a receipt entry for each item
+          const items = pro.items || []
+          items.forEach((item: any) => {
+            const orderedQty = Number(item.quantity || 0)
+            const receivedQty = Number(item.quantity_delivered || 0)
+            const pendingQty = Number(item.quantity_remaining || orderedQty - receivedQty)
+
+            if (pendingQty > 0) { // Only show items with pending quantity
+              pendingReceipts.push({
+                id: `${pro.id}-${item.id}`,
+                proNumber: pro.pro_number,
+                supplierName: pro.supplier || 'Unknown Supplier',
+                productCode: item.product_code,
+                productName: item.product_name,
+                orderedQty,
+                receivedQty,
+                pendingQty,
+                unitPrice: Number(item.unit_price || 0),
+                totalValue: pendingQty * Number(item.unit_price || 0),
+                orderDate: pro.created_at ? new Date(pro.created_at).toLocaleDateString() : 'N/A',
+                expectedDate: pro.expected_delivery_date || 'N/A',
+                status: pendingQty === orderedQty ? 'pending' : 'partial'
+              })
+            }
+          })
+        })
+
+        console.log('Transformed pending receipts:', pendingReceipts)
+        return pendingReceipts
       } catch (error) {
         console.error('Error fetching pending PROs:', error)
         return []
