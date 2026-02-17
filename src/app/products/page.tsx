@@ -65,6 +65,9 @@ interface BinCardData {
   product_id: number
   product_name: string
   current_quantity: number
+  total_receipts: number
+  total_issues: number
+  transaction_count: number
   transactions: BinCardTransaction[]
 }
 
@@ -1798,7 +1801,7 @@ export default function ProductsPage() {
                       <div className="text-right">
                         <div className="text-sm text-gray-500">Current Stock Balance</div>
                         <div className="text-2xl font-bold text-primary">
-                          {binCardData?.current_quantity || 0} {selectedProduct.unit_of_measure}
+                          {binCardData?.current_quantity || 0} units
                         </div>
                       </div>
                     </div>
@@ -1838,84 +1841,102 @@ export default function ProductsPage() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {generateMockBinCardData(selectedProduct.code).map((entry, index) => (
-                              <tr key={entry.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                                    <span className="text-sm text-gray-900">{entry.date}</span>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="text-sm font-mono text-gray-900">{entry.refNo}</span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="text-sm text-gray-900">{entry.description}</div>
-                                  <div className="text-xs text-gray-500">{entry.location}</div>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="flex items-center gap-2">
-                                    {getTransactionTypeIcon(entry.type)}
-                                    {getTransactionTypeBadge(entry.type)}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right">
-                                  {entry.received > 0 ? (
-                                    <span className="text-green-600 font-medium">+{entry.received.toLocaleString()}</span>
-                                  ) : (
-                                    <span className="text-gray-400">-</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right">
-                                  {entry.issued > 0 ? (
-                                    <span className="text-red-600 font-medium">-{entry.issued.toLocaleString()}</span>
-                                  ) : (
-                                    <span className="text-gray-400">-</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right">
-                                  <div className="text-sm">
-                                    <div className="font-bold text-gray-900">{entry.balance.toLocaleString()}</div>
-                                    <div className="text-xs text-gray-500">{formatCurrency(entry.totalValue)}</div>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    <User className="w-4 h-4 text-gray-400 mr-2" />
-                                    <span className="text-sm text-gray-900">{entry.performedBy}</span>
-                                  </div>
+                            {!selectedWarehouseId ? (
+                              <tr>
+                                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                                  Please select a warehouse to view bin card transactions
                                 </td>
                               </tr>
-                            ))}
+                            ) : binCardLoading ? (
+                              <tr>
+                                <td colSpan={8} className="px-4 py-8 text-center">
+                                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-orange-500" />
+                                </td>
+                              </tr>
+                            ) : binCardData?.transactions && binCardData.transactions.length > 0 ? (
+                              binCardData.transactions.map((entry, index) => (
+                                <tr key={entry.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      <Calendar className="w-4 h-4 text-gray-400 mr-2" />
+                                      <span className="text-sm text-gray-900">{formatDateTime(entry.transaction_date)}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className="text-sm font-mono text-gray-900">{entry.reference_number || '-'}</span>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="text-sm text-gray-900">{entry.description}</div>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <div className="flex items-center gap-2">
+                                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        {entry.transaction_type}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                                    {(entry.quantity_in || 0) > 0 ? (
+                                      <span className="text-green-600 font-medium">+{(entry.quantity_in || 0).toLocaleString()}</span>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                                    {(entry.quantity_out || 0) > 0 ? (
+                                      <span className="text-red-600 font-medium">-{(entry.quantity_out || 0).toLocaleString()}</span>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                                    <div className="text-sm">
+                                      <div className="font-bold text-gray-900">{(entry.balance_after || 0).toLocaleString()}</div>
+                                      {entry.value && <div className="text-xs text-gray-500">{formatCurrency(entry.value)}</div>}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      <User className="w-4 h-4 text-gray-400 mr-2" />
+                                      <span className="text-sm text-gray-900">{entry.created_by_name || 'System'}</span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                                  No transactions found for this product in the selected warehouse
+                                </td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <div className="text-sm text-green-800 font-medium">Total Received</div>
-                        <div className="text-2xl font-bold text-green-600">
-                          {generateMockBinCardData(selectedProduct.code)
-                            .reduce((sum, entry) => sum + entry.received, 0)
-                            .toLocaleString()}
+                    {selectedWarehouseId && binCardData && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                        <div className="bg-green-50 p-4 rounded-lg">
+                          <div className="text-sm text-green-800 font-medium">Total Received</div>
+                          <div className="text-2xl font-bold text-green-600">
+                            {binCardData.total_receipts?.toLocaleString() || '0'}
+                          </div>
+                        </div>
+                        <div className="bg-red-50 p-4 rounded-lg">
+                          <div className="text-sm text-red-800 font-medium">Total Issued</div>
+                          <div className="text-2xl font-bold text-red-600">
+                            {binCardData.total_issues?.toLocaleString() || '0'}
+                          </div>
+                        </div>
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <div className="text-sm text-blue-800 font-medium">Current Balance</div>
+                          <div className="text-2xl font-bold text-blue-600">
+                            {binCardData.current_quantity?.toLocaleString() || '0'} units
+                          </div>
                         </div>
                       </div>
-                      <div className="bg-red-50 p-4 rounded-lg">
-                        <div className="text-sm text-red-800 font-medium">Total Issued</div>
-                        <div className="text-2xl font-bold text-red-600">
-                          {generateMockBinCardData(selectedProduct.code)
-                            .reduce((sum, entry) => sum + entry.issued, 0)
-                            .toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <div className="text-sm text-blue-800 font-medium">Current Balance</div>
-                        <div className="text-2xl font-bold text-blue-600">
-                          {generateMockBinCardData(selectedProduct.code)[0]?.balance || 0} {selectedProduct.unit_of_measure}
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -2921,14 +2921,23 @@ class ApiClient {
     transaction_count: number
     transactions: Array<{
       id: number
+      transaction_number: string
       transaction_type: string
+      transaction_date: string
       quantity: number
+      quantity_in: number
+      quantity_out: number
+      balance_after: number
       quantity_before: number
       quantity_after: number
+      unit_cost: number | null
+      total_cost: number | null
+      description: string
       reason: string | null
       notes: string | null
       reference_type: string | null
       reference_id: number | null
+      reference_number: string | null
       created_at: string
       created_by_name: string | null
     }>
