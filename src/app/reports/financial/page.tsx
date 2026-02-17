@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Download, Filter, Calendar, Loader2, ShoppingCart, Wrench, TrendingUp } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { AppLayout } from '@/components/layout/AppLayout'
 import apiClient from '@/lib/apiClient'
@@ -79,6 +80,13 @@ function FinancialReportsPage() {
             <p className="text-gray-600">Profit & Loss Statements</p>
           </div>
           <div className="flex space-x-3">
+            <Link
+              href="/reports/monthly"
+              className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+            >
+              <Calendar className="w-4 h-4 mr-2" />
+              Monthly P&L
+            </Link>
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"

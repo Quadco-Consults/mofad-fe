@@ -147,6 +147,7 @@ const navigationSections = [
         children: [
           { label: 'Current Stock Report', href: '/reports/stock-report', icon: Package },
           { label: 'Financial Reports', href: '/reports/financial', icon: TrendingUp },
+          { label: 'Monthly P&L', href: '/reports/monthly', icon: Calendar },
           { label: 'Inventory Analytics', href: '/reports/inventory', icon: BarChart3 },
         ],
       },

@@ -4287,6 +4287,60 @@ class ApiClient {
     }
   }
 
+  async getMonthlyPL(year?: number, month?: number): Promise<{
+    month: string
+    period: { start: string; end: string; year: number; month: number }
+    revenue: {
+      direct_sales: number
+      lubebay_products: number
+      lubebay_services: number
+      car_wash: number
+      total: number
+    }
+    expenses: {
+      staff_salary: number
+      commission: number
+      fuelling: number
+      loading: number
+      repairs: number
+      general: number
+      other: number
+      total: number
+    }
+    prfs: {
+      list: Array<{ id: number; prf_number: string; title: string; amount: number; status: string; date: string }>
+      total_amount: number
+      count: number
+    }
+    summary: {
+      gross_profit: number
+      total_expenses: number
+      net_profit: number
+      profit_margin: number
+      direct_sales_count: number
+      lubebay_transaction_count: number
+    }
+    available_months: Array<{ year: number; month: number; label: string }>
+  }> {
+    let endpoint = '/reports/analytics/monthly_pl/?period=monthly'
+    if (year && month) {
+      endpoint += `&year=${year}&month=${month}`
+    }
+    try {
+      return await this.request(endpoint)
+    } catch (error) {
+      return {
+        month: '',
+        period: { start: '', end: '', year: year || new Date().getFullYear(), month: month || new Date().getMonth() + 1 },
+        revenue: { direct_sales: 0, lubebay_products: 0, lubebay_services: 0, car_wash: 0, total: 0 },
+        expenses: { staff_salary: 0, commission: 0, fuelling: 0, loading: 0, repairs: 0, general: 0, other: 0, total: 0 },
+        prfs: { list: [], total_amount: 0, count: 0 },
+        summary: { gross_profit: 0, total_expenses: 0, net_profit: 0, profit_margin: 0, direct_sales_count: 0, lubebay_transaction_count: 0 },
+        available_months: []
+      }
+    }
+  }
+
   // Export Reports Methods
   async exportReportToExcel(reportType: string, params?: Record<string, any>): Promise<Blob> {
     let endpoint = `/reports/export/${reportType}/excel/`
