@@ -43,7 +43,8 @@ import {
   Calendar,
   AlertTriangle,
   Building,
-  BarChart3
+  BarChart3,
+  Droplets
 } from 'lucide-react'
 
 // Define user roles for access control
@@ -122,6 +123,17 @@ const navigationSections = [
           { label: 'Lubebays', href: '/channels/lubebays', icon: Car },
           { label: 'Lodgements', href: '/channels/lubebays/lodgements', icon: DollarSign },
           { label: 'Expenses', href: '/channels/lubebays/expenses', icon: Receipt },
+        ],
+      },
+      {
+        label: 'Car Wash',
+        href: '/channels/carwash',
+        icon: Droplets,
+        color: 'from-blue-500 to-blue-600',
+        roles: PRIVILEGED_ROLES,
+        children: [
+          { label: 'Car Washes', href: '/channels/carwash', icon: Droplets },
+          { label: 'Expenses', href: '/channels/carwash/expenses', icon: Receipt },
         ],
       },
       {
