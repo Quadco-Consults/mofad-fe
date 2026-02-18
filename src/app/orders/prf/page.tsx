@@ -366,24 +366,24 @@ export default function PRFPage() {
   })
 
   // Fetch products (global query - individual item searches handled via client-side filter)
+  // Uses apiClient.getProducts() which correctly passes 'size' (not 'page_size') matching products page
   const { data: productsData, isLoading: isProductsLoading } = useQuery({
     queryKey: ['products'],
-    queryFn: async () => {
-      return await apiClient.get<any[]>('/products/', {
-        page_size: 200,
-        ordering: 'name',
-        is_active: true,
-        is_sellable: true,
-      })
-    },
+    queryFn: () => apiClient.getProducts({
+      size: 200,        // backend uses 'size', not 'page_size'
+      is_active: true,
+    }),
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
   // Helper to extract array from API response (handles paginated and direct array responses)
+  // Backend formats: { results: [...] } or { data: { results: [...] } } or direct array
   const extractResults = (data: any) => {
     if (!data) return []
     if (Array.isArray(data)) return data
     if (data.results && Array.isArray(data.results)) return data.results
+    if (data.data?.results && Array.isArray(data.data.results)) return data.data.results
+    if (data.data && Array.isArray(data.data)) return data.data
     return []
   }
 
