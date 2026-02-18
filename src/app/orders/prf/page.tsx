@@ -171,6 +171,7 @@ export default function PRFPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   // Searchable dropdown state
   const [customerSearch, setCustomerSearch] = useState('')
+  const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState('')
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [productSearches, setProductSearches] = useState<Record<number, string>>({})
   const [showProductDropdowns, setShowProductDropdowns] = useState<Record<number, boolean>>({})
@@ -182,6 +183,14 @@ export default function PRFPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [searchTerm, statusFilter, priorityFilter])
+
+  // Debounce customer search to avoid API call on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedCustomerSearch(customerSearch)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [customerSearch])
 
   // Helper functions for localStorage management
   const getMockPRFs = (): PRF[] => {
@@ -339,17 +348,17 @@ export default function PRFPage() {
   const prfList = (prfData?.results || prfData || []).filter(Boolean)
 
 
-  // Fetch customers for customer selection (server-side search)
+  // Fetch customers for customer selection (server-side search with debounce)
   const { data: allCustomersData, isLoading: isCustomersLoading } = useQuery({
-    queryKey: ['customers', customerSearch],
+    queryKey: ['customers', debouncedCustomerSearch],
     queryFn: async () => {
       const params: Record<string, any> = {
         page_size: 30,
         ordering: 'name',
         status: 'active',
       }
-      if (customerSearch.trim()) {
-        params.search = customerSearch.trim()
+      if (debouncedCustomerSearch.trim()) {
+        params.search = debouncedCustomerSearch.trim()
       }
       return await apiClient.get<any[]>('/customers/', params)
     },
@@ -1280,7 +1289,7 @@ export default function PRFPage() {
                         className={`w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
                           formErrors.customer ? 'border-red-500' : 'border-gray-300'
                         }`}
-                        placeholder={isCustomersLoading ? 'Loading...' : 'Search customer by name or code...'}
+                        placeholder="Search customer by name or code..."
                         value={customerSearch}
                         onChange={(e) => {
                           setCustomerSearch(e.target.value)
@@ -1292,7 +1301,7 @@ export default function PRFPage() {
                         onFocus={() => setShowCustomerDropdown(true)}
                         onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
                       />
-                      {isCustomersLoading && (
+                      {(customerSearch !== debouncedCustomerSearch || isCustomersLoading) && (
                         <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
                       )}
                     </div>
@@ -1315,9 +1324,9 @@ export default function PRFPage() {
                         ))}
                       </div>
                     )}
-                    {showCustomerDropdown && !isCustomersLoading && customers.length === 0 && customerSearch && (
+                    {showCustomerDropdown && !isCustomersLoading && customerSearch === debouncedCustomerSearch && customers.length === 0 && debouncedCustomerSearch && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg px-3 py-4 text-center text-sm text-gray-500">
-                        No customers found for &quot;{customerSearch}&quot;
+                        No customers found for &quot;{debouncedCustomerSearch}&quot;
                       </div>
                     )}
                   </div>
