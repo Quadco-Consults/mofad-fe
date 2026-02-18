@@ -169,6 +169,11 @@ export default function PRFPage() {
   const [selectedPRF, setSelectedPRF] = useState<PRF | null>(null)
   const [formData, setFormData] = useState<PRFFormData>(initialFormData)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  // Searchable dropdown state
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
+  const [productSearches, setProductSearches] = useState<Record<number, string>>({})
+  const [showProductDropdowns, setShowProductDropdowns] = useState<Record<number, boolean>>({})
 
   // Selection hook for bulk operations
   const selection = useSelection<PRF>()
@@ -334,206 +339,34 @@ export default function PRFPage() {
   const prfList = (prfData?.results || prfData || []).filter(Boolean)
 
 
-  // Fetch customers for customer selection
-  const { data: allCustomersData, isLoading: isCustomersLoading, error: customersError } = useQuery({
-    queryKey: ['customers'],
+  // Fetch customers for customer selection (server-side search)
+  const { data: allCustomersData, isLoading: isCustomersLoading } = useQuery({
+    queryKey: ['customers', customerSearch],
     queryFn: async () => {
-      if (!USE_REAL_API) {
-        // Use mock customers data directly when mock mode is enabled
-        console.log('🔧 Using mock customers data (mock mode enabled)')
-        const mockData = [
-          {
-            id: 1,
-            name: 'Total Nigeria Plc',
-            business_name: 'Total Nigeria Plc',
-            customer_code: 'TNP001',
-            email: 'orders@total.com.ng',
-            phone: '+234-1-2345678',
-            credit_limit: 5000000,
-            locations: [
-              { id: 1, name: 'Total Head Office - Victoria Island, Lagos', address: 'Plot 991/992, Cadastral Zone A0, Central Business District, Lagos', primary: true },
-              { id: 2, name: 'Total Abuja Office', address: '23 Ebitu Ukiwe Street, Jabi, Abuja', primary: false },
-              { id: 3, name: 'Total Port Harcourt Branch', address: 'Plot 18, Trans Amadi Industrial Layout, Port Harcourt', primary: false }
-            ]
-          },
-          {
-            id: 2,
-            name: 'Oando Marketing',
-            business_name: 'Oando Marketing Plc',
-            customer_code: 'OMP002',
-            email: 'procurement@oando.com',
-            phone: '+234-1-8765432',
-            credit_limit: 3000000,
-            locations: [
-              { id: 4, name: 'Oando Towers - Lekki, Lagos', address: '2 Ajose Adeogun Street, Victoria Island, Lagos', primary: true },
-              { id: 5, name: 'Oando Kano Office', address: '12 Murtala Muhammad Way, Kano', primary: false }
-            ]
-          },
-          {
-            id: 3,
-            name: 'Mobil Oil Nigeria',
-            business_name: 'Mobil Oil Nigeria',
-            customer_code: 'MON003',
-            email: 'orders@mobil.com.ng',
-            phone: '+234-1-5556789',
-            credit_limit: 4500000,
-            locations: [
-              { id: 6, name: 'Mobil House - Lagos Island', address: '1 Lekki-Epe Expressway, Lagos', primary: true },
-              { id: 7, name: 'Mobil Warri Office', address: 'Petrolex House, Warri, Delta State', primary: false },
-              { id: 8, name: 'Mobil Kaduna Depot', address: 'KM 16, Kaduna-Abuja Expressway, Kaduna', primary: false }
-            ]
-          }
-        ]
-        return mockData
+      const params: Record<string, any> = {
+        page_size: 30,
+        ordering: 'name',
+        status: 'active',
       }
-
-      // Only try real API when explicitly enabled
-      try {
-        return await apiClient.get<any[]>('/customers/', {
-          page_size: 1000, // Request up to 1000 customers
-          ordering: 'name' // Sort by name for better UX
-        })
-      } catch (error) {
-        // Fallback to mock data if real API fails
-        console.log('🔧 Real customer API failed, using mock data')
-        const mockData = [
-          {
-            id: 1,
-            name: 'Total Nigeria Plc',
-            business_name: 'Total Nigeria Plc',
-            customer_code: 'TNP001',
-            email: 'orders@total.com.ng',
-            phone: '+234-1-2345678',
-            credit_limit: 5000000,
-            locations: [
-              { id: 1, name: 'Total Head Office - Victoria Island, Lagos', address: 'Plot 991/992, Cadastral Zone A0, Central Business District, Lagos', primary: true },
-              { id: 2, name: 'Total Abuja Office', address: '23 Ebitu Ukiwe Street, Jabi, Abuja', primary: false },
-              { id: 3, name: 'Total Port Harcourt Branch', address: 'Plot 18, Trans Amadi Industrial Layout, Port Harcourt', primary: false }
-            ]
-          },
-          {
-            id: 2,
-            name: 'Oando Marketing',
-            business_name: 'Oando Marketing Plc',
-            customer_code: 'OMP002',
-            email: 'procurement@oando.com',
-            phone: '+234-1-8765432',
-            credit_limit: 3000000,
-            locations: [
-              { id: 4, name: 'Oando Towers - Lekki, Lagos', address: '2 Ajose Adeogun Street, Victoria Island, Lagos', primary: true },
-              { id: 5, name: 'Oando Kano Office', address: '12 Murtala Muhammad Way, Kano', primary: false }
-            ]
-          },
-          {
-            id: 3,
-            name: 'Mobil Oil Nigeria',
-            business_name: 'Mobil Oil Nigeria',
-            customer_code: 'MON003',
-            email: 'orders@mobil.com.ng',
-            phone: '+234-1-5556789',
-            credit_limit: 4500000,
-            locations: [
-              { id: 6, name: 'Mobil House - Lagos Island', address: '1 Lekki-Epe Expressway, Lagos', primary: true },
-              { id: 7, name: 'Mobil Warri Office', address: 'Petrolex House, Warri, Delta State', primary: false },
-              { id: 8, name: 'Mobil Kaduna Depot', address: 'KM 16, Kaduna-Abuja Expressway, Kaduna', primary: false }
-            ]
-          }
-        ]
-        return mockData
+      if (customerSearch.trim()) {
+        params.search = customerSearch.trim()
       }
+      return await apiClient.get<any[]>('/customers/', params)
     },
-    retry: false,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 30, // 30 seconds
   })
 
-  // Fetch products for product selection
-  const { data: productsData, isLoading: isProductsLoading, error: productsError } = useQuery({
+  // Fetch products (global query - individual item searches handled via client-side filter)
+  const { data: productsData, isLoading: isProductsLoading } = useQuery({
     queryKey: ['products'],
     queryFn: async () => {
-      if (!USE_REAL_API) {
-        // Use mock products data directly when mock mode is enabled
-        console.log('🔧 Using mock products data (mock mode enabled)')
-        const mockData = [
-          {
-            id: 1,
-            name: 'Premium Motor Spirit (PMS)',
-            code: 'PMS-001',
-            bulk_selling_price: 617,
-            retail_selling_price: 650,
-            category: 'Petroleum Products'
-          },
-          {
-            id: 2,
-            name: 'Automotive Gas Oil (Diesel)',
-            code: 'AGO-001',
-            bulk_selling_price: 1050,
-            retail_selling_price: 1100,
-            category: 'Petroleum Products'
-          },
-          {
-            id: 3,
-            name: 'Dual Purpose Kerosene (DPK)',
-            code: 'DPK-001',
-            bulk_selling_price: 850,
-            retail_selling_price: 900,
-            category: 'Petroleum Products'
-          },
-          {
-            id: 4,
-            name: 'Engine Oil SAE 20W-50',
-            code: 'ENG-001',
-            bulk_selling_price: 3500,
-            retail_selling_price: 3800,
-            category: 'Lubricants'
-          }
-        ]
-        return mockData
-      }
-
-      // Only try real API when explicitly enabled
-      try {
-        return await apiClient.get<any[]>('/products/')
-      } catch (error) {
-        // Fallback to mock data if real API fails
-        console.log('🔧 Real products API failed, using mock data')
-        const mockData = [
-          {
-            id: 1,
-            name: 'Premium Motor Spirit (PMS)',
-            code: 'PMS-001',
-            bulk_selling_price: 617,
-            retail_selling_price: 650,
-            category: 'Petroleum Products'
-          },
-          {
-            id: 2,
-            name: 'Automotive Gas Oil (Diesel)',
-            code: 'AGO-001',
-            bulk_selling_price: 1050,
-            retail_selling_price: 1100,
-            category: 'Petroleum Products'
-          },
-          {
-            id: 3,
-            name: 'Dual Purpose Kerosene (DPK)',
-            code: 'DPK-001',
-            bulk_selling_price: 850,
-            retail_selling_price: 900,
-            category: 'Petroleum Products'
-          },
-          {
-            id: 4,
-            name: 'Engine Oil SAE 20W-50',
-            code: 'ENG-001',
-            bulk_selling_price: 3500,
-            retail_selling_price: 3800,
-            category: 'Lubricants'
-          }
-        ]
-        return mockData
-      }
+      return await apiClient.get<any[]>('/products/', {
+        page_size: 200,
+        ordering: 'name',
+        is_active: true,
+        is_sellable: true,
+      })
     },
-    retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
@@ -558,15 +391,6 @@ export default function PRFPage() {
   const endIndex = startIndex + pageSize
   const prfs = USE_REAL_API ? allPrfs : allPrfs.slice(startIndex, endIndex)
 
-  // Debug logging to help identify issues
-  console.log('Dropdown Data Debug:', {
-    customers: { count: customers.length, data: customers },
-    products: { count: products.length, data: products },
-    isCustomersLoading,
-    isProductsLoading,
-    customersError,
-    productsError
-  })
 
   // Helper function to transform form data to API format
   const transformFormDataToApiFormat = (data: PRFFormData) => {
@@ -1040,21 +864,27 @@ export default function PRFPage() {
     const selectedCustomer = customers.find(c => c.id === customerId)
     if (selectedCustomer) {
       const orderRef = generateOrderReference(selectedCustomer.customer_code || 'GEN')
-      // Auto-select the primary location if available
-      const primaryLocation = (selectedCustomer as any).locations?.find((loc: any) => loc.primary) || (selectedCustomer as any).locations?.[0]
+      const addressParts = [selectedCustomer.address, selectedCustomer.city].filter(Boolean)
+      const addressText = addressParts.join(', ') || ''
       setFormData({
         ...formData,
         customer: customerId,
         customer_name: selectedCustomer.name || selectedCustomer.business_name || '',
         order_reference: orderRef,
-        customer_location: primaryLocation?.id || 0,
-        customer_location_name: primaryLocation?.name || ''
+        customer_location: customerId, // use customer id as location ref
+        customer_location_name: addressText
       })
+      setCustomerSearch(selectedCustomer.name || selectedCustomer.business_name || '')
+      setShowCustomerDropdown(false)
     }
   }
 
   const handleAdd = () => {
     resetForm()
+    setCustomerSearch('')
+    setShowCustomerDropdown(false)
+    setProductSearches({})
+    setShowProductDropdowns({})
     // Generate PRF number and set current date when opening the form
     setFormData({
       ...initialFormData,
@@ -1442,44 +1272,75 @@ export default function PRFPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Customer <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                      formErrors.customer ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    value={formData.customer}
-                    onChange={(e) => {
-                      const customerId = parseInt(e.target.value) || 0
-                      console.log('Customer dropdown changed:', { value: e.target.value, customerId, customers })
-                      selectCustomer(customerId)
-                    }}
-                    disabled={isCustomersLoading}
-                  >
-                    <option value={0}>{isCustomersLoading ? 'Loading customers...' : 'Select Customer'}</option>
-                    {customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name || customer.business_name} ({customer.customer_code})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        className={`w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                          formErrors.customer ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder={isCustomersLoading ? 'Loading...' : 'Search customer by name or code...'}
+                        value={customerSearch}
+                        onChange={(e) => {
+                          setCustomerSearch(e.target.value)
+                          setShowCustomerDropdown(true)
+                          if (!e.target.value) {
+                            setFormData({ ...formData, customer: 0, customer_name: '', customer_location: 0, customer_location_name: '' })
+                          }
+                        }}
+                        onFocus={() => setShowCustomerDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
+                      />
+                      {isCustomersLoading && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+                      )}
+                    </div>
+                    {showCustomerDropdown && customers.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {customers.map((customer) => (
+                          <button
+                            key={customer.id}
+                            type="button"
+                            className="w-full text-left px-3 py-2 hover:bg-blue-50 focus:bg-blue-50 border-b border-gray-100 last:border-0"
+                            onMouseDown={() => selectCustomer(customer.id)}
+                          >
+                            <div className="font-medium text-sm text-gray-900">{customer.name || customer.business_name}</div>
+                            <div className="text-xs text-gray-500 flex gap-2">
+                              <span>{customer.customer_code}</span>
+                              {customer.city && <span>· {customer.city}</span>}
+                              {customer.phone && <span>· {customer.phone}</span>}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {showCustomerDropdown && !isCustomersLoading && customers.length === 0 && customerSearch && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg px-3 py-4 text-center text-sm text-gray-500">
+                        No customers found for &quot;{customerSearch}&quot;
+                      </div>
+                    )}
+                  </div>
                   {formErrors.customer && <p className="text-red-500 text-xs mt-1">{formErrors.customer}</p>}
                 </div>
 
                 {formData.customer > 0 && (
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <h4 className="font-medium text-blue-800 mb-2">Customer Details</h4>
-                    <div className="text-sm text-blue-700">
-                      <p><strong>Name:</strong> {formData.customer_name}</p>
-                      {(() => {
-                        const customer = customers.find(c => c.id === formData.customer)
-                        return customer ? (
-                          <>
-                            <p><strong>Email:</strong> {customer.email}</p>
-                            <p><strong>Phone:</strong> {customer.phone}</p>
-                            <p><strong>Credit Limit:</strong> {formatCurrency(customer.credit_limit || 0)}</p>
-                          </>
-                        ) : null
-                      })()}
-                    </div>
+                    {(() => {
+                      const customer = customers.find(c => c.id === formData.customer)
+                      return (
+                        <div className="text-sm text-blue-700 grid grid-cols-2 gap-x-4 gap-y-1">
+                          <p><strong>Code:</strong> {customer?.customer_code || '—'}</p>
+                          <p><strong>Phone:</strong> {customer?.phone || '—'}</p>
+                          <p><strong>Email:</strong> {customer?.email || '—'}</p>
+                          <p><strong>Credit Limit:</strong> {formatCurrency(customer?.credit_limit || 0)}</p>
+                          {(customer?.address || customer?.city) && (
+                            <p className="col-span-2"><strong>Address:</strong> {[customer?.address, customer?.city].filter(Boolean).join(', ')}</p>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
 
@@ -1531,25 +1392,60 @@ export default function PRFPage() {
                         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                           <div className="md:col-span-2">
                             <label className="block text-xs font-medium text-gray-600 mb-1">Product</label>
-                            <select
-                              className={`w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-primary ${
-                                formErrors[`items.${index}.product`] ? 'border-red-500' : 'border-gray-300'
-                              }`}
-                              value={item.product}
-                              onChange={(e) => {
-                                const productId = parseInt(e.target.value) || 0
-                                console.log('Product dropdown changed:', { index, value: e.target.value, productId, products })
-                                updateItem(index, 'product', productId)
-                              }}
-                              disabled={isProductsLoading}
-                            >
-                              <option value={0}>{isProductsLoading ? 'Loading products...' : 'Select Product'}</option>
-                              {products.map((product) => (
-                                <option key={product.id} value={product.id}>
-                                  {product.name} - ₦{formatCurrency(product.bulk_selling_price || 0)}/L
-                                </option>
-                              ))}
-                            </select>
+                            <div className="relative">
+                              <div className="relative">
+                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+                                <input
+                                  type="text"
+                                  className={`w-full pl-6 pr-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-primary ${
+                                    formErrors[`items.${index}.product`] ? 'border-red-500' : 'border-gray-300'
+                                  }`}
+                                  placeholder={isProductsLoading ? 'Loading...' : 'Search product...'}
+                                  value={productSearches[index] ?? (item.product ? (products.find(p => p.id === item.product)?.name || '') : '')}
+                                  onChange={(e) => {
+                                    setProductSearches(prev => ({ ...prev, [index]: e.target.value }))
+                                    setShowProductDropdowns(prev => ({ ...prev, [index]: true }))
+                                    if (!e.target.value) updateItem(index, 'product', 0)
+                                  }}
+                                  onFocus={() => setShowProductDropdowns(prev => ({ ...prev, [index]: true }))}
+                                  onBlur={() => setTimeout(() => setShowProductDropdowns(prev => ({ ...prev, [index]: false })), 200)}
+                                />
+                              </div>
+                              {showProductDropdowns[index] && (
+                                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-48 overflow-y-auto">
+                                  {products
+                                    .filter(p => {
+                                      const q = (productSearches[index] || '').toLowerCase()
+                                      return !q || p.name?.toLowerCase().includes(q) || p.code?.toLowerCase().includes(q)
+                                    })
+                                    .slice(0, 20)
+                                    .map((product) => (
+                                      <button
+                                        key={product.id}
+                                        type="button"
+                                        className="w-full text-left px-2 py-1.5 hover:bg-blue-50 text-sm border-b border-gray-100 last:border-0"
+                                        onMouseDown={() => {
+                                          updateItem(index, 'product', product.id)
+                                          setProductSearches(prev => ({ ...prev, [index]: product.name }))
+                                          setShowProductDropdowns(prev => ({ ...prev, [index]: false }))
+                                        }}
+                                      >
+                                        <div className="font-medium text-gray-900 truncate">{product.name || product.code}</div>
+                                        <div className="text-xs text-gray-500">
+                                          {product.code} · ₦{formatCurrency(product.bulk_selling_price || 0)}/unit
+                                        </div>
+                                      </button>
+                                    ))
+                                  }
+                                  {products.filter(p => {
+                                    const q = (productSearches[index] || '').toLowerCase()
+                                    return !q || p.name?.toLowerCase().includes(q) || p.code?.toLowerCase().includes(q)
+                                  }).length === 0 && (
+                                    <div className="px-2 py-3 text-sm text-gray-500 text-center">No products found</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                             {formErrors[`items.${index}.product`] && (
                               <p className="text-red-500 text-xs mt-1">{formErrors[`items.${index}.product`]}</p>
                             )}
@@ -1611,46 +1507,17 @@ export default function PRFPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Customer Location <span className="text-red-500">*</span>
+                      Delivery Address
                     </label>
-                    <select
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                        formErrors.customer_location ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      value={formData.customer_location}
-                      onChange={(e) => {
-                        const locationId = parseInt(e.target.value) || 0
-                        const selectedCustomer = customers.find(c => c.id === formData.customer)
-                        const selectedLocation = (selectedCustomer as any)?.locations?.find((loc: any) => loc.id === locationId)
-                        console.log('Customer location changed:', { value: e.target.value, locationId, selectedLocation })
-                        setFormData({
-                          ...formData,
-                          customer_location: locationId,
-                          customer_location_name: selectedLocation?.name || ''
-                        })
-                      }}
-                      disabled={!formData.customer || formData.customer === 0}
-                    >
-                      <option value={0}>{!formData.customer ? 'Select Customer First' : 'Select Customer Location'}</option>
-                      {formData.customer > 0 && (() => {
-                        const selectedCustomer = customers.find(c => c.id === formData.customer)
-                        return (selectedCustomer as any)?.locations?.map((location: any) => (
-                          <option key={location.id} value={location.id}>
-                            {location.name}
-                          </option>
-                        )) || []
-                      })()}
-                    </select>
-                    {formErrors.customer_location && (
-                      <p className="text-red-500 text-xs mt-1">{formErrors.customer_location}</p>
-                    )}
-                    {formData.customer_location > 0 && (() => {
-                      const selectedCustomer = customers.find(c => c.id === formData.customer)
-                      const selectedLocation = (selectedCustomer as any)?.locations?.find((loc: any) => loc.id === formData.customer_location)
-                      return selectedLocation ? (
-                        <p className="text-xs text-gray-500 mt-1">{selectedLocation.address}</p>
-                      ) : null
-                    })()}
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm text-gray-600"
+                      value={formData.customer_location_name || ''}
+                      onChange={(e) => setFormData({ ...formData, customer_location_name: e.target.value })}
+                      placeholder={formData.customer ? 'Auto-filled from customer address' : 'Select a customer first'}
+                      readOnly={!!formData.customer_location_name && !!formData.customer}
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Auto-filled from customer record</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1768,32 +1635,14 @@ export default function PRFPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer Location *</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      value={formData.customer_location}
-                      onChange={(e) => {
-                        const locationId = parseInt(e.target.value) || 0
-                        const selectedCustomer = customers.find(c => c.id === formData.customer)
-                        const selectedLocation = (selectedCustomer as any)?.locations?.find((loc: any) => loc.id === locationId)
-                        setFormData({
-                          ...formData,
-                          customer_location: locationId,
-                          customer_location_name: selectedLocation?.name || ''
-                        })
-                      }}
-                      disabled={!formData.customer || formData.customer === 0}
-                    >
-                      <option value={0}>{!formData.customer ? 'Select Customer First' : 'Select Customer Location'}</option>
-                      {formData.customer > 0 && (() => {
-                        const selectedCustomer = customers.find(c => c.id === formData.customer)
-                        return (selectedCustomer as any)?.locations?.map((location: any) => (
-                          <option key={location.id} value={location.id}>
-                            {location.name}
-                          </option>
-                        )) || []
-                      })()}
-                    </select>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Address</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm text-gray-600"
+                      value={formData.customer_location_name || ''}
+                      onChange={(e) => setFormData({ ...formData, customer_location_name: e.target.value })}
+                      placeholder="Delivery address"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
