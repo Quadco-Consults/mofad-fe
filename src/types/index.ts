@@ -463,3 +463,145 @@ export interface TransactionFilters extends DateRange {
   product_id?: number
   state_id?: number
 }
+// Payment Voucher Types
+export type PaymentVoucherStatus = 
+  | 'draft'
+  | 'finance_review'
+  | 'cfo_approval'
+  | 'md_approval'
+  | 'approved'
+  | 'paid'
+  | 'rejected'
+  | 'cancelled'
+
+export type PaymentMethod = 
+  | 'bank_transfer'
+  | 'cheque'
+  | 'cash'
+  | 'mobile_money'
+
+export interface PaymentVoucher {
+  id: number
+  voucher_number: string
+  memo: number
+  memo_number?: string
+  memo_title?: string
+  memo_supplier_name?: string
+  
+  // Payee details
+  payee_name: string
+  payee_bank_name?: string | null
+  payee_account_number?: string | null
+  payee_account_name?: string | null
+  
+  // Payment details
+  payment_method: PaymentMethod
+  amount: string
+  payment_reference?: string | null
+  payment_date?: string | null
+  
+  // Description
+  description: string
+  notes?: string | null
+  
+  // Status
+  status: PaymentVoucherStatus
+  
+  // Approval workflow
+  created_by?: number
+  created_by_name?: string | null
+  
+  finance_reviewed_by?: number | null
+  finance_reviewed_by_name?: string | null
+  finance_reviewed_at?: string | null
+  finance_comments?: string | null
+  
+  cfo_approved_by?: number | null
+  cfo_approved_by_name?: string | null
+  cfo_approved_at?: string | null
+  cfo_comments?: string | null
+  
+  md_approved_by?: number | null
+  md_approved_by_name?: string | null
+  md_approved_at?: string | null
+  md_comments?: string | null
+  
+  paid_by?: number | null
+  paid_by_name?: string | null
+  paid_at?: string | null
+  
+  rejected_by?: number | null
+  rejected_by_name?: string | null
+  rejected_at?: string | null
+  rejection_reason?: string | null
+  
+  // Computed properties
+  is_approved?: boolean
+  is_paid?: boolean
+  is_pending?: boolean
+  approval_progress?: number
+  
+  // Attachments
+  attachments?: string[]
+  
+  // Timestamps
+  created_at: string
+  updated_at: string
+}
+
+export interface PaymentVoucherListItem {
+  id: number
+  voucher_number: string
+  memo: number
+  memo_number?: string
+  memo_title?: string
+  payee_name: string
+  amount: string
+  payment_method: PaymentMethod
+  status: PaymentVoucherStatus
+  is_paid?: boolean
+  approval_progress?: number
+  created_by_name?: string | null
+  created_at: string
+  payment_date?: string | null
+}
+
+export interface CreatePaymentVoucherForm {
+  memo: number
+  payee_name: string
+  payee_bank_name?: string
+  payee_account_number?: string
+  payee_account_name?: string
+  payment_method: PaymentMethod
+  amount: number | string
+  description: string
+  notes?: string
+}
+
+export interface PaymentConfirmationForm {
+  payment_reference: string
+  payment_date: string
+  notes?: string
+}
+
+export interface ApprovalActionForm {
+  comments?: string
+}
+
+export interface RejectionForm {
+  reason: string
+}
+
+export interface PaymentVoucherStats {
+  total: number
+  by_status: {
+    draft: number
+    pending: number
+    approved: number
+    paid: number
+    rejected: number
+    cancelled: number
+  }
+  total_amount: number
+  pending_amount: number
+}

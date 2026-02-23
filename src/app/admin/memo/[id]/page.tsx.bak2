@@ -225,132 +225,51 @@ export default function MemoDetailPage() {
   }, [memoId, router])
 
   const handlePrint = () => {
-    // Make sure we're on the PDF tab
-    if (activeTab !== 'pdf') {
-      setActiveTab('pdf')
-      // Wait a bit for the tab to render
-      setTimeout(() => {
-        window.print()
-      }, 100)
-    } else {
-      window.print()
-    }
+    window.print()
   }
 
   const handleDownloadPDF = async () => {
     if (!printRef.current) return
 
-    try {
-      // Create a new window for PDF generation
-      const printWindow = window.open('', '_blank', 'width=1200,height=800')
-      if (!printWindow) {
-        alert('Please allow popups to download the PDF')
-        return
-      }
+    const printWindow = window.open('', '_blank', 'width=800,height=600')
+    if (!printWindow) return
 
-      // Clone the content
-      const content = printRef.current.cloneNode(true) as HTMLElement
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Memo ${memo?.memo_number || 'Document'}</title>
+          <style>
+            @page {
+              size: A4;
+              margin: 0.5in;
+            }
+            * { box-sizing: border-box; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              margin: 0;
+              padding: 20px;
+              background: white;
+            }
+            .print-content { max-width: 100%; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+            th { background: #f9fafb; font-weight: 600; }
+            .text-right { text-align: right; }
+            .font-bold { font-weight: 700; }
+            .no-print { display: none !important; }
+          </style>
+        </head>
+        <body>
+          ${printRef.current.innerHTML}
+        </body>
+      </html>
+    `)
 
-      // Write content to new window with proper styling
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Memo ${memo?.memo_number || 'Document'}</title>
-            <meta charset="UTF-8">
-            <style>
-              @page {
-                size: A4;
-                margin: 0.5in;
-              }
-              * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-              }
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                margin: 0;
-                padding: 0;
-                background: white;
-                color: black;
-              }
-              .min-h-screen {
-                min-height: 100vh;
-                page-break-after: always;
-              }
-              .min-h-screen:last-child {
-                page-break-after: auto;
-              }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                margin: 20px 0;
-              }
-              th, td {
-                padding: 12px;
-                text-align: left;
-                border: 1px solid #000;
-              }
-              th {
-                background: #000;
-                color: white;
-                font-weight: 700;
-              }
-              .text-right { text-align: right; }
-              .text-center { text-align: center; }
-              .font-bold { font-weight: 700; }
-              .uppercase { text-transform: uppercase; }
-              .border-2 { border-width: 2px; }
-              .border-black { border-color: #000; }
-              .bg-black { background-color: #000; color: white; }
-              .text-white { color: white; }
-              .p-4 { padding: 1rem; }
-              .p-6 { padding: 1.5rem; }
-              .p-8 { padding: 2rem; }
-              .p-12 { padding: 3rem; }
-              .mb-4 { margin-bottom: 1rem; }
-              .mb-6 { margin-bottom: 1.5rem; }
-              .mb-8 { margin-bottom: 2rem; }
-              .mt-4 { margin-top: 1rem; }
-              .mt-8 { margin-top: 2rem; }
-              .ml-6 { margin-left: 1.5rem; }
-              .grid { display: grid; }
-              .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-              .gap-4 { gap: 1rem; }
-              .flex { display: flex; }
-              .items-center { align-items: center; }
-              .justify-between { justify-content: space-between; }
-              .text-xs { font-size: 0.75rem; }
-              .text-sm { font-size: 0.875rem; }
-              .text-base { font-size: 1rem; }
-              .text-lg { font-size: 1.125rem; }
-              .text-xl { font-size: 1.25rem; }
-              .text-2xl { font-size: 1.5rem; }
-              .text-3xl { font-size: 1.875rem; }
-              img { max-width: 200px; height: auto; }
-            </style>
-          </head>
-          <body>
-            ${content.innerHTML}
-          </body>
-        </html>
-      `)
-
-      printWindow.document.close()
-
-      // Wait for content to load then trigger print
-      setTimeout(() => {
-        printWindow.print()
-        // Close the window after printing
-        setTimeout(() => {
-          printWindow.close()
-        }, 100)
-      }, 500)
-    } catch (error) {
-      console.error('Error generating PDF:', error)
-      alert('Failed to generate PDF. Please try again.')
-    }
+    printWindow.document.close()
+    setTimeout(() => {
+      printWindow.print()
+    }, 250)
   }
 
   if (isLoading) {
@@ -387,26 +306,6 @@ export default function MemoDetailPage() {
 
   return (
     <AppLayout>
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #memo-print-content,
-          #memo-print-content * {
-            visibility: visible;
-          }
-          #memo-print-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-      `}</style>
       <div className="max-w-6xl mx-auto">
         {/* Action Bar */}
         <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200 no-print">
@@ -738,7 +637,7 @@ export default function MemoDetailPage() {
 
         {/* PDF Document Tab */}
         {activeTab === 'pdf' && (
-          <div id="memo-print-content" ref={printRef} className="bg-white print:shadow-none print:border-none">
+          <div ref={printRef} className="bg-white print:shadow-none print:border-none">
             {/* PAGE 1: Traditional Memo Format */}
             <div className="min-h-screen p-12 print:p-8 print:page-break-after-always">
               {/* Header with Logo */}
@@ -953,8 +852,373 @@ export default function MemoDetailPage() {
               </div>
             )}
 
+            {/* Old gradient header removal */}
+            <div className="hidden" style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #B8941F 50%, #1B4F3A 100%)' }}>
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-0 left-0 w-full h-full" style={{
+                  backgroundImage: `radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 2px, transparent 0)`,
+                  backgroundSize: '30px 30px'
+                }}></div>
+              </div>
+
+              <div className="relative p-8 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-6">
+                    <div className="bg-white/95 p-4 rounded-xl shadow-lg backdrop-blur-sm">
+                      <img
+                        src="/modah_logo-removebg-preview.png"
+                        alt="MOFAD Energy Solutions"
+                        className="w-16 h-16 object-contain"
+                      />
+                    </div>
+                    <div>
+                      <h1 className="text-4xl font-bold tracking-tight mb-2">MOFAD Energy Solutions</h1>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-white/90">
+                        <span className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-white/60 rounded-full"></div>
+                          <MapPin className="w-4 h-4" />
+                          <span>45 TOS Benson Crescent, Utako, Abuja FCT</span>
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-white/60 rounded-full"></div>
+                          <Phone className="w-4 h-4" />
+                          <span>+234 809 123 4567</span>
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-white/60 rounded-full"></div>
+                          <Mail className="w-4 h-4" />
+                          <span>info@mofadenergy.com</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="bg-white/20 backdrop-blur-sm px-6 py-3 rounded-xl border border-white/30">
+                      <p className="text-xs text-white/80 mb-1">Memo Reference</p>
+                      <p className="font-bold text-lg">{memo.memo_number}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-white/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-1 h-8 bg-white/80 rounded-full"></div>
+                      <div>
+                        <h2 className="text-3xl font-bold tracking-wide">{categoryLabels[memo.category].toUpperCase()}</h2>
+                        <p className="text-sm text-white/80 mt-1">{memo.title || memo.subject}</p>
+                      </div>
+                    </div>
+                    <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border-2 ${status.bg} ${status.color}`}>
+                      {status.icon}
+                      {status.label}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Document Content */}
+            <div className="p-8">
+              {/* Memo Information Section */}
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#E8F4F0' }}>
+                    <FileText className="w-5 h-5 text-green-700" style={{ color: '#1B4F3A' }} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">Memo Information</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Date</label>
+                    <p className="text-base font-medium text-gray-900">{formatDate(memo.created_at)}</p>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Priority</label>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border-2 ${priorityColors[memo.priority]}`}>
+                      {memo.priority.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">From Department</label>
+                    <p className="text-base font-medium text-gray-900">{memo.from_department || 'N/A'}</p>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">To Department</label>
+                    <p className="text-base font-medium text-gray-900">{memo.to_department || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-6">
+                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Subject</label>
+                  <p className="text-base font-medium text-gray-900">{memo.subject || 'N/A'}</p>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-6">
+                  <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Content</label>
+                  <p className="text-base text-gray-900 whitespace-pre-wrap">{memo.content || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* Procurement Information Section */}
+              {memo.category === 'procurement' && (
+                <>
+                  <div className="mb-8">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#EFF6FF' }}>
+                        <Building className="w-5 h-5 text-blue-600" style={{ color: '#2563EB' }} />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900">Procurement Information</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Supplier</label>
+                        <p className="text-base font-medium text-gray-900">{memo.supplier_name || 'N/A'}</p>
+                      </div>
+
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Delivery Warehouse</label>
+                        <p className="text-base font-medium text-gray-900">{memo.delivery_warehouse_name || 'N/A'}</p>
+                      </div>
+
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Payment Status</label>
+                        <p className="text-base font-medium text-gray-900">
+                          {memo.payment_confirmed ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                              <CheckCircle className="w-4 h-4" />
+                              Confirmed
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                              <Clock className="w-4 h-4" />
+                              Pending
+                            </span>
+                          )}
+                        </p>
+                      </div>
+
+                      {memo.generated_pro_number && (
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">Generated PRO</label>
+                          <p className="text-base font-medium text-blue-600">{memo.generated_pro_number}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Items Section */}
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FDF4E7' }}>
+                          <Package className="w-5 h-5 text-amber-600" style={{ color: '#D4AF37' }} />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900">Items & Services</h3>
+                      </div>
+                      <p className="text-sm text-gray-600">Detailed breakdown of items</p>
+                    </div>
+
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                      <table className="w-full">
+                        <thead>
+                          <tr style={{ background: 'linear-gradient(90deg, #F3F4F6, #E5E7EB)' }}>
+                            <th className="px-6 py-4 text-left text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">S/N</th>
+                            <th className="px-6 py-4 text-left text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Product</th>
+                            <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Code</th>
+                            <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Package Size</th>
+                            <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Quantity</th>
+                            <th className="px-6 py-4 text-right text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Unit Price</th>
+                            <th className="px-6 py-4 text-right text-sm font-bold text-gray-800 uppercase tracking-wide">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {memo.items?.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="py-12 text-center">
+                                <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                <p className="text-gray-500 font-medium">No items in this memo</p>
+                              </td>
+                            </tr>
+                          ) : (
+                            memo.items?.map((item: any, index: number) => (
+                              <tr key={item.id} className={`border-b border-gray-200 transition-colors ${
+                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                              } hover:bg-blue-50/30`}>
+                                <td className="px-6 py-4 text-center font-bold text-gray-900 border-r border-gray-200">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mx-auto text-sm">
+                                    {index + 1}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 border-r border-gray-200">
+                                  <div>
+                                    <p className="font-semibold text-gray-900 mb-1">{item.product_name || 'Unknown Product'}</p>
+                                    {item.notes && <p className="text-sm text-gray-600 italic">{item.notes}</p>}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-center border-r border-gray-200">
+                                  <span className="font-mono text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                                    {item.product_code || 'N/A'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-center border-r border-gray-200">
+                                  {item.product_bulk_size || item.product_retail_size ? (
+                                    <div className="flex flex-col gap-1">
+                                      {item.product_bulk_size && (
+                                        <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                                          Bulk: {item.product_bulk_size}{item.product_unit_of_measure || 'L'}
+                                        </span>
+                                      )}
+                                      {item.product_retail_size && (
+                                        <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded">
+                                          Retail: {item.product_retail_size}{item.product_unit_of_measure || 'L'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-gray-500">{item.product_unit_of_measure || 'Liters'}</span>
+                                  )}
+                                </td>
+                                <td className="px-6 py-4 text-center border-r border-gray-200">
+                                  <span className="font-bold text-gray-900">{item.quantity}</span>
+                                </td>
+                                <td className="px-6 py-4 text-right border-r border-gray-200">
+                                  <span className="font-semibold text-gray-900">{formatCurrency(item.unit_price)}</span>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                  <span className="font-bold text-gray-900">{formatCurrency(item.total_cost)}</span>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ background: 'linear-gradient(90deg, #1B4F3A, #2D6A4F)' }} className="text-white">
+                            <td colSpan={6} className="px-6 py-5 text-right text-base font-bold tracking-wide uppercase">
+                              Total Estimated Cost:
+                            </td>
+                            <td className="px-6 py-5 text-right">
+                              <span className="text-2xl font-bold">{formatCurrency(memo.total_estimated_cost)}</span>
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Approval Timeline Section */}
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F3E8FF' }}>
+                    <Calendar className="w-5 h-5 text-purple-600" style={{ color: '#9333EA' }} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">Approval Timeline</h3>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Calendar className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-gray-900">Created</p>
+                      <p className="text-sm text-gray-700 mt-1">{formatDateTime(memo.created_at)}</p>
+                      <p className="text-xs text-gray-600 mt-1">By: {memo.created_by_name || 'System'}</p>
+                    </div>
+                  </div>
+
+                  {memo.coo_approved_at && (
+                    <div className="flex items-start gap-4 bg-green-50 p-4 rounded-lg border border-green-200">
+                      <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-6 h-6 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-900">COO Approved</p>
+                        <p className="text-sm text-gray-700 mt-1">{formatDateTime(memo.coo_approved_at)}</p>
+                        <p className="text-xs text-gray-600 mt-1">By: {memo.coo_approved_by_name}</p>
+                        {memo.coo_comments && (
+                          <div className="mt-2 p-3 bg-white rounded border border-green-200">
+                            <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Comments:</p>
+                            <p className="text-sm text-gray-800 italic">&quot;{memo.coo_comments}&quot;</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {memo.md_approved_at && (
+                    <div className="flex items-start gap-4 bg-green-50 p-4 rounded-lg border border-green-200">
+                      <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-6 h-6 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-900">MD Approved (Final Approval)</p>
+                        <p className="text-sm text-gray-700 mt-1">{formatDateTime(memo.md_approved_at)}</p>
+                        <p className="text-xs text-gray-600 mt-1">By: {memo.md_approved_by_name}</p>
+                        {memo.md_comments && (
+                          <div className="mt-2 p-3 bg-white rounded border border-green-200">
+                            <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Comments:</p>
+                            <p className="text-sm text-gray-800 italic">&quot;{memo.md_comments}&quot;</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {memo.rejected_at && (
+                    <div className="flex items-start gap-4 bg-red-50 p-4 rounded-lg border border-red-200">
+                      <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                        <XCircle className="w-6 h-6 text-red-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-900">Rejected</p>
+                        <p className="text-sm text-gray-700 mt-1">{formatDateTime(memo.rejected_at)}</p>
+                        <p className="text-xs text-gray-600 mt-1">By: {memo.rejected_by_name}</p>
+                        {memo.rejection_reason && (
+                          <div className="mt-2 p-3 bg-white rounded border border-red-200">
+                            <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Reason:</p>
+                            <p className="text-sm text-red-700 font-medium italic">&quot;{memo.rejection_reason}&quot;</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {memo.payment_confirmed_at && (
+                    <div className="flex items-start gap-4 bg-purple-50 p-4 rounded-lg border border-purple-200">
+                      <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                        <CreditCard className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-900">Payment Confirmed</p>
+                        <p className="text-sm text-gray-700 mt-1">{formatDateTime(memo.payment_confirmed_at)}</p>
+                        <p className="text-xs text-gray-600 mt-1">By: {memo.payment_confirmed_by_name}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="mt-12 pt-6 border-t-2 border-gray-300">
+                <div className="text-center text-sm text-gray-600">
+                  <p className="font-semibold">MOFAD Energy Solutions</p>
+                  <p className="mt-1">This is a computer-generated document. No signature is required.</p>
+                  <p className="mt-1 text-xs">For inquiries, contact: info@mofadenergy.com | +234 809 123 4567</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
+
         {/* Modals */}
         {showRejectModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

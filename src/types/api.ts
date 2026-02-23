@@ -144,7 +144,7 @@ export interface Product {
   name: string
   code: string
   description?: string
-  category: 'fuel' | 'lubricant' | 'additive' | 'service' | 'equipment' | 'other' | 'engine_oil'
+  category: 'fuel' | 'lubricant' | 'additive' | 'service' | 'equipment' | 'other' | 'engine_oil' | 'hydraulic_oil' | 'gear_oil' | 'brake_fluid' | 'coolant' | 'grease' | 'filter'
   subcategory?: string
   brand?: string
   viscosity_grade?: string
@@ -193,7 +193,7 @@ export interface Product {
 export interface ProductFormData {
   name: string
   description?: string
-  category: 'fuel' | 'lubricant' | 'additive' | 'service' | 'equipment' | 'other'
+  category: 'fuel' | 'lubricant' | 'additive' | 'service' | 'equipment' | 'other' | 'engine_oil' | 'hydraulic_oil' | 'gear_oil' | 'brake_fluid' | 'coolant' | 'grease' | 'filter'
   subcategory?: string
   brand?: string
   unit_of_measure: 'liters' | 'gallons' | 'kilograms' | 'pieces' | 'meters' | 'hours'
