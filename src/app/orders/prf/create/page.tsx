@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import apiClient from '@/lib/apiClient'
 import {
   ArrowLeft,
+  ArrowRight,
   Save,
   Plus,
   X,
@@ -52,6 +53,8 @@ interface CustomerOrderFormData {
     quantity: number
     unit_price: number
     total: number
+    package_size?: number
+    warehouse_name?: string
   }>
 }
 
@@ -63,6 +66,16 @@ interface OrderItem {
   quantity: number
   unit_price: number
   total: number
+  package_size?: number
+  warehouse_id?: string
+  warehouse_name?: string
+}
+
+interface Warehouse {
+  id: number
+  name: string
+  location?: string
+  is_active?: boolean
 }
 
 interface Customer {
@@ -80,6 +93,11 @@ interface Customer {
   last_transaction: string
   status: string
   rating: number
+  // Optional properties for different API response formats
+  business_name?: string
+  customer_name?: string
+  customer_type_name?: string
+  contact_phone?: string
   created_at: string
 }
 
@@ -97,6 +115,11 @@ interface MofadProduct {
   status: string
   profit_margin: number
   created_at: string
+  package_sizes?: number[]
+  is_active?: boolean
+  bulk_size?: number
+  retail_size?: number
+  unit_of_measure?: string
 }
 
 export default function CreateCustomerOrderPage() {
@@ -121,19 +144,34 @@ export default function CreateCustomerOrderPage() {
   const [showProductCatalog, setShowProductCatalog] = useState(false)
   const [quantity, setQuantity] = useState(0)
   const [productSearchTerm, setProductSearchTerm] = useState('')
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('')
+  const [selectedWarehouse, setSelectedWarehouse] = useState('')
+  const [selectedPackageSize, setSelectedPackageSize] = useState<number | null>(null)
 
-  // Fetch customers
-  const { data: customers, isLoading: customersLoading } = useQuery({
-    queryKey: ['customers'],
-    queryFn: () => apiClient.get('/customers/'),
+  // Fetch customers with search
+  const { data: customersData, isLoading: customersLoading } = useQuery({
+    queryKey: ['customers', customerSearchTerm],
+    queryFn: () => apiClient.getCustomers({
+      search: customerSearchTerm || undefined,
+      page_size: 100 // Load more customers
+    }),
   })
 
+  // Extract customers array from response
+  const customers = customersData?.results || (Array.isArray(customersData) ? customersData : [])
+
+  // Debug logging
+  console.log('Customer data:', { customersData, customers, count: customers?.length, searchTerm: customerSearchTerm })
+
   // Fetch MOFAD products
-  const { data: mofadProducts, isLoading: productsLoading } = useQuery({
+  const { data: mofadProductsData, isLoading: productsLoading } = useQuery({
     queryKey: ['mofad-products'],
     queryFn: () => apiClient.getProducts(),
     enabled: !!selectedCustomer,
   })
+
+  // Extract products array from response
+  const mofadProducts = mofadProductsData?.results || (Array.isArray(mofadProductsData) ? mofadProductsData : [])
 
   // Fetch users for reviewer and approver selection
   const { data: usersData } = useQuery({
@@ -143,16 +181,50 @@ export default function CreateCustomerOrderPage() {
 
   const users = usersData?.results || (Array.isArray(usersData) ? usersData : [])
 
-  // Filter products by search term
+  // Fetch warehouses
+  const { data: warehousesData } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: () => apiClient.get('/warehouses/'),
+  })
+
+  const warehouses = warehousesData?.results || (Array.isArray(warehousesData) ? warehousesData : [])
+
+  // No client-side filtering needed - API handles search
+  const filteredCustomers = customers || []
+
+  // Debug logging for search
+  console.log('Search results:', { searchTerm: customerSearchTerm, resultCount: filteredCustomers.length })
+
+  // Filter products by search term and exclude filters - ONLY LUBRICANTS
   const filteredProducts = mofadProducts?.filter(
-    (product: MofadProduct) => {
+    (product: any) => {
       const matchesSearch = (product.name || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-                           (product.product_code || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-                           (product.category || '').toLowerCase().includes(productSearchTerm.toLowerCase())
-      const hasStock = (product.stock_level || 0) > 0
-      return matchesSearch && hasStock
+                           ((product.code || product.product_code) || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                           (product.category || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                           (product.brand || '').toLowerCase().includes(productSearchTerm.toLowerCase())
+      const isLubricant = product.category !== 'filter' && product.category !== 'Filters' // Exclude filters
+      const isActive = product.is_active !== false && product.is_sellable !== false
+      return matchesSearch && isLubricant && isActive
     }
   ) || []
+
+  // Debug logging for products
+  console.log('Products debug:', {
+    totalProducts: mofadProducts?.length || 0,
+    filteredCount: filteredProducts.length,
+    searchTerm: productSearchTerm,
+    sampleProduct: mofadProducts?.[0] ? {
+      name: mofadProducts[0].name,
+      code: (mofadProducts[0] as any).code,
+      category: mofadProducts[0].category,
+      retail_selling_price: (mofadProducts[0] as any).retail_selling_price,
+      bulk_selling_price: (mofadProducts[0] as any).bulk_selling_price,
+      cost_price: (mofadProducts[0] as any).cost_price,
+      current_price: mofadProducts[0].current_price,
+      minimum_selling_price: (mofadProducts[0] as any).minimum_selling_price,
+      price_schemes: (mofadProducts[0] as any).price_schemes
+    } : null
+  })
 
   const createCustomerOrder = useMutation({
     mutationFn: (data: CustomerOrderFormData) => {
@@ -188,18 +260,23 @@ export default function CreateCustomerOrderPage() {
     },
   })
 
-  const handleCustomerSelect = (customer: Customer) => {
+  const handleCustomerSelect = (customer: any) => {
     setSelectedCustomer(customer)
     setFormData(prev => ({
       ...prev,
       customer_id: customer.id.toString(),
-      customer_name: customer.name || '',
-      customer_contact: customer.phone || '',
-      customer_email: customer.email || '',
-      delivery_address: customer.address || '',
+      customer_name: customer.name || customer.business_name || customer.customer_name || '',
+      customer_contact: customer.phone || customer.contact_phone || '',
+      customer_email: customer.email || customer.contact_email || '',
+      delivery_address: customer.address || 'NA', // Default to NA if no address
       payment_terms: determinePaymentTerms(customer),
     }))
-    setShowProductCatalog(true)
+  }
+
+  const handleContinueToProducts = () => {
+    if (selectedCustomer) {
+      setShowProductCatalog(true)
+    }
   }
 
   const determinePaymentTerms = (customer: Customer) => {
@@ -215,26 +292,40 @@ export default function CreateCustomerOrderPage() {
     setQuantity(1)
   }
 
+  // Helper function to get Direct sales price from price schemes
+  const getDirectPrice = (product: any) => {
+    const priceSchemes = product.price_schemes || []
+    const directScheme = priceSchemes.find((scheme: any) =>
+      scheme.name?.toLowerCase().includes('direct')
+    )
+    return directScheme ? parseFloat(directScheme.price || '0') : parseFloat(product.retail_selling_price || '0')
+  }
+
   const addProductToOrder = () => {
     if (!selectedProduct || !quantity || quantity <= 0) {
       alert('Please select a valid quantity')
       return
     }
 
-    if (quantity > (selectedProduct.stock_level || 0)) {
-      alert(`Only ${selectedProduct.stock_level} units available in stock`)
-      return
-    }
+    // Use Direct price from price schemes
+    const product = selectedProduct as any
+    const unitPrice = getDirectPrice(product)
+    const total = quantity * unitPrice
 
-    const total = quantity * (selectedProduct.current_price || 0)
+    // Find selected warehouse name
+    const selectedWarehouseObj = warehouses.find((w: Warehouse) => w.id.toString() === selectedWarehouse)
+
     const item: OrderItem = {
       id: Date.now().toString(),
       product_id: (selectedProduct.id || 0).toString(),
       product_name: selectedProduct.name || 'Unknown Product',
-      product_code: selectedProduct.product_code || 'No Code',
+      product_code: product.code || selectedProduct.product_code || 'No Code',
       quantity,
-      unit_price: selectedProduct.current_price || 0,
+      unit_price: unitPrice,
       total,
+      package_size: selectedPackageSize || undefined,
+      warehouse_id: selectedWarehouse || undefined,
+      warehouse_name: selectedWarehouseObj?.name || undefined,
     }
 
     setFormData(prev => ({
@@ -242,8 +333,11 @@ export default function CreateCustomerOrderPage() {
       items: [...prev.items, item],
     }))
 
+    // Reset form
     setSelectedProduct(null)
     setQuantity(0)
+    setSelectedPackageSize(null)
+    setSelectedWarehouse('')
   }
 
   const removeItem = (id: string) => {
@@ -280,7 +374,7 @@ export default function CreateCustomerOrderPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.customer_name || !formData.customer_contact || formData.items.length === 0) {
+    if (!formData.customer_name || formData.items.length === 0) {
       alert('Please select customer and add at least one product.')
       return
     }
@@ -292,397 +386,531 @@ export default function CreateCustomerOrderPage() {
     router.push('/orders/prf')
   }
 
+  // Determine current step
+  const getCurrentStep = () => {
+    if (!selectedCustomer || !showProductCatalog) return 1
+    if (formData.items.length === 0) return 2
+    return 3
+  }
+
+  const currentStep = getCurrentStep()
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Orders
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Create Customer Order (PRF)</h1>
-              <p className="text-muted-foreground">Process a new customer order for lubricants and petroleum products</p>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header with Progress Bar */}
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="px-8 py-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={handleCancel}
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </Button>
+                <div className="h-8 w-px bg-gray-300"></div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">New Purchase Request Form</h1>
+                  <p className="text-sm text-gray-500 mt-0.5">Create a new customer order PRF</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Indicator */}
+            <div className="flex items-center gap-3">
+              {[
+                { num: 1, label: 'Customer', icon: User },
+                { num: 2, label: 'Products', icon: Package },
+                { num: 3, label: 'Review', icon: CheckCircle },
+              ].map((step, idx) => {
+                const StepIcon = step.icon
+                const isActive = currentStep === step.num
+                const isCompleted = currentStep > step.num
+
+                return (
+                  <div key={step.num} className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                          isCompleted
+                            ? 'bg-green-600 text-white'
+                            : isActive
+                            ? 'bg-green-600 text-white ring-4 ring-green-100'
+                            : 'bg-gray-200 text-gray-500'
+                        }`}
+                      >
+                        <StepIcon className="w-4 h-4" />
+                      </div>
+                      <span className={`text-sm font-medium ${isActive || isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
+                        {step.label}
+                      </span>
+                    </div>
+                    {idx < 2 && (
+                      <div className={`h-0.5 w-16 ${currentStep > step.num ? 'bg-green-600' : 'bg-gray-300'}`}></div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Main Content */}
-            <div className="lg:col-span-3 space-y-6">
-              {/* Customer Selection */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="w-5 h-5" />
-                    Customer Selection
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!selectedCustomer ? (
+        {/* Main Content */}
+        <form onSubmit={handleSubmit} className="px-8 py-6">
+          <div className="grid grid-cols-12 gap-6">
+            {/* Left Column - Main Form (8 columns) */}
+            <div className="col-span-12 lg:col-span-8 space-y-6">
+              {/* STEP 1: Customer Selection */}
+              {currentStep === 1 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold">Select Customer</CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <div className="space-y-4">
-                      <p className="text-sm text-muted-foreground">Select a customer to process order:</p>
+                      {/* Customer Search Input */}
+                      <div className="relative">
+                        <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search by name, phone, email, or city..."
+                          value={customerSearchTerm}
+                          onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                          className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
+                        />
+                      </div>
+
                       {customersLoading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {[...Array(4)].map((_, i) => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {[...Array(6)].map((_, i) => (
                             <div key={i} className="animate-pulse">
-                              <div className="h-32 bg-muted rounded-lg"></div>
+                              <div className="h-28 bg-gray-100 rounded-lg"></div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {customers?.map((customer: Customer) => {
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-2">
+                          {filteredCustomers.length > 0 ? filteredCustomers.map((customer: Customer) => {
                             const riskLevel = getCustomerRiskLevel(customer)
+                            const isSelected = selectedCustomer?.id === customer.id
                             return (
                               <div
                                 key={customer.id}
-                                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                                className={`border-2 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer group ${
+                                  isSelected
+                                    ? 'border-green-600 bg-green-50 shadow-md'
+                                    : 'border-gray-200 hover:border-green-500'
+                                }`}
                                 onClick={() => handleCustomerSelect(customer)}
                               >
-                                <div className="flex items-start justify-between mb-3">
-                                  <div>
-                                    <h3 className="font-semibold text-lg">{customer.name}</h3>
-                                    <p className="text-sm text-muted-foreground">{customer.customer_type}</p>
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold text-base group-hover:text-green-600 transition-colors">
+                                      {customer.name || customer.business_name || customer.customer_name || 'Unknown'}
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground">{customer.customer_type || customer.customer_type_name || 'Customer'}</p>
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                                    <span className="text-sm font-medium">{customer.rating}</span>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Phone className="w-4 h-4" />
-                                    {customer.phone}
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <MapPin className="w-4 h-4" />
-                                    {customer.city}, {customer.state}
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Shield className={`w-4 h-4`} />
-                                    <span className={riskLevel.color}>{riskLevel.level}</span>
+                                  <div className="flex items-center gap-0.5">
+                                    <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                                    <span className="text-xs font-medium">{customer.rating || 0}</span>
                                   </div>
                                 </div>
 
-                                <div className="mt-3 pt-3 border-t border-gray-100">
-                                  <div className="grid grid-cols-2 gap-2 text-xs">
-                                    <div>
-                                      <p className="text-muted-foreground">Credit Limit</p>
-                                      <p className="font-medium">₦{customer.credit_limit.toLocaleString()}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-muted-foreground">Total Purchases</p>
-                                      <p className="font-medium">₦{customer.total_purchases.toLocaleString()}</p>
-                                    </div>
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Phone className="w-3 h-3" />
+                                    {customer.phone || customer.contact_phone || 'N/A'}
                                   </div>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <MapPin className="w-3 h-3" />
+                                    {customer.city || 'N/A'}
+                                  </div>
+                                </div>
+
+                                <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between text-xs">
+                                  <span className="text-muted-foreground">Credit Available</span>
+                                  <span className="font-medium text-green-600">
+                                    ₦{((customer.credit_limit || 0) - (customer.outstanding_balance || 0)).toLocaleString()}
+                                  </span>
                                 </div>
                               </div>
                             )
-                          })}
+                          }) : (
+                            <div className="col-span-3 text-center py-12 text-muted-foreground">
+                              <User className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                              <p className="text-sm">No customers found</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Continue Button - Only show when customer is selected */}
+                      {selectedCustomer && (
+                        <div className="mt-6 pt-4 border-t border-gray-200">
+                          <Button
+                            type="button"
+                            onClick={handleContinueToProducts}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
+                          >
+                            Continue to Products
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </Button>
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="space-y-4">
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* STEP 2: Add Products - shown when customer is selected */}
+              {selectedCustomer && currentStep >= 2 && (
+                <>
+                  {/* Selected Customer Summary Bar */}
+                  <Card className="bg-green-50 border-green-200">
+                    <CardContent className="py-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <User className="w-8 h-8 text-primary" />
+                          <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">
+                            <User className="w-5 h-5 text-white" />
+                          </div>
                           <div>
-                            <h3 className="font-semibold text-lg">{selectedCustomer.name}</h3>
-                            <p className="text-sm text-muted-foreground">{selectedCustomer.customer_type}</p>
+                            <p className="text-xs text-gray-600">Selected Customer</p>
+                            <h3 className="font-semibold text-base">
+                              {selectedCustomer.name || selectedCustomer.business_name || selectedCustomer.customer_name || 'Unknown'}
+                            </h3>
                           </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedCustomer(null)
-                            setFormData(prev => ({ ...prev, customer_id: '', customer_name: '', customer_contact: '', customer_email: '', delivery_address: '' }))
-                            setShowProductCatalog(false)
-                          }}
-                        >
-                          Change Customer
-                        </Button>
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Phone</p>
-                          <p className="font-medium">{selectedCustomer.phone}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Email</p>
-                          <p className="font-medium">{selectedCustomer.email}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Credit Limit</p>
-                          <p className="font-medium">₦{selectedCustomer.credit_limit.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Outstanding</p>
-                          <p className="font-medium">₦{selectedCustomer.outstanding_balance.toLocaleString()}</p>
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <p className="text-xs text-gray-600">Credit Available</p>
+                            <p className="font-semibold text-green-600">
+                              ₦{((selectedCustomer.credit_limit || 0) - (selectedCustomer.outstanding_balance || 0)).toLocaleString()}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedCustomer(null)
+                              setFormData(prev => ({ ...prev, customer_id: '', customer_name: '', customer_contact: '', customer_email: '', delivery_address: '', items: [] }))
+                              setShowProductCatalog(false)
+                            }}
+                            className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+                          >
+                            Change
+                          </Button>
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
 
-                      {/* Order Details */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Delivery Address *
-                          </label>
-                          <textarea
-                            value={formData.delivery_address}
-                            onChange={(e) => setFormData(prev => ({ ...prev, delivery_address: e.target.value }))}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            placeholder="Enter complete delivery address"
-                            required
-                          />
-                        </div>
-                        <div className="space-y-4">
+                  {/* Order Details Form */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg font-semibold">Order Details</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Payment Terms
+                              Delivery Address *
+                            </label>
+                            <textarea
+                              value={formData.delivery_address}
+                              onChange={(e) => setFormData(prev => ({ ...prev, delivery_address: e.target.value }))}
+                              rows={3}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              placeholder="Enter complete delivery address"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Payment Terms
+                              </label>
+                              <select
+                                value={formData.payment_terms}
+                                onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              >
+                                <option value="Net 30">Net 30 Days</option>
+                                <option value="Net 15">Net 15 Days</option>
+                                <option value="Net 7">Net 7 Days</option>
+                                <option value="Cash on delivery">Cash on Delivery</option>
+                                <option value="Prepaid">Prepaid</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Expected Delivery Date
+                              </label>
+                              <input
+                                type="date"
+                                value={formData.delivery_date}
+                                onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Sales Representative
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.sales_rep}
+                            onChange={(e) => setFormData(prev => ({ ...prev, sales_rep: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="Enter sales rep name"
+                          />
+                        </div>
+
+                        {/* Reviewer and Approver Selection */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Reviewer (1st Level)
                             </label>
                             <select
-                              value={formData.payment_terms}
-                              onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
+                              value={formData.reviewer || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, reviewer: e.target.value ? parseInt(e.target.value) : undefined }))}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                             >
-                              <option value="Net 30">Net 30 Days</option>
-                              <option value="Net 15">Net 15 Days</option>
-                              <option value="Net 7">Net 7 Days</option>
-                              <option value="Cash on delivery">Cash on Delivery</option>
-                              <option value="Prepaid">Prepaid</option>
+                              <option value="">Select Reviewer</option>
+                              {users.map((user: any) => (
+                                <option key={user.id} value={user.id}>
+                                  {user.full_name || user.email}
+                                </option>
+                              ))}
                             </select>
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Expected Delivery Date
+                              Approver (2nd Level)
                             </label>
-                            <input
-                              type="date"
-                              value={formData.delivery_date}
-                              onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
+                            <select
+                              value={formData.approver || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, approver: e.target.value ? parseInt(e.target.value) : undefined }))}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            />
+                            >
+                              <option value="">Select Approver</option>
+                              {users.map((user: any) => (
+                                <option key={user.id} value={user.id}>
+                                  {user.full_name || user.email}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
-                      </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Sales Representative
-                        </label>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Order Notes
+                          </label>
+                          <textarea
+                            value={formData.order_notes}
+                            onChange={(e) => setFormData(prev => ({ ...prev, order_notes: e.target.value }))}
+                            rows={2}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="Any special instructions or notes for this order"
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Product Catalog */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg font-semibold">Add Products</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="relative">
+                        <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                         <input
                           type="text"
-                          value={formData.sales_rep}
-                          onChange={(e) => setFormData(prev => ({ ...prev, sales_rep: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          placeholder="Enter sales rep name"
+                          placeholder="Search lubricants by name or code..."
+                          value={productSearchTerm}
+                          onChange={(e) => setProductSearchTerm(e.target.value)}
+                          className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
                         />
                       </div>
 
-                      {/* Reviewer and Approver Selection */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Reviewer (1st Level)
-                          </label>
-                          <select
-                            value={formData.reviewer || ''}
-                            onChange={(e) => setFormData(prev => ({ ...prev, reviewer: e.target.value ? parseInt(e.target.value) : undefined }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          >
-                            <option value="">Select Reviewer</option>
-                            {users.map((user: any) => (
-                              <option key={user.id} value={user.id}>
-                                {user.first_name && user.last_name
-                                  ? `${user.first_name} ${user.last_name}`
-                                  : user.username || user.email}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Approver (2nd Level)
-                          </label>
-                          <select
-                            value={formData.approver || ''}
-                            onChange={(e) => setFormData(prev => ({ ...prev, approver: e.target.value ? parseInt(e.target.value) : undefined }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          >
-                            <option value="">Select Approver</option>
-                            {users.map((user: any) => (
-                              <option key={user.id} value={user.id}>
-                                {user.first_name && user.last_name
-                                  ? `${user.first_name} ${user.last_name}`
-                                  : user.username || user.email}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Order Notes
-                        </label>
-                        <textarea
-                          value={formData.order_notes}
-                          onChange={(e) => setFormData(prev => ({ ...prev, order_notes: e.target.value }))}
-                          rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          placeholder="Any special instructions or notes for this order"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Product Catalog */}
-              {showProductCatalog && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="w-5 h-5" />
-                      MOFAD Product Catalog
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="relative">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search products..."
-                        value={productSearchTerm}
-                        onChange={(e) => setProductSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    {productsLoading ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {[...Array(6)].map((_, i) => (
-                          <div key={i} className="animate-pulse">
-                            <div className="h-24 bg-muted rounded-lg"></div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
-                        {filteredProducts.map((product: MofadProduct) => (
-                          <div
-                            key={product.id}
-                            className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                              selectedProduct?.id === product.id
-                                ? 'border-primary bg-primary/5'
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                            onClick={() => handleProductSelect(product)}
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <h4 className="font-medium text-sm">{product.name || 'Unknown Product'}</h4>
-                                <p className="text-xs text-muted-foreground">{product.product_code || 'No Code'}</p>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                {getStockStatusIcon(product)}
-                              </div>
+                      {productsLoading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {[...Array(6)].map((_, i) => (
+                            <div key={i} className="animate-pulse">
+                              <div className="h-24 bg-muted rounded-lg"></div>
                             </div>
-
-                            <div className="space-y-2 text-xs">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Price:</span>
-                                <span className="font-medium">₦{(product.current_price || 0).toLocaleString()}/{product.unit_type || 'Unit'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Stock:</span>
-                                <span className="font-medium">{product.stock_level || 0} {product.unit_type || 'Unit'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Category:</span>
-                                <span className="font-medium">{product.category || 'General'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Margin:</span>
-                                <span className="font-medium text-green-600">{product.profit_margin || 0}%</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Add Product Section */}
-                    {selectedProduct && (
-                      <div className="border-t pt-4">
-                        <h4 className="font-medium mb-3">Add to Order: {selectedProduct.name || 'Unknown Product'}</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Quantity ({selectedProduct.unit_type || 'units'})
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              max={selectedProduct.stock_level || 0}
-                              value={quantity || ''}
-                              onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                              placeholder={`Max: ${selectedProduct.stock_level || 0}`}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Unit Price
-                            </label>
-                            <input
-                              type="text"
-                              value={`₦${(selectedProduct.current_price || 0).toLocaleString()}`}
-                              disabled
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Total
-                            </label>
-                            <input
-                              type="text"
-                              value={`₦${(quantity * (selectedProduct.current_price || 0)).toLocaleString()}`}
-                              disabled
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                            />
-                          </div>
-                          <div>
-                            <Button
-                              type="button"
-                              onClick={addProductToOrder}
-                              className="w-full mofad-btn-primary"
-                              disabled={!quantity || quantity <= 0 || quantity > (selectedProduct.stock_level || 0)}
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                          {filteredProducts.map((product: MofadProduct) => (
+                            <div
+                              key={product.id}
+                              className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                                selectedProduct?.id === product.id
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                              onClick={() => handleProductSelect(product)}
                             >
-                              <Plus className="w-4 h-4 mr-2" />
-                              Add
-                            </Button>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-sm">{product.name || 'Unknown Product'}</h4>
+                                  <p className="text-xs text-muted-foreground">{(product as any).code || product.product_code || 'No Code'}</p>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {product.is_active && <CheckCircle className="w-3 h-3 text-green-500" />}
+                                </div>
+                              </div>
+
+                              {/* Package Sizes */}
+                              {product.package_sizes && product.package_sizes.length > 0 && (
+                                <div className="mb-2">
+                                  <p className="text-xs text-muted-foreground mb-1">Package Sizes:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {product.package_sizes.map((size, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium"
+                                      >
+                                        {size}{product.unit_of_measure === 'liters' ? 'L' : product.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="space-y-2 text-xs">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Direct Price:</span>
+                                  <span className="font-medium text-green-600">₦{getDirectPrice(product as any).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Category:</span>
+                                  <span className="font-medium capitalize">{product.category?.replace('_', ' ') || 'General'}</span>
+                                </div>
+                                {(product as any).brand && (
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Brand:</span>
+                                    <span className="font-medium">{(product as any).brand}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add Product Section */}
+                      {selectedProduct && (
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium mb-3">Add to Order: {selectedProduct.name || 'Unknown Product'}</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Quantity
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={quantity || ''}
+                                onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                placeholder="Enter quantity"
+                              />
+                            </div>
+
+                            {/* Package Size Selector */}
+                            {selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0 && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Package Size
+                                </label>
+                                <select
+                                  value={selectedPackageSize || ''}
+                                  onChange={(e) => setSelectedPackageSize(e.target.value ? Number(e.target.value) : null)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                >
+                                  <option value="">Select size</option>
+                                  {selectedProduct.package_sizes.map((size, idx) => (
+                                    <option key={idx} value={size}>
+                                      {size}{selectedProduct.unit_of_measure === 'liters' ? 'L' : selectedProduct.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+
+                            {/* Warehouse Selector */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Warehouse
+                              </label>
+                              <select
+                                value={selectedWarehouse}
+                                onChange={(e) => setSelectedWarehouse(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                              >
+                                <option value="">Select warehouse</option>
+                                {warehouses.map((warehouse: Warehouse) => (
+                                  <option key={warehouse.id} value={warehouse.id}>
+                                    {warehouse.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Unit Price (Direct)
+                              </label>
+                              <input
+                                type="text"
+                                value={`₦${getDirectPrice(selectedProduct as any).toLocaleString()}`}
+                                disabled
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Total
+                              </label>
+                              <input
+                                type="text"
+                                value={`₦${(quantity * getDirectPrice(selectedProduct as any)).toLocaleString()}`}
+                                disabled
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                              />
+                            </div>
+                            <div>
+                              <Button
+                                type="button"
+                                onClick={addProductToOrder}
+                                className="w-full mofad-btn-primary"
+                                disabled={!quantity || quantity <= 0}
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Add
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
               )}
 
               {/* Order Items */}
@@ -698,6 +926,8 @@ export default function CreateCustomerOrderPage() {
                           <tr>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Warehouse</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
@@ -713,6 +943,18 @@ export default function CreateCustomerOrderPage() {
                                 </div>
                               </td>
                               <td className="px-4 py-2 text-sm">{item.quantity}</td>
+                              <td className="px-4 py-2 text-sm">
+                                {item.package_size ? (
+                                  <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
+                                    {item.package_size}L
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2 text-sm">
+                                {item.warehouse_name || <span className="text-gray-400">-</span>}
+                              </td>
                               <td className="px-4 py-2 text-sm">₦{item.unit_price.toLocaleString()}</td>
                               <td className="px-4 py-2 text-sm font-medium">₦{item.total.toLocaleString()}</td>
                               <td className="px-4 py-2">
@@ -736,97 +978,152 @@ export default function CreateCustomerOrderPage() {
               )}
             </div>
 
-            {/* Summary Sidebar */}
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="w-5 h-5" />
-                    Order Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Items:</span>
-                      <span>{formData.items.length}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Customer:</span>
-                      <span className="text-right">{selectedCustomer?.name || 'Not selected'}</span>
-                    </div>
-                    {formData.payment_terms && (
-                      <div className="flex justify-between text-sm">
-                        <span>Payment Terms:</span>
-                        <span>{formData.payment_terms}</span>
-                      </div>
-                    )}
-                    <div className="border-t pt-2">
-                      <div className="flex justify-between font-medium">
-                        <span>Total Amount:</span>
-                        <span className="text-primary">₦{getTotalAmount().toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Customer Info Card */}
-              {selectedCustomer && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5" />
-                      Customer Insights
-                    </CardTitle>
+            {/* Right Column - Sidebar (4 columns) */}
+            <div className="col-span-12 lg:col-span-4">
+              <div className="sticky top-24 space-y-6">
+                {/* Order Summary Card */}
+                <Card className="shadow-lg">
+                  <CardHeader className="bg-green-50 border-b border-green-200">
+                    <CardTitle className="text-lg font-bold text-green-900">Order Summary</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Rating:</span>
-                        <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 text-yellow-500 fill-current" />
-                          <span>{selectedCustomer.rating}/5</span>
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      {/* Customer Info */}
+                      {selectedCustomer ? (
+                        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                          <div className="flex items-start gap-3">
+                            <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0">
+                              <User className="w-6 h-6 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-gray-600 mb-1">Customer</p>
+                              <h4 className="font-semibold text-base text-gray-900 truncate">
+                                {selectedCustomer.name || selectedCustomer.business_name || selectedCustomer.customer_name || 'Unknown'}
+                              </h4>
+                              <p className="text-xs text-gray-600 mt-1 flex items-center gap-1">
+                                <Phone className="w-3 h-3" />
+                                {selectedCustomer.phone || selectedCustomer.contact_phone || 'N/A'}
+                              </p>
+                              <div className="mt-2 pt-2 border-t border-green-200">
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-gray-600">Credit Available</span>
+                                  <span className="font-semibold text-green-700">
+                                    ₦{((selectedCustomer.credit_limit || 0) - (selectedCustomer.outstanding_balance || 0)).toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                          <User className="w-10 h-10 mx-auto mb-2 text-gray-400" />
+                          <p className="text-sm text-gray-500">No customer selected</p>
+                        </div>
+                      )}
+
+                      {/* Order Statistics */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between py-3 border-b border-gray-200">
+                          <div className="flex items-center gap-2">
+                            <ShoppingCart className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">Total Items</span>
+                          </div>
+                          <span className="font-semibold text-lg text-gray-900">{formData.items.length}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between py-3 border-b border-gray-200">
+                          <div className="flex items-center gap-2">
+                            <Package className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">Total Quantity</span>
+                          </div>
+                          <span className="font-semibold text-lg text-gray-900">
+                            {formData.items.reduce((sum, item) => sum + item.quantity, 0)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between py-3 bg-green-50 rounded-lg px-3">
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="w-5 h-5 text-green-600" />
+                            <span className="text-sm font-medium text-gray-900">Grand Total</span>
+                          </div>
+                          <span className="font-bold text-2xl text-green-600">
+                            ₦{getTotalAmount().toLocaleString()}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex justify-between mt-1">
-                        <span className="text-muted-foreground">Credit Available:</span>
-                        <span className="font-medium">₦{(selectedCustomer.credit_limit - selectedCustomer.outstanding_balance).toLocaleString()}</span>
+
+                      {/* Action Buttons */}
+                      <div className="space-y-3 pt-4 border-t border-gray-200">
+                        <Button
+                          type="submit"
+                          className="w-full mofad-btn-primary py-6 text-base font-semibold"
+                          disabled={createCustomerOrder.isPending || !selectedCustomer || formData.items.length === 0}
+                        >
+                          <Save className="w-5 h-5 mr-2" />
+                          {createCustomerOrder.isPending ? 'Creating PRF...' : 'Create Purchase Request'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleCancel}
+                          className="w-full py-6 text-base"
+                        >
+                          Cancel
+                        </Button>
                       </div>
-                      <div className="flex justify-between mt-1">
-                        <span className="text-muted-foreground">Risk Level:</span>
-                        <span className={getCustomerRiskLevel(selectedCustomer).color}>
-                          {getCustomerRiskLevel(selectedCustomer).level}
-                        </span>
-                      </div>
+
+                      {/* Order Info */}
+                      {formData.items.length > 0 && (
+                        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-start gap-2">
+                            <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <div className="text-xs text-blue-900">
+                              <p className="font-medium mb-1">Ready to submit</p>
+                              <p className="text-blue-700">
+                                Your purchase request will be sent for approval once you click the submit button.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-              )}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button
-                    type="submit"
-                    className="w-full mofad-btn-primary"
-                    disabled={createCustomerOrder.isPending || !selectedCustomer || formData.items.length === 0}
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {createCustomerOrder.isPending ? 'Creating...' : 'Create Order'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCancel}
-                    className="w-full"
-                  >
-                    Cancel
-                  </Button>
-                </CardContent>
-              </Card>
+                {/* Quick Stats Card */}
+                {formData.items.length > 0 && (
+                  <Card className="shadow-md">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base font-semibold">Quick Stats</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Payment Terms</span>
+                          <span className="font-medium text-gray-900">{formData.payment_terms}</span>
+                        </div>
+                        {formData.delivery_date && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Delivery Date</span>
+                            <span className="font-medium text-gray-900">
+                              {new Date(formData.delivery_date).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                        {formData.delivery_address && formData.delivery_address !== 'NA' && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Delivery</span>
+                            <span className="font-medium text-gray-900 text-right max-w-[150px] truncate">
+                              {formData.delivery_address}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </div>
           </div>
         </form>

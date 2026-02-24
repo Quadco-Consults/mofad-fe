@@ -587,7 +587,7 @@ export default function LubebaysPage() {
                             size="sm"
                             className="h-8 w-8 p-0"
                             title="View Dashboard"
-                            onClick={() => handleViewLubebay(lubebay.id)}
+                            onClick={() => handleViewLubebay(String(lubebay.id))}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -764,7 +764,7 @@ export default function LubebaysPage() {
                         <option value="">Select Manager (Optional)</option>
                         {users.map((user: any) => (
                           <option key={user.id} value={user.id}>
-                            {user.first_name} {user.last_name} ({user.email})
+                            {user.full_name || user.email}
                           </option>
                         ))}
                       </select>

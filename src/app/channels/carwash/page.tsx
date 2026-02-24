@@ -517,7 +517,7 @@ export default function CarWashPage() {
                     >
                       <option value="">Select Manager (Optional)</option>
                       {users.map((u: any) => (
-                        <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.email})</option>
+                        <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
                       ))}
                     </select>
                   </div>

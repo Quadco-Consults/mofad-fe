@@ -48,6 +48,9 @@ interface PROItem {
   product_code?: string
   product_price?: string | number
   product_quantity?: string | number
+  product_package_sizes?: number[]
+  product_bulk_size?: number
+  product_retail_size?: number
   quantity?: number
   unit_price?: number
   total_price?: number
@@ -211,6 +214,8 @@ export default function PRODetailPage() {
   const [showSendDialog, setShowSendDialog] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [showAssignReviewerDialog, setShowAssignReviewerDialog] = useState(false)
+  const [selectedReviewer, setSelectedReviewer] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<'details' | 'pdf'>('details')
   const [rejectionReason, setRejectionReason] = useState('')
 
@@ -227,6 +232,15 @@ export default function PRODetailPage() {
     queryFn: () => apiClient.getCurrentUser(),
   })
 
+  // Get users list for reviewer assignment
+  const { data: usersData } = useQuery({
+    queryKey: ['users-list'],
+    queryFn: () => apiClient.getUsers({ is_active: true }),
+    enabled: showAssignReviewerDialog,
+  })
+
+  const users = usersData?.results || usersData || []
+
   // Status update mutations
   const statusMutation = useMutation({
     mutationFn: ({ status }: { status: string }) => apiClient.updateProStatus(proId, status),
@@ -237,8 +251,7 @@ export default function PRODetailPage() {
         cancelled: 'cancelled'
       }
       addToast({
-        title: 'PRO Updated Successfully',
-        description: `PRO has been ${statusNames[status as keyof typeof statusNames] || 'updated'}`,
+        title: `PRO has been ${statusNames[status as keyof typeof statusNames] || 'updated'}`,
         type: 'success'
       })
       queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
@@ -251,8 +264,29 @@ export default function PRODetailPage() {
     },
     onError: (error: any) => {
       addToast({
-        title: 'Failed to update PRO',
-        description: error.message || 'An error occurred while updating the PRO',
+        title: `Failed to update PRO: ${error.message || 'An error occurred'}`,
+        type: 'error'
+      })
+    }
+  })
+
+  // Assign reviewer mutation
+  const assignReviewerMutation = useMutation({
+    mutationFn: (reviewerId: number) => apiClient.updatePro(proId, { reviewer: reviewerId }),
+    onSuccess: () => {
+      addToast({
+        title: 'Reviewer assigned successfully',
+        type: 'success'
+      })
+      queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
+      queryClient.invalidateQueries({ queryKey: ['pros'] })
+      refetch()
+      setShowAssignReviewerDialog(false)
+      setSelectedReviewer(null)
+    },
+    onError: (error: any) => {
+      addToast({
+        title: `Failed to assign reviewer: ${error.message || 'An error occurred'}`,
         type: 'error'
       })
     }
@@ -263,8 +297,7 @@ export default function PRODetailPage() {
     mutationFn: () => apiClient.submitPro(proId),
     onSuccess: () => {
       addToast({
-        title: 'PRO Submitted Successfully',
-        description: 'PRO has been submitted for review',
+        title: 'PRO has been submitted for review',
         type: 'success'
       })
       queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
@@ -274,8 +307,7 @@ export default function PRODetailPage() {
     },
     onError: (error: any) => {
       addToast({
-        title: 'Failed to submit PRO',
-        description: error.message || 'An error occurred while submitting the PRO',
+        title: `Failed to submit PRO: ${error.message || 'An error occurred'}`,
         type: 'error'
       })
     }
@@ -286,8 +318,7 @@ export default function PRODetailPage() {
     mutationFn: () => apiClient.reviewPro(proId),
     onSuccess: () => {
       addToast({
-        title: 'PRO Reviewed Successfully',
-        description: 'PRO has been reviewed and sent for approval',
+        title: 'PRO has been reviewed and sent for approval',
         type: 'success'
       })
       queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
@@ -297,8 +328,7 @@ export default function PRODetailPage() {
     },
     onError: (error: any) => {
       addToast({
-        title: 'Failed to review PRO',
-        description: error.message || 'An error occurred while reviewing the PRO',
+        title: `Failed to review PRO: ${error.message || 'An error occurred'}`,
         type: 'error'
       })
     }
@@ -309,8 +339,7 @@ export default function PRODetailPage() {
     mutationFn: (reason: string) => apiClient.reviewRejectPro(proId, reason),
     onSuccess: () => {
       addToast({
-        title: 'PRO Rejected',
-        description: 'PRO has been rejected at review stage',
+        title: 'PRO has been rejected at review stage',
         type: 'success'
       })
       queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
@@ -321,8 +350,7 @@ export default function PRODetailPage() {
     },
     onError: (error: any) => {
       addToast({
-        title: 'Failed to reject PRO',
-        description: error.message || 'An error occurred while rejecting the PRO',
+        title: `Failed to reject PRO: ${error.message || 'An error occurred'}`,
         type: 'error'
       })
     }
@@ -333,8 +361,7 @@ export default function PRODetailPage() {
     mutationFn: () => apiClient.approvePro(proId),
     onSuccess: () => {
       addToast({
-        title: 'PRO Approved Successfully',
-        description: 'PRO has been approved',
+        title: 'PRO has been approved',
         type: 'success'
       })
       queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
@@ -344,8 +371,7 @@ export default function PRODetailPage() {
     },
     onError: (error: any) => {
       addToast({
-        title: 'Failed to approve PRO',
-        description: error.message || 'An error occurred while approving the PRO',
+        title: `Failed to approve PRO: ${error.message || 'An error occurred'}`,
         type: 'error'
       })
     }
@@ -356,8 +382,7 @@ export default function PRODetailPage() {
     mutationFn: (reason: string) => apiClient.rejectPro(proId, reason),
     onSuccess: () => {
       addToast({
-        title: 'PRO Rejected',
-        description: 'PRO has been rejected at approval stage',
+        title: 'PRO has been rejected at approval stage',
         type: 'success'
       })
       queryClient.invalidateQueries({ queryKey: ['pro-detail', proId] })
@@ -368,8 +393,7 @@ export default function PRODetailPage() {
     },
     onError: (error: any) => {
       addToast({
-        title: 'Failed to reject PRO',
-        description: error.message || 'An error occurred while rejecting the PRO',
+        title: `Failed to reject PRO: ${error.message || 'An error occurred'}`,
         type: 'error'
       })
     }
@@ -614,10 +638,24 @@ export default function PRODetailPage() {
             {/* Workflow Actions */}
             {pro.status === 'draft' && (
               <>
+                {!pro.reviewer && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                    <span className="text-sm text-yellow-700">No reviewer assigned.</span>
+                    <Button
+                      onClick={() => setShowAssignReviewerDialog(true)}
+                      variant="outline"
+                      className="ml-auto text-xs"
+                    >
+                      Assign Reviewer
+                    </Button>
+                  </div>
+                )}
                 <Button
                   onClick={() => setShowSubmitDialog(true)}
                   className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
                   disabled={submitMutation.isPending || !pro.reviewer}
+                  title={!pro.reviewer ? 'Please assign a reviewer first' : ''}
                 >
                   {submitMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -814,6 +852,7 @@ export default function PRODetailPage() {
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-200">
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Item</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Package Size</th>
                             <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Unit Price</th>
                             <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Ordered</th>
                             <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Received</th>
@@ -823,7 +862,7 @@ export default function PRODetailPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {items.map((item, index) => {
+                          {items.map((item: any, index: number) => {
                             const received = item.received_quantity || 0
                             const ordered = item.quantity
                             const pending = ordered - received
@@ -838,6 +877,19 @@ export default function PRODetailPage() {
                                     <p className="font-medium text-gray-900">{item.product_name}</p>
                                     {item.product_code && (
                                       <p className="text-xs text-gray-500 font-mono">{item.product_code}</p>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <div className="text-sm">
+                                    {item.product_package_sizes && item.product_package_sizes.length > 0 ? (
+                                      <span className="text-gray-700">
+                                        {item.product_package_sizes.join('L, ')}L
+                                      </span>
+                                    ) : item.product_bulk_size ? (
+                                      <span className="text-gray-700">{item.product_bulk_size}L</span>
+                                    ) : (
+                                      <span className="text-gray-400">N/A</span>
                                     )}
                                   </div>
                                 </td>
@@ -887,23 +939,24 @@ export default function PRODetailPage() {
                         <tfoot>
                           <tr className="bg-gradient-to-r from-blue-50 to-indigo-50 border-t-2 border-blue-200">
                             <td className="px-4 py-3 font-bold text-gray-900">Total</td>
+                            <td className="px-4 py-3 text-center font-bold text-gray-900">-</td>
                             <td className="px-4 py-3 text-right font-bold text-gray-900">-</td>
                             <td className="px-4 py-3 text-center font-bold text-gray-900">
-                              {items.reduce((sum, item) => sum + item.quantity, 0)}
+                              {items.reduce((sum: number, item: any) => sum + item.quantity, 0)}
                             </td>
                             <td className="px-4 py-3 text-center font-bold text-green-600">
-                              {items.reduce((sum, item) => sum + (item.received_quantity || 0), 0)}
+                              {items.reduce((sum: number, item: any) => sum + (item.received_quantity || 0), 0)}
                             </td>
                             <td className="px-4 py-3 text-center font-bold text-red-600">
-                              {items.reduce((sum, item) => sum + (item.quantity - (item.received_quantity || 0)), 0)}
+                              {items.reduce((sum: number, item: any) => sum + (item.quantity - (item.received_quantity || 0)), 0)}
                             </td>
                             <td className="px-4 py-3 text-right font-bold text-gray-900">
-                              {formatCurrency(items.reduce((sum, item) => sum + (item.quantity * (item.unit_price || 0)), 0))}
+                              {formatCurrency(items.reduce((sum: number, item: any) => sum + (item.quantity * (item.unit_price || 0)), 0))}
                             </td>
                             <td className="px-4 py-3 text-center">
                               {(() => {
-                                const totalOrdered = items.reduce((sum, item) => sum + item.quantity, 0)
-                                const totalReceived = items.reduce((sum, item) => sum + (item.received_quantity || 0), 0)
+                                const totalOrdered = items.reduce((sum: number, item: any) => sum + item.quantity, 0)
+                                const totalReceived = items.reduce((sum: number, item: any) => sum + (item.received_quantity || 0), 0)
                                 const overallPercentage = (totalReceived / totalOrdered) * 100
 
                                 return (
@@ -1108,6 +1161,7 @@ export default function PRODetailPage() {
                       <th className="px-6 py-4 text-left text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">S/N</th>
                       <th className="px-6 py-4 text-left text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Description of Items/Services</th>
                       <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Code</th>
+                      <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Package Size</th>
                       <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Qty Ordered</th>
                       <th className="px-6 py-4 text-center text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Qty Received</th>
                       <th className="px-6 py-4 text-right text-sm font-bold text-gray-800 uppercase tracking-wide border-r border-gray-300">Unit Cost</th>
@@ -1123,7 +1177,7 @@ export default function PRODetailPage() {
                         </td>
                       </tr>
                     ) : (
-                      items.map((item, index) => (
+                      items.map((item: any, index: number) => (
                         <tr key={item.id} className={`border-b border-gray-200 transition-colors ${
                           index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                         } hover:bg-blue-50/30`}>
@@ -1141,6 +1195,17 @@ export default function PRODetailPage() {
                           <td className="px-6 py-4 text-center border-r border-gray-200">
                             <span className="px-2 py-1 bg-gray-100 rounded text-sm font-mono text-gray-700">
                               {item.product_code || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center border-r border-gray-200">
+                            <span className="text-sm font-medium text-gray-700">
+                              {item.product_package_sizes && item.product_package_sizes.length > 0 ? (
+                                <>{item.product_package_sizes.join('L, ')}L</>
+                              ) : item.product_bulk_size ? (
+                                <>{item.product_bulk_size}L</>
+                              ) : (
+                                <span className="text-gray-400">N/A</span>
+                              )}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center font-bold text-lg text-gray-900 border-r border-gray-200">{item.quantity}</td>
@@ -1163,7 +1228,7 @@ export default function PRODetailPage() {
                   </tbody>
                   <tfoot>
                     <tr style={{ background: 'linear-gradient(90deg, #FEF3C7, #FDE68A)', borderTop: '3px solid #D4AF37' }}>
-                      <td colSpan={6} className="px-6 py-5 text-right font-bold text-xl text-gray-900">
+                      <td colSpan={7} className="px-6 py-5 text-right font-bold text-xl text-gray-900">
                         <div className="flex items-center justify-end gap-2">
                           <span>Grand Total:</span>
                           <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
@@ -1281,7 +1346,6 @@ export default function PRODetailPage() {
         title="Submit PRO for Review"
         message={`Are you sure you want to submit PRO "${pro.pro_number}" for review? It will be sent to ${pro.reviewer_name || 'the assigned reviewer'} for first-level review.`}
         confirmText="Submit for Review"
-        confirmVariant="primary"
         isLoading={submitMutation.isPending}
       />
 
@@ -1293,7 +1357,6 @@ export default function PRODetailPage() {
         title="Review PRO"
         message={`Are you sure you want to approve this review? PRO "${pro.pro_number}" will be forwarded to ${pro.approver_name || 'the assigned approver'} for final approval.`}
         confirmText="Review & Forward"
-        confirmVariant="primary"
         isLoading={reviewMutation.isPending}
       />
 
@@ -1306,24 +1369,11 @@ export default function PRODetailPage() {
         }}
         onConfirm={() => reviewRejectMutation.mutate(rejectionReason)}
         title="Reject PRO at Review Stage"
-        message={`Are you sure you want to reject PRO "${pro.pro_number}"? Please provide a reason for rejection.`}
+        message={`Are you sure you want to reject PRO "${pro.pro_number}"?`}
         confirmText="Reject PRO"
         variant="danger"
         isLoading={reviewRejectMutation.isPending}
-      >
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Rejection Reason
-          </label>
-          <textarea
-            value={rejectionReason}
-            onChange={(e) => setRejectionReason(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            rows={4}
-            placeholder="Enter reason for rejection..."
-          />
-        </div>
-      </ConfirmDialog>
+      />
 
       {/* Approve Dialog */}
       <ConfirmDialog
@@ -1333,7 +1383,6 @@ export default function PRODetailPage() {
         title="Approve PRO"
         message={`Are you sure you want to approve PRO "${pro.pro_number}"? Once approved, it can be sent to the supplier.`}
         confirmText="Approve PRO"
-        confirmVariant="primary"
         isLoading={approveMutation.isPending}
       />
 
@@ -1346,24 +1395,11 @@ export default function PRODetailPage() {
         }}
         onConfirm={() => rejectMutation.mutate(rejectionReason)}
         title="Reject PRO at Approval Stage"
-        message={`Are you sure you want to reject PRO "${pro.pro_number}"? Please provide a reason for rejection.`}
+        message={`Are you sure you want to reject PRO "${pro.pro_number}"?`}
         confirmText="Reject PRO"
         variant="danger"
         isLoading={rejectMutation.isPending}
-      >
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Rejection Reason
-          </label>
-          <textarea
-            value={rejectionReason}
-            onChange={(e) => setRejectionReason(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            rows={4}
-            placeholder="Enter reason for rejection..."
-          />
-        </div>
-      </ConfirmDialog>
+      />
 
       {/* Send to Supplier Dialog */}
       <ConfirmDialog
@@ -1373,7 +1409,6 @@ export default function PRODetailPage() {
         title="Send PRO to Supplier"
         message={`Are you sure you want to send PRO "${pro.pro_number}" to the supplier? Once sent, the supplier will be notified and the order status will be updated.`}
         confirmText="Send to Supplier"
-        confirmVariant="primary"
         isLoading={statusMutation.isPending}
       />
 
@@ -1385,7 +1420,6 @@ export default function PRODetailPage() {
         title="Confirm Order"
         message={`Are you sure you want to confirm PRO "${pro.pro_number}"? This indicates that the supplier has accepted the order and will proceed with fulfillment.`}
         confirmText="Confirm Order"
-        confirmVariant="primary"
         isLoading={statusMutation.isPending}
       />
 
@@ -1400,6 +1434,51 @@ export default function PRODetailPage() {
         variant="danger"
         isLoading={statusMutation.isPending}
       />
+
+      {/* Assign Reviewer Dialog */}
+      {showAssignReviewerDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Assign Reviewer</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Select a user to review this PRO before it goes for approval.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Reviewer</label>
+              <select
+                className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                value={selectedReviewer || ''}
+                onChange={(e) => setSelectedReviewer(parseInt(e.target.value))}
+              >
+                <option value="">Select a reviewer...</option>
+                {users.map((user: any) => (
+                  <option key={user.id} value={user.id}>
+                    {user.full_name || user.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAssignReviewerDialog(false)
+                  setSelectedReviewer(null)
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => selectedReviewer && assignReviewerMutation.mutate(selectedReviewer)}
+                disabled={!selectedReviewer || assignReviewerMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {assignReviewerMutation.isPending ? 'Assigning...' : 'Assign Reviewer'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }
