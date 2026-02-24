@@ -128,34 +128,34 @@ const formatDate = (dateStr: string): string => {
 
 function StatCard({ title, value, change, icon: Icon, color, isCurrency = true, link }: StatCardProps) {
   const colorStyles = {
-    blue: 'from-blue-50 to-blue-100/80',
-    green: 'from-emerald-50 to-emerald-100/80',
-    yellow: 'from-amber-50 to-amber-100/80',
+    blue: 'from-green-50 to-green-100/80',
+    green: 'from-green-50 to-green-100/80',
+    yellow: 'from-green-50 to-green-100/80',
     red: 'from-red-50 to-red-100/80',
-    purple: 'from-purple-50 to-purple-100/80',
-    orange: 'from-orange-50 to-orange-100/80',
+    purple: 'from-green-50 to-green-100/80',
+    orange: 'from-green-50 to-green-100/80',
   }
 
   const iconColors = {
-    blue: 'from-blue-500 to-blue-600',
-    green: 'from-emerald-500 to-emerald-600',
-    yellow: 'from-amber-500 to-amber-600',
+    blue: 'from-green-500 to-green-600',
+    green: 'from-green-500 to-green-600',
+    yellow: 'from-green-500 to-green-600',
     red: 'from-red-500 to-red-600',
-    purple: 'from-purple-500 to-purple-600',
-    orange: 'from-orange-500 to-orange-600',
+    purple: 'from-green-500 to-green-600',
+    orange: 'from-green-500 to-green-600',
   }
 
   const ringColors = {
-    blue: 'ring-blue-200/50',
-    green: 'ring-emerald-200/50',
-    yellow: 'ring-amber-200/50',
+    blue: 'ring-green-200/50',
+    green: 'ring-green-200/50',
+    yellow: 'ring-green-200/50',
     red: 'ring-red-200/50',
-    purple: 'ring-purple-200/50',
-    orange: 'ring-orange-200/50',
+    purple: 'ring-green-200/50',
+    orange: 'ring-green-200/50',
   }
 
   const CardWrapper = link ? Link : 'div'
-  const cardProps = link ? { href: link } : {}
+  const cardProps: any = link ? { href: link } : {}
 
   return (
     <CardWrapper {...cardProps}>
@@ -203,12 +203,12 @@ function StatCard({ title, value, change, icon: Icon, color, isCurrency = true, 
 
 function WarehouseRevenueCard({ warehouse }: { warehouse: WarehouseRevenueCard }) {
   return (
-    <Card className="bg-white border border-orange-200 hover:shadow-lg transition-all duration-300">
+    <Card className="bg-white border border-green-200 hover:shadow-lg transition-all duration-300">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Building2 className="h-5 w-5 text-orange-600" />
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Building2 className="h-5 w-5 text-green-600" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">{warehouse.name}</h3>
@@ -271,13 +271,13 @@ function SalesChart({ data, isLoading }: { data: SalesAnalytics; isLoading: bool
 
   if (monthlyData.length === 0) {
     return (
-      <div className="h-80 flex items-center justify-center bg-white rounded-xl border-2 border-dashed border-orange-200">
-        <div className="text-center text-orange-600">
-          <div className="p-4 bg-orange-100 rounded-full w-fit mx-auto mb-4">
+      <div className="h-80 flex items-center justify-center bg-white rounded-xl border-2 border-dashed border-green-200">
+        <div className="text-center text-green-600">
+          <div className="p-4 bg-green-100 rounded-full w-fit mx-auto mb-4">
             <BarChart3 className="h-12 w-12" />
           </div>
           <p className="text-lg font-semibold mb-2">No Sales Data Available</p>
-          <p className="text-sm text-orange-500 max-w-sm">
+          <p className="text-sm text-green-500 max-w-sm">
             Sales data will appear here once transactions are recorded
           </p>
         </div>
@@ -322,7 +322,7 @@ function SalesChart({ data, isLoading }: { data: SalesAnalytics; isLoading: bool
                     <span className="text-gray-400">{month.transaction_count} orders</span>
                   </div>
                   <div
-                    className="w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t transition-all duration-300 group-hover:from-orange-600 group-hover:to-orange-500"
+                    className="w-full bg-gradient-to-t from-green-500 to-green-400 rounded-t transition-all duration-300 group-hover:from-orange-600 group-hover:to-orange-500"
                     style={{ height: `${Math.max(height, 5)}%`, minHeight: '4px' }}
                   ></div>
                 </div>
@@ -559,11 +559,11 @@ export default function Dashboard() {
   ]
 
   const lubebayPerformanceData = [
-    { name: 'LubeBay A', value: 2800000, color: '#ea580c' },
-    { name: 'LubeBay B', value: 2100000, color: '#fb923c' },
-    { name: 'LubeBay C', value: 1900000, color: '#fed7aa' },
-    { name: 'LubeBay D', value: 1700000, color: '#fdba74' },
-    { name: 'Others', value: 1500000, color: '#f59e0b' },
+    { name: 'LubeBay A', value: 2800000, color: '#16a34a' },
+    { name: 'LubeBay B', value: 2100000, color: '#22c55e' },
+    { name: 'LubeBay C', value: 1900000, color: '#4ade80' },
+    { name: 'LubeBay D', value: 1700000, color: '#86efac' },
+    { name: 'Others', value: 1500000, color: '#bbf7d0' },
   ]
 
   const handleRefresh = () => {
@@ -587,7 +587,7 @@ export default function Dashboard() {
               <Filter className="h-4 w-4 mr-2" />
               Filter
               {(filters.warehouse !== 'all' || filters.status !== 'all' || filters.minAmount || filters.maxAmount) && (
-                <span className="ml-2 px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+                <span className="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">
                   Active
                 </span>
               )}
@@ -615,7 +615,7 @@ export default function Dashboard() {
                 <select
                   value={selectedWarehouse}
                   onChange={(e) => setSelectedWarehouse(e.target.value)}
-                  className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                  className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
                 >
                   <option value="all">All Warehouses</option>
                   <option value="abuja">Abuja Main</option>
@@ -652,7 +652,7 @@ export default function Dashboard() {
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-gray-900">Recent Expenses</CardTitle>
-                <Link href="/accounts/expenses" className="text-sm text-orange-600 hover:text-orange-700 font-medium">
+                <Link href="/accounts/expenses" className="text-sm text-green-600 hover:text-green-700 font-medium">
                   View All
                 </Link>
               </div>
@@ -668,8 +668,8 @@ export default function Dashboard() {
                 ].map((expense, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <Package className="h-4 w-4 text-orange-600" />
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <Package className="h-4 w-4 text-green-600" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">{expense.name}</p>
@@ -690,7 +690,7 @@ export default function Dashboard() {
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-gray-900">LubeBay Services</CardTitle>
-                <Link href="/channels/lubebays" className="text-sm text-orange-600 hover:text-orange-700 font-medium">
+                <Link href="/channels/lubebays" className="text-sm text-green-600 hover:text-green-700 font-medium">
                   View All
                 </Link>
               </div>
@@ -706,8 +706,8 @@ export default function Dashboard() {
                 ].map((transaction, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <Car className="h-4 w-4 text-orange-600" />
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <Car className="h-4 w-4 text-green-600" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">{transaction.service}</p>
@@ -741,7 +741,7 @@ export default function Dashboard() {
               <select
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
               >
                 <option value="last_7_days">Last 7 days</option>
                 <option value="last_30_days">Last 30 days</option>
@@ -779,7 +779,7 @@ export default function Dashboard() {
                 <select
                   value={filters.dateRange}
                   onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
                   <option value="today">Today</option>
                   <option value="last_7_days">Last 7 days</option>
@@ -798,7 +798,7 @@ export default function Dashboard() {
                 <select
                   value={filters.warehouse}
                   onChange={(e) => setFilters({ ...filters, warehouse: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
                   <option value="all">All Warehouses</option>
                   <option value="abuja">Abuja Main</option>
@@ -815,7 +815,7 @@ export default function Dashboard() {
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
                   <option value="all">All Status</option>
                   <option value="completed">Completed</option>
@@ -836,14 +836,14 @@ export default function Dashboard() {
                     placeholder="Min Amount"
                     value={filters.minAmount}
                     onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
                   <input
                     type="number"
                     placeholder="Max Amount"
                     value={filters.maxAmount}
                     onChange={(e) => setFilters({ ...filters, maxAmount: e.target.value })}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -873,7 +873,7 @@ export default function Dashboard() {
                   setSelectedWarehouse(filters.warehouse)
                   setShowFilterModal(false)
                 }}
-                className="flex-1 px-4 py-2 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors"
+                className="flex-1 px-4 py-2 text-sm text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
               >
                 Apply Filters
               </button>

@@ -284,7 +284,7 @@ export default function CustomerDetailPage() {
                     <h2 className="text-xl font-semibold">{customer.name}</h2>
                     {getStatusBadge(customer.status)}
                     {customer.is_verified && (
-                      <CheckCircle className="w-5 h-5 text-green-500" title="Verified Customer" />
+                      <CheckCircle className="w-5 h-5 text-green-500" />
                     )}
                   </div>
 

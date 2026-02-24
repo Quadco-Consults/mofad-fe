@@ -19,4 +19,7 @@ export { apiClient as realApi, mockApi }
 export const isUsingMockAPI = !USE_REAL_API
 export const API_MODE = USE_REAL_API ? 'REAL' : 'MOCK'
 
-console.log(`🔧 Unified API Client - Mode: ${API_MODE} (NEXT_PUBLIC_USE_REAL_API=${process.env.NEXT_PUBLIC_USE_REAL_API})`)
+// Only log in development
+if (process.env.NODE_ENV === 'development') {
+  console.log(`🔧 Unified API Client - Mode: ${API_MODE} (NEXT_PUBLIC_USE_REAL_API=${process.env.NEXT_PUBLIC_USE_REAL_API})`)
+}

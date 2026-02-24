@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import api from '@/lib/api-client'
-import { Eye, CheckCircle, XCircle, Plus, Package, Warehouse, AlertTriangle, TrendingUp, TrendingDown, Loader2, AlertCircle as AlertCircleIcon, ArrowLeft, MapPin, Search, Filter, FileText, Calendar, User, ArrowUp, ArrowDown, Settings } from 'lucide-react'
+import { Eye, CheckCircle, XCircle, Plus, Package, Warehouse, AlertTriangle, TrendingUp, TrendingDown, Loader2, AlertCircle as AlertCircleIcon, ArrowLeft, MapPin, Search, Filter, FileText, Calendar, User, ArrowUp, ArrowDown, Settings, Upload } from 'lucide-react'
 
 interface InventoryItem {
   id: number
@@ -14,6 +14,7 @@ interface InventoryItem {
     name: string
     code: string
     category: string | null
+    description?: string | null
     cost_price: number | null
     selling_price: number | null
   } | null
@@ -81,6 +82,8 @@ interface PendingIssue {
 const mockPendingReceipts: PendingReceipt[] = [
   {
     id: 'PR001',
+    proId: 1,
+    productId: 1,
     proNumber: 'PRO-2024-001',
     supplierName: 'ExxonMobil Nigeria',
     productCode: 'MOB-5W30',
@@ -96,6 +99,8 @@ const mockPendingReceipts: PendingReceipt[] = [
   },
   {
     id: 'PR002',
+    proId: 2,
+    productId: 2,
     proNumber: 'PRO-2024-002',
     supplierName: 'Shell Nigeria',
     productCode: 'SHL-HX8',
@@ -111,6 +116,8 @@ const mockPendingReceipts: PendingReceipt[] = [
   },
   {
     id: 'PR003',
+    proId: 3,
+    productId: 3,
     proNumber: 'PRO-2024-003',
     supplierName: 'TotalEnergies Nigeria',
     productCode: 'TOT-GEAR',
@@ -200,6 +207,10 @@ export default function WarehouseInventoryPage() {
   const [isReceiving, setIsReceiving] = useState(false)
   const [showIssueGoodsModal, setShowIssueGoodsModal] = useState(false)
   const [issueQuantity, setIssueQuantity] = useState<number>(0)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadResults, setUploadResults] = useState<any>(null)
 
   // Fetch warehouse details
   const { data: warehouseData, isLoading: warehouseLoading, error: warehouseError } = useQuery({
@@ -233,7 +244,7 @@ export default function WarehouseInventoryPage() {
   })
 
   // Fetch pending receipts - PROs that are approved and need to be received at this warehouse
-  const { data: pendingReceipts = [], isLoading: receiptsLoading } = useQuery({
+  const { data: pendingReceipts = [], isLoading: receiptsLoading, refetch } = useQuery({
     queryKey: ['pending-receipts', warehouseId],
     queryFn: async () => {
       // Fetch PROs that are approved and assigned to this warehouse for delivery
@@ -476,13 +487,22 @@ export default function WarehouseInventoryPage() {
             )}
           </div>
           {activeTab === 'inventory' && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-2 rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Add Product
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all flex items-center gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Upload Stock
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-2 rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Product
+              </button>
+            </div>
           )}
         </div>
 
@@ -872,7 +892,7 @@ export default function WarehouseInventoryPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {pendingIssues.map((issue, index) => (
+                    {pendingIssues.map((issue: PendingIssue, index: number) => (
                       <tr key={issue.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{issue.prfNumber}</td>
                         <td className="px-6 py-4">
@@ -1390,6 +1410,281 @@ export default function WarehouseInventoryPage() {
                   {isReceiving ? 'Processing...' : 'Confirm Receipt'}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Upload Stock Modal */}
+        {showUploadModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Upload Opening Stock</h3>
+                  <p className="text-sm text-gray-500 mt-1">Upload CSV file to initialize warehouse inventory</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowUploadModal(false)
+                    setUploadFile(null)
+                    setUploadResults(null)
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircle className="h-6 w-6" />
+                </button>
+              </div>
+
+              {!uploadResults ? (
+                <div className="space-y-4">
+                  {/* Download Template Button */}
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold text-green-900 mb-1 flex items-center gap-2">
+                          <FileText className="h-5 w-5" />
+                          Need a Template?
+                        </h4>
+                        <p className="text-sm text-green-800">
+                          Download a pre-populated template with all products for this warehouse
+                        </p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            // Get auth token from localStorage (where it's stored after login)
+                            const token = localStorage.getItem('auth_token')
+
+                            if (!token) {
+                              alert('Please log in to download the template')
+                              return
+                            }
+
+                            const response = await fetch(`http://localhost:8000/api/v1/warehouse-inventory/generate-template/?warehouse_id=${warehouseId}`, {
+                              method: 'GET',
+                              headers: {
+                                'Authorization': `Bearer ${token}`,
+                              }
+                            })
+
+                            if (!response.ok) {
+                              try {
+                                const errorData = await response.json()
+                                console.error('Template generation error:', errorData)
+                                throw new Error(errorData.message || 'Failed to generate template')
+                              } catch (jsonError) {
+                                throw new Error(`Server error: ${response.status}`)
+                              }
+                            }
+
+                            const blob = await response.blob()
+                            const url = window.URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = `warehouse_${warehouseId}_template.csv`
+                            document.body.appendChild(a)
+                            a.click()
+                            window.URL.revokeObjectURL(url)
+                            document.body.removeChild(a)
+                          } catch (error: any) {
+                            console.error('Error downloading template:', error)
+                            alert(`Failed to download template: ${error.message}`)
+                          }
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 flex items-center gap-2 font-medium shadow-md"
+                      >
+                        <Upload className="h-4 w-4" />
+                        Download Template
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Instructions */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      CSV Format Required
+                    </h4>
+                    <p className="text-sm text-blue-800 mb-2">Your CSV file must have these columns:</p>
+                    <code className="text-xs bg-white px-2 py-1 rounded block overflow-x-auto">
+                      warehouse_id,product_code,product_name,category,package_sizes,unit_of_measure,quantity_on_hand,average_cost,bin_location,zone,notes
+                    </code>
+                    <div className="mt-3 text-sm text-blue-800">
+                      <p className="font-medium mb-1">Note: Download the template to get pre-populated product information!</p>
+                      <p className="text-xs mt-1">Package sizes help you know which unit to count (e.g., &quot;1, 4, 5, 25, 208&quot; liters)</p>
+                    </div>
+                  </div>
+
+                  {/* File Upload */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select CSV File
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setUploadFile(file)
+                          }
+                        }}
+                        className="hidden"
+                        id="csv-upload"
+                      />
+                      <label
+                        htmlFor="csv-upload"
+                        className="cursor-pointer flex flex-col items-center"
+                      >
+                        <Upload className="h-12 w-12 text-gray-400 mb-2" />
+                        <span className="text-sm text-gray-600">
+                          {uploadFile ? uploadFile.name : 'Click to select CSV file'}
+                        </span>
+                        <span className="text-xs text-gray-500 mt-1">
+                          or drag and drop
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex space-x-4 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUploadModal(false)
+                        setUploadFile(null)
+                        setUploadResults(null)
+                      }}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                      disabled={isUploading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!uploadFile) {
+                          alert('Please select a CSV file')
+                          return
+                        }
+
+                        setIsUploading(true)
+                        try {
+                          // Get auth token from localStorage
+                          const token = localStorage.getItem('auth_token')
+
+                          if (!token) {
+                            alert('Please log in to upload stock')
+                            setIsUploading(false)
+                            return
+                          }
+
+                          const formData = new FormData()
+                          formData.append('file', uploadFile)
+                          formData.append('warehouse_id', warehouseId.toString())
+
+                          const response = await fetch('http://localhost:8000/api/v1/warehouse-inventory/upload-stock/', {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                            },
+                          })
+
+                          const result = await response.json()
+
+                          if (response.ok) {
+                            setUploadResults(result)
+                            // Refresh inventory
+                            queryClient.invalidateQueries({ queryKey: ['warehouse-inventory', warehouseId] })
+                          } else {
+                            alert(`Upload failed: ${result.error || 'Unknown error'}`)
+                          }
+                        } catch (error: any) {
+                          console.error('Upload error:', error)
+                          alert(`Upload failed: ${error.message || 'Unknown error'}`)
+                        } finally {
+                          setIsUploading(false)
+                        }
+                      }}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      disabled={!uploadFile || isUploading}
+                    >
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4" />
+                          Upload Stock
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Results Summary */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <p className="text-sm text-green-800 font-medium">Created</p>
+                      <p className="text-2xl font-bold text-green-600">{uploadResults.created || 0}</p>
+                    </div>
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <p className="text-sm text-blue-800 font-medium">Updated</p>
+                      <p className="text-2xl font-bold text-blue-600">{uploadResults.updated || 0}</p>
+                    </div>
+                    <div className="bg-red-50 p-4 rounded-lg">
+                      <p className="text-sm text-red-800 font-medium">Errors</p>
+                      <p className="text-2xl font-bold text-red-600">{uploadResults.errors?.length || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Error List */}
+                  {uploadResults.errors && uploadResults.errors.length > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-h-60 overflow-y-auto">
+                      <h4 className="font-semibold text-red-900 mb-2">Errors:</h4>
+                      <ul className="text-sm text-red-800 space-y-1">
+                        {uploadResults.errors.map((error: string, index: number) => (
+                          <li key={index} className="list-disc list-inside">
+                            {error}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Success Message */}
+                  {uploadResults.created > 0 || uploadResults.updated > 0 ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-green-900">
+                        <CheckCircle className="h-5 w-5" />
+                        <p className="font-semibold">
+                          Successfully processed {(uploadResults.created || 0) + (uploadResults.updated || 0)} items!
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Close Button */}
+                  <div className="flex justify-end pt-4">
+                    <button
+                      onClick={() => {
+                        setShowUploadModal(false)
+                        setUploadFile(null)
+                        setUploadResults(null)
+                      }}
+                      className="px-6 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

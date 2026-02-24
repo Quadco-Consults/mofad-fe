@@ -71,7 +71,7 @@ const initialFormData: LocationFormData = {
 
 function LocationsPage() {
   const queryClient = useQueryClient()
-  const { showToast } = useToast()
+  const { addToast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [stateFilter, setStateFilter] = useState<string>('all')
@@ -137,13 +137,13 @@ function LocationsPage() {
     mutationFn: (data: any) => apiClient.createLocation(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] })
-      showToast('Location created successfully', 'success')
+      addToast('Location created successfully', 'success')
       setShowAddModal(false)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to create location', 'error')
+      addToast(error.message || 'Failed to create location', 'error')
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -156,14 +156,14 @@ function LocationsPage() {
       apiClient.updateLocation(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] })
-      showToast('Location updated successfully', 'success')
+      addToast('Location updated successfully', 'success')
       setShowEditModal(false)
       setSelectedLocation(null)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to update location', 'error')
+      addToast(error.message || 'Failed to update location', 'error')
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -175,12 +175,12 @@ function LocationsPage() {
     mutationFn: (id: number) => apiClient.deleteLocation(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] })
-      showToast('Location deleted successfully', 'success')
+      addToast('Location deleted successfully', 'success')
       setShowDeleteModal(false)
       setSelectedLocation(null)
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to delete location', 'error')
+      addToast(error.message || 'Failed to delete location', 'error')
     },
   })
 
@@ -190,10 +190,10 @@ function LocationsPage() {
       apiClient.updateLocation(id, { is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] })
-      showToast('Location status updated successfully', 'success')
+      addToast('Location status updated successfully', 'success')
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to update location status', 'error')
+      addToast(error.message || 'Failed to update location status', 'error')
     },
   })
 
@@ -208,11 +208,11 @@ function LocationsPage() {
         await apiClient.deleteLocation(id)
       }
       queryClient.invalidateQueries({ queryKey: ['locations'] })
-      showToast(`Successfully deleted ${selectedIds.length} location(s)`, 'success')
+      addToast(`Successfully deleted ${selectedIds.length} location(s)`, 'success')
       selection.clearSelection()
       setShowBulkDeleteModal(false)
     } catch (error: any) {
-      showToast(error.message || 'Failed to delete some locations', 'error')
+      addToast(error.message || 'Failed to delete some locations', 'error')
     } finally {
       setIsBulkDeleting(false)
     }

@@ -341,8 +341,8 @@ function CreateTransactionModal({ isOpen, onClose, onSubmit, isLoading }: Create
     queryFn: () => apiClient.getServices(),
   })
 
-  const lubebays = Array.isArray(lubebaysList) ? lubebaysList : lubebaysList?.results || []
-  const services = Array.isArray(servicesList) ? servicesList : servicesList?.results || []
+  const lubebays = (Array.isArray(lubebaysList) ? lubebaysList : (lubebaysList as any)?.results) || []
+  const services = (Array.isArray(servicesList) ? servicesList : (servicesList as any)?.results) || []
 
   const addItem = () => {
     setFormData(prev => ({
@@ -695,7 +695,7 @@ export default function LubebayServiceTransactionsPage() {
   const transactions = extractResults(transactionsData)
   const totalCount = getTotalCount(transactionsData)
   const totalPages = getTotalPages(transactionsData)
-  const lubebays = Array.isArray(lubebaysList) ? lubebaysList : lubebaysList?.results || []
+  const lubebays = (Array.isArray(lubebaysList) ? lubebaysList : (lubebaysList as any)?.results) || []
 
   // Stats from API
   const stats = statsData || {

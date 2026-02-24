@@ -174,7 +174,7 @@ function LubebayLodgementsPage() {
     mutationFn: (data: LodgementFormData) => {
       const payload = {
         ...data,
-        lodgement_type: 'lubebay',
+        lodgement_type: 'lubebay' as const,
         expected_amount: selectedSummary?.total_amount || 0,
       }
       return apiClient.createLodgement(payload)
@@ -194,10 +194,7 @@ function LubebayLodgementsPage() {
   // Approve lodgement mutation
   const approveMutation = useMutation({
     mutationFn: (lodgementId: number) => {
-      return apiClient.request(`/lodgements/${lodgementId}/approve/`, {
-        method: 'POST',
-        body: JSON.stringify({ notes: '' }),
-      })
+      return apiClient.approveLodgement(lodgementId, '')
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lubebay-daily-summaries'] })
@@ -214,10 +211,7 @@ function LubebayLodgementsPage() {
   // Reject lodgement mutation
   const rejectMutation = useMutation({
     mutationFn: ({ lodgementId, reason }: { lodgementId: number; reason: string }) => {
-      return apiClient.request(`/lodgements/${lodgementId}/reject/`, {
-        method: 'POST',
-        body: JSON.stringify({ reason }),
-      })
+      return apiClient.rejectLodgement(lodgementId, reason)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lubebay-daily-summaries'] })

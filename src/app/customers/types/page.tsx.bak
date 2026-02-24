@@ -112,7 +112,10 @@ export default function CustomerTypesPage() {
   const customerTypes = allCustomerTypes.slice(startIndex, startIndex + pageSize)
 
   // Selection for bulk actions
-  const selection = useSelection<CustomerType>()
+  const selection = useSelection({
+    items: customerTypes,
+    getId: (item) => item.id,
+  })
 
   // Create mutation
   const createMutation = useMutation({
@@ -127,13 +130,13 @@ export default function CustomerTypesPage() {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-types'] })
-      addToast({ type: 'success', title: 'Customer type created successfully' })
+      showToast('Customer type created successfully', 'success')
       setShowCreateModal(false)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      addToast({ type: 'error', title: error.message || 'Failed to create customer type' })
+      showToast(error.message || 'Failed to create customer type', 'error')
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -153,14 +156,14 @@ export default function CustomerTypesPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-types'] })
-      addToast({ type: 'success', title: 'Customer type updated successfully' })
+      showToast('Customer type updated successfully', 'success')
       setShowEditModal(false)
       setSelectedType(null)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      addToast({ type: 'error', title: error.message || 'Failed to update customer type' })
+      showToast(error.message || 'Failed to update customer type', 'error')
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -172,12 +175,12 @@ export default function CustomerTypesPage() {
     mutationFn: (id: number) => apiClient.deleteCustomerType(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-types'] })
-      addToast({ type: 'success', title: 'Customer type deleted successfully' })
+      showToast('Customer type deleted successfully', 'success')
       setShowDeleteModal(false)
       setSelectedType(null)
     },
     onError: (error: any) => {
-      addToast({ type: 'error', title: error.message || 'Failed to delete customer type' })
+      showToast(error.message || 'Failed to delete customer type', 'error')
     },
   })
 
@@ -187,16 +190,16 @@ export default function CustomerTypesPage() {
       apiClient.updateCustomerType(id, { is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-types'] })
-      addToast({ type: 'success', title: 'Status updated successfully' })
+      showToast('Status updated successfully', 'success')
     },
     onError: (error: any) => {
-      addToast({ type: 'error', title: error.message || 'Failed to update status' })
+      showToast(error.message || 'Failed to update status', 'error')
     },
   })
 
   // Bulk delete handler
   const handleBulkDelete = async () => {
-    const selectedIds = selection.selectedIds
+    const selectedIds = selection.getSelectedIds()
     if (selectedIds.length === 0) return
 
     setIsBulkDeleting(true)
@@ -205,11 +208,11 @@ export default function CustomerTypesPage() {
         await apiClient.deleteCustomerType(id)
       }
       queryClient.invalidateQueries({ queryKey: ['customer-types'] })
-      addToast({ type: 'success', title: `Successfully deleted ${selectedIds.length} customer type(s)` })
+      showToast(`Successfully deleted ${selectedIds.length} customer type(s)`, 'success')
       selection.clearSelection()
       setShowBulkDeleteModal(false)
     } catch (error: any) {
-      addToast({ type: 'error', title: error.message || 'Failed to delete some customer types' })
+      showToast(error.message || 'Failed to delete some customer types', 'error')
     } finally {
       setIsBulkDeleting(false)
     }
@@ -417,9 +420,9 @@ export default function CustomerTypesPage() {
                 <tr>
                   <th className="px-4 py-3 text-left">
                     <Checkbox
-                      checked={selection.isAllSelected(customerTypes)}
-                      indeterminate={selection.isPartiallySelected(customerTypes)}
-                      onChange={() => selection.toggleAll(customerTypes)}
+                      checked={selection.isAllSelected}
+                      indeterminate={selection.isPartiallySelected}
+                      onChange={selection.toggleSelectAll}
                     />
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
@@ -436,7 +439,7 @@ export default function CustomerTypesPage() {
                     <td className="px-4 py-4">
                       <Checkbox
                         checked={selection.isSelected(type.id)}
-                        onChange={() => selection.toggle(type.id)}
+                        onChange={() => selection.toggleSelect(type.id)}
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -897,13 +900,13 @@ export default function CustomerTypesPage() {
         {/* Bulk Action Bar */}
         <BulkActionBar
           selectedCount={selection.selectedCount}
-          onBulkDelete={() => setShowBulkDeleteModal(true)}
+          onDelete={() => setShowBulkDeleteModal(true)}
           onClearSelection={selection.clearSelection}
         />
 
         {/* Bulk Delete Confirmation Dialog */}
         <ConfirmDialog
-          open={showBulkDeleteModal}
+          isOpen={showBulkDeleteModal}
           onClose={() => setShowBulkDeleteModal(false)}
           onConfirm={handleBulkDelete}
           title="Delete Customer Types"

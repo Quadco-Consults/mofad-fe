@@ -178,7 +178,7 @@ export default function ServicesPage() {
 
   // Mutations
   const createServiceMutation = useMutation({
-    mutationFn: (data: Partial<Service>) => apiClient.createService(data),
+    mutationFn: (data: Partial<Service>) => apiClient.createService(data as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services-list'] })
       setShowCreateModal(false)
@@ -188,7 +188,7 @@ export default function ServicesPage() {
 
   const updateServiceMutation = useMutation({
     mutationFn: ({ id, data }: { id: number, data: Partial<Service> }) =>
-      apiClient.updateService(id, data),
+      apiClient.updateService(id, data as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services-list'] })
       setShowEditModal(false)

@@ -104,8 +104,8 @@ export default function EditPROPage() {
     queryFn: () => apiClient.getWarehouses({ is_active: true }),
   })
 
-  const products = productsData?.results || (Array.isArray(productsData) ? productsData : [])
-  const warehouses = warehousesData?.results || (Array.isArray(warehousesData) ? warehousesData : [])
+  const products = (Array.isArray(productsData) ? productsData : (productsData as any)?.results) || []
+  const warehouses = (Array.isArray(warehousesData) ? warehousesData : (warehousesData as any)?.results) || []
 
   // Initialize form with PRO data
   useEffect(() => {
@@ -154,15 +154,13 @@ export default function EditPROPage() {
       queryClient.invalidateQueries({ queryKey: ['pro-edit', proId] })
       addToast({
         title: 'PRO Updated Successfully',
-        description: `PRO has been updated`,
         type: 'success'
       })
       router.push(`/orders/pro/${proId}`)
     },
     onError: (error: any) => {
       addToast({
-        title: 'Failed to update PRO',
-        description: error.message || 'An error occurred',
+        title: `Failed to update PRO: ${error.message || 'An error occurred'}`,
         type: 'error'
       })
     }

@@ -74,7 +74,16 @@ const StatusBadge = ({ status }: { status: string }) => {
   )
 }
 
-const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = 'orange' }: any) => {
+interface MetricCardProps {
+  title: string
+  value: number | string
+  subtitle?: string
+  icon: React.ComponentType<{ className?: string }>
+  trend?: number
+  color?: 'orange' | 'blue' | 'green' | 'purple'
+}
+
+const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = 'orange' }: MetricCardProps) => {
   const colors = {
     orange: 'from-orange-500 to-orange-600',
     blue: 'from-blue-500 to-blue-600',

@@ -362,6 +362,7 @@ export interface PRF {
   approval_notes?: string | null
   rejection_reason?: string | null
   created_at: string
+  updated_at?: string
   submitted_at?: string | null
   items?: PRFItem[]
   total_items?: number
@@ -374,6 +375,9 @@ export interface PRF {
   total_lodged?: number
   outstanding_balance?: number
   lodgements?: any[]
+  customer?: number | null
+  order_reference?: string | null
+  notes?: string | null
 }
 
 export interface PRFItem {

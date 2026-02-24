@@ -4,6 +4,20 @@ import { persist } from 'zustand/middleware'
 import api from '@/lib/api-client'
 import { User, LoginForm } from '@/types'
 
+// Helper function to set cookie
+const setCookie = (name: string, value: string, days: number = 7) => {
+  if (typeof window === 'undefined') return
+  const expires = new Date()
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000)
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`
+}
+
+// Helper function to delete cookie
+const deleteCookie = (name: string) => {
+  if (typeof window === 'undefined') return
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+}
+
 interface AuthState {
   user: User | null
   isAuthenticated: boolean
@@ -67,6 +81,8 @@ export const useAuthStore = create<AuthState>()(
             // Store user data in localStorage for frontend-only authentication
             if (typeof window !== 'undefined') {
               localStorage.setItem('auth_user', JSON.stringify(user))
+              // Set auth cookie for middleware to recognize authenticated state
+              setCookie('auth_token', response.access_token || 'authenticated', 7)
             }
 
             set({
@@ -112,6 +128,8 @@ export const useAuthStore = create<AuthState>()(
             // Store user data in localStorage for frontend-only authentication
             if (typeof window !== 'undefined') {
               localStorage.setItem('auth_user', JSON.stringify(user))
+              // Set auth cookie for middleware to recognize authenticated state
+              setCookie('auth_token', response.access_token || 'authenticated', 7)
             }
 
             set({
@@ -141,11 +159,12 @@ export const useAuthStore = create<AuthState>()(
         } catch (error) {
           console.error('Logout error:', error)
         } finally {
-          // Clear all auth data from localStorage
+          // Clear all auth data from localStorage and cookies
           if (typeof window !== 'undefined') {
             localStorage.removeItem('auth_token')
             localStorage.removeItem('refresh_token')
             localStorage.removeItem('auth_user')
+            deleteCookie('auth_token')
           }
 
           set({

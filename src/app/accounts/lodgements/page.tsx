@@ -210,7 +210,7 @@ function LodgementsPage() {
 
       const payload = {
         ...data,
-        lodgement_type: 'customer',
+        lodgement_type: 'customer' as const,
         customer: selectedPRF.client_id,
         expected_amount: selectedPRF?.estimated_total || 0,
       }

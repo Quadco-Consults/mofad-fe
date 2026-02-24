@@ -47,7 +47,7 @@ export default function StockReportPage() {
   const { data: inventoryData, isLoading: loading, error: stockError, refetch } = useQuery({
     queryKey: ['inventory-analytics'],
     queryFn: async () => {
-      const response = await apiClient.request('/reports/inventory-analytics/')
+      const response = await apiClient.get('/reports/inventory-analytics/')
       return response
     },
     refetchOnWindowFocus: false,
@@ -210,7 +210,7 @@ export default function StockReportPage() {
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">📦 Warehouse Stock Details</h2>
 
-            {stockSummary.warehouseStocks.map((warehouseStock, index) => (
+            {stockSummary.warehouseStocks.map((warehouseStock: any, index: number) => (
               <div key={warehouseStock.warehouse.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
                 {/* Warehouse Header */}
                 <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-6">
@@ -280,7 +280,7 @@ export default function StockReportPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                          {warehouseStock.inventory.slice(0, 10).map((item, itemIndex) => {
+                          {warehouseStock.inventory.slice(0, 10).map((item: any, itemIndex: number) => {
                             const stock = item.quantity_on_hand || item.current_stock || 0
                             const reorderLevel = item.minimum_level || item.reorder_level || 0
                             const value = item.total_cost_value || item.total_value || 0

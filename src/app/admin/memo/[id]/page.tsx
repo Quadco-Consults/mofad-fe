@@ -117,7 +117,7 @@ export default function MemoDetailPage() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
   const [showConfirmConvert, setShowConfirmConvert] = useState(false)
-  const [activeTab, setActiveTab] = useState<'details' | 'pdf'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'pdf' | 'payment-vouchers'>('details')
 
   // Fetch memo details
   const { data: memo, isLoading } = useQuery({
@@ -128,6 +128,17 @@ export default function MemoDetailPage() {
     },
     enabled: !!memoId && memoId !== 'undefined' && memoId !== 'null',
   })
+
+  // Fetch payment vouchers for this memo
+  const { data: paymentVouchersData } = useQuery({
+    queryKey: ['payment-vouchers', 'memo', memoId],
+    queryFn: async () => {
+      return await apiClient.getPaymentVouchers({ memo: parseInt(memoId) })
+    },
+    enabled: !!memoId && memoId !== 'undefined' && memoId !== 'null',
+  })
+
+  const paymentVouchers = paymentVouchersData?.results || paymentVouchersData || []
 
   // Submit for review mutation
   const submitMutation = useMutation({
@@ -389,21 +400,51 @@ export default function MemoDetailPage() {
     <AppLayout>
       <style jsx global>{`
         @media print {
+          /* Hide everything by default */
           body * {
-            visibility: hidden;
+            visibility: hidden !important;
           }
+
+          /* Hide specific layout elements */
+          nav,
+          aside,
+          header,
+          footer,
+          [role="navigation"],
+          [role="banner"],
+          .sidebar,
+          .header,
+          .navigation,
+          .no-print {
+            display: none !important;
+            visibility: hidden !important;
+          }
+
+          /* Show only the memo print content */
           #memo-print-content,
           #memo-print-content * {
-            visibility: visible;
+            visibility: visible !important;
           }
+
           #memo-print-content {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
+            margin: 0;
+            padding: 0;
           }
-          .no-print {
-            display: none !important;
+
+          /* Ensure print area fills the page */
+          body {
+            margin: 0;
+            padding: 0;
+          }
+
+          /* Page break settings */
+          @page {
+            size: A4;
+            margin: 0.5in;
           }
         }
       `}</style>
@@ -501,6 +542,21 @@ export default function MemoDetailPage() {
                   PDF Document
                 </div>
               </button>
+              {memo.category === 'procurement' && (
+                <button
+                  onClick={() => setActiveTab('payment-vouchers')}
+                  className={`flex-1 px-4 py-2.5 rounded-md font-medium transition-all ${
+                    activeTab === 'payment-vouchers'
+                      ? 'bg-orange-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    Payment Vouchers
+                  </div>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -955,6 +1011,136 @@ export default function MemoDetailPage() {
 
           </div>
         )}
+
+        {/* Payment Vouchers Tab */}
+        {activeTab === 'payment-vouchers' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Payment Vouchers</CardTitle>
+                {memo.status === 'approved' && (
+                  <Button onClick={() => router.push(`/admin/payment-vouchers/create?memo=${memoId}`)}>
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Create Payment Voucher
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {paymentVouchers.length === 0 ? (
+                  <div className="text-center py-12">
+                    <CreditCard className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-lg font-medium">No payment vouchers yet</p>
+                    <p className="text-muted-foreground mt-2">
+                      {memo.status === 'approved'
+                        ? 'Create a payment voucher to process supplier payment'
+                        : 'Payment vouchers can be created once the memo is approved'}
+                    </p>
+                    {memo.status === 'approved' && (
+                      <Button
+                        className="mt-4"
+                        onClick={() => router.push(`/admin/payment-vouchers/create?memo=${memoId}`)}
+                      >
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        Create First Payment Voucher
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                            Voucher #
+                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                            Payee
+                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                            Amount
+                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                            Payment Method
+                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                            Created
+                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {paymentVouchers.map((voucher: any) => (
+                          <tr key={voucher.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-4">
+                              <span className="font-medium">{voucher.voucher_number}</span>
+                            </td>
+                            <td className="px-4 py-4">{voucher.payee_name}</td>
+                            <td className="px-4 py-4">
+                              <span className="font-semibold text-green-700">
+                                {formatCurrency(parseFloat(voucher.amount))}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-sm">
+                              {voucher.payment_method === 'bank_transfer' && 'Bank Transfer'}
+                              {voucher.payment_method === 'cheque' && 'Cheque'}
+                              {voucher.payment_method === 'cash' && 'Cash'}
+                              {voucher.payment_method === 'mobile_money' && 'Mobile Money'}
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                voucher.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                                voucher.status === 'finance_review' ? 'bg-blue-100 text-blue-800' :
+                                voucher.status === 'cfo_approval' ? 'bg-purple-100 text-purple-800' :
+                                voucher.status === 'md_approval' ? 'bg-yellow-100 text-yellow-800' :
+                                voucher.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                voucher.status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
+                                voucher.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {voucher.status === 'draft' && 'Draft'}
+                                {voucher.status === 'finance_review' && 'Finance Review'}
+                                {voucher.status === 'cfo_approval' && 'CFO Approval'}
+                                {voucher.status === 'md_approval' && 'MD Approval'}
+                                {voucher.status === 'approved' && 'Approved'}
+                                {voucher.status === 'paid' && 'Paid'}
+                                {voucher.status === 'rejected' && 'Rejected'}
+                                {voucher.status === 'cancelled' && 'Cancelled'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div>
+                                <p className="text-sm">{formatDate(voucher.created_at)}</p>
+                                {voucher.created_by_name && (
+                                  <p className="text-xs text-muted-foreground">{voucher.created_by_name}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => router.push(`/admin/payment-vouchers/${voucher.id}`)}
+                              >
+                                <ExternalLink className="w-4 h-4 mr-2" />
+                                View
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Modals */}
         {showRejectModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

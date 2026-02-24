@@ -50,6 +50,10 @@ export interface Customer {
   state?: State
   created_at: string
   updated_at: string
+  // Optional properties for different API response formats
+  name?: string
+  business_name?: string
+  customer_type_name?: string
 }
 
 export interface CustomerType {

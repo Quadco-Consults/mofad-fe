@@ -60,7 +60,7 @@ const initialFormData: ExpenseTypeFormData = {
 
 function ExpenseTypesPage() {
   const queryClient = useQueryClient()
-  const { showToast } = useToast()
+  const { addToast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
@@ -105,23 +105,20 @@ function ExpenseTypesPage() {
   const expenseTypes = allExpenseTypes.slice(startIndex, startIndex + pageSize)
 
   // Selection for bulk actions
-  const selection = useSelection({
-    items: expenseTypes,
-    getId: (item) => item.id,
-  })
+  const selection = useSelection()
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (data: any) => apiClient.createExpenseType(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense-types'] })
-      showToast('Expense type created successfully', 'success')
+      addToast({ title: 'Expense type created successfully', type: 'success' })
       setShowAddModal(false)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to create expense type', 'error')
+      addToast({ title: error.message || 'Failed to create expense type', type: 'error' })
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -134,14 +131,14 @@ function ExpenseTypesPage() {
       apiClient.updateExpenseType(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense-types'] })
-      showToast('Expense type updated successfully', 'success')
+      addToast({ title: 'Expense type updated successfully', type: 'success' })
       setShowEditModal(false)
       setSelectedType(null)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to update expense type', 'error')
+      addToast({ title: error.message || 'Failed to update expense type', type: 'error' })
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -153,12 +150,12 @@ function ExpenseTypesPage() {
     mutationFn: (id: number) => apiClient.deleteExpenseType(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense-types'] })
-      showToast('Expense type deleted successfully', 'success')
+      addToast({ title: 'Expense type deleted successfully', type: 'success' })
       setShowDeleteModal(false)
       setSelectedType(null)
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to delete expense type', 'error')
+      addToast({ title: error.message || 'Failed to delete expense type', type: 'error' })
     },
   })
 
@@ -168,16 +165,16 @@ function ExpenseTypesPage() {
       apiClient.updateExpenseType(id, { is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense-types'] })
-      showToast('Expense type status updated successfully', 'success')
+      addToast({ title: 'Expense type status updated successfully', type: 'success' })
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to update expense type status', 'error')
+      addToast({ title: error.message || 'Failed to update expense type status', type: 'error' })
     },
   })
 
   // Bulk delete handler
   const handleBulkDelete = async () => {
-    const selectedIds = selection.getSelectedIds()
+    const selectedIds = selection.selectedIds
     if (selectedIds.length === 0) return
 
     setIsBulkDeleting(true)
@@ -186,11 +183,11 @@ function ExpenseTypesPage() {
         await apiClient.deleteExpenseType(id)
       }
       queryClient.invalidateQueries({ queryKey: ['expense-types'] })
-      showToast(`Successfully deleted ${selectedIds.length} expense type(s)`, 'success')
+      addToast({ title: `Successfully deleted ${selectedIds.length} expense type(s)`, type: 'success' })
       selection.clearSelection()
       setShowBulkDeleteModal(false)
     } catch (error: any) {
-      showToast(error.message || 'Failed to delete some expense types', 'error')
+      addToast({ title: error.message || 'Failed to delete some expense types', type: 'error' })
     } finally {
       setIsBulkDeleting(false)
     }
@@ -455,9 +452,9 @@ function ExpenseTypesPage() {
                   <tr>
                     <th className="py-3 px-4 text-left">
                       <Checkbox
-                        checked={selection.isAllSelected}
-                        indeterminate={selection.isPartiallySelected}
-                        onChange={selection.toggleSelectAll}
+                        checked={selection.isAllSelected(expenseTypes)}
+                        indeterminate={selection.isPartiallySelected(expenseTypes)}
+                        onChange={() => selection.toggleAll(expenseTypes)}
                       />
                     </th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Expense Type</th>
@@ -476,7 +473,7 @@ function ExpenseTypesPage() {
                       <td className="py-3 px-4">
                         <Checkbox
                           checked={selection.isSelected(type.id)}
-                          onChange={() => selection.toggleSelect(type.id)}
+                          onChange={() => selection.toggle(type.id)}
                         />
                       </td>
                       <td className="py-3 px-4">
@@ -954,13 +951,14 @@ function ExpenseTypesPage() {
         {/* Bulk Action Bar */}
         <BulkActionBar
           selectedCount={selection.selectedCount}
-          onDelete={() => setShowBulkDeleteModal(true)}
+          onBulkDelete={() => setShowBulkDeleteModal(true)}
           onClearSelection={selection.clearSelection}
+          entityName="expense types"
         />
 
         {/* Bulk Delete Confirmation Dialog */}
         <ConfirmDialog
-          isOpen={showBulkDeleteModal}
+          open={showBulkDeleteModal}
           onClose={() => setShowBulkDeleteModal(false)}
           onConfirm={handleBulkDelete}
           title="Delete Expense Types"

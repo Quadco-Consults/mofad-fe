@@ -493,6 +493,10 @@ class ApiClient {
     return { message: 'Successfully logged out' }
   }
 
+  async getCurrentUser(): Promise<any> {
+    return this.get('/auth/me/')
+  }
+
   // Password reset methods
   async forgotPassword(email: string): Promise<{ message: string }> {
     return this.request<{ message: string }>('/auth/password-reset/initiate/', {
@@ -2648,6 +2652,13 @@ class ApiClient {
     })
   }
 
+  async updateProStatus(id: number | string, status: string): Promise<any> {
+    return this.request(`/pros/${id}/update-status/`, {
+      method: 'POST',
+      body: JSON.stringify({ status })
+    })
+  }
+
   // PRO Item Management
   async addProItem(proId: number | string, data: {
     product: number
@@ -3018,6 +3029,8 @@ class ApiClient {
     department?: string
     ordering?: string
     client_id?: number
+    warehouse?: number | string
+    delivery_location?: number | string
   }): Promise<any> {
     return this.get('/prfs/', params)
   }
@@ -4757,6 +4770,173 @@ class ApiClient {
     success: boolean
   }>> {
     return this.request('/audit-logs/my_activity/')
+  }
+
+  // ===========================
+  // Payment Voucher Management
+  // ===========================
+
+  /**
+   * Get all payment vouchers with optional filters
+   */
+  async getPaymentVouchers(params?: {
+    status?: string
+    payment_method?: string
+    memo?: number
+    start_date?: string
+    end_date?: string
+    search?: string
+    inbox?: boolean
+    page?: number
+    page_size?: number
+  }): Promise<any> {
+    return this.get('/payment-vouchers/', params)
+  }
+
+  /**
+   * Get a single payment voucher by ID
+   */
+  async getPaymentVoucherById(id: number | string): Promise<any> {
+    return this.request(`/payment-vouchers/${id}/`)
+  }
+
+  /**
+   * Create a new payment voucher
+   */
+  async createPaymentVoucher(data: {
+    memo: number
+    payee_name: string
+    payee_bank_name?: string
+    payee_account_number?: string
+    payee_account_name?: string
+    payment_method: string
+    amount: number | string
+    description: string
+    notes?: string
+  }): Promise<any> {
+    return this.request('/payment-vouchers/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Update a payment voucher (draft only)
+   */
+  async updatePaymentVoucher(id: number | string, data: {
+    payee_name?: string
+    payee_bank_name?: string
+    payee_account_number?: string
+    payee_account_name?: string
+    payment_method?: string
+    amount?: number | string
+    description?: string
+    notes?: string
+  }): Promise<any> {
+    return this.request(`/payment-vouchers/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Delete a payment voucher (draft only)
+   */
+  async deletePaymentVoucher(id: number | string): Promise<void> {
+    await this.request(`/payment-vouchers/${id}/`, {
+      method: 'DELETE'
+    })
+  }
+
+  /**
+   * Submit payment voucher for finance review
+   */
+  async submitPaymentVoucher(id: number | string): Promise<any> {
+    return this.request(`/payment-vouchers/${id}/submit/`, {
+      method: 'POST'
+    })
+  }
+
+  /**
+   * Finance reviews and forwards to CFO
+   */
+  async financeReviewPaymentVoucher(id: number | string, comments?: string): Promise<any> {
+    return this.request(`/payment-vouchers/${id}/finance-review/`, {
+      method: 'POST',
+      body: JSON.stringify({ comments: comments || '' })
+    })
+  }
+
+  /**
+   * CFO approves and forwards to MD
+   */
+  async cfoApprovePaymentVoucher(id: number | string, comments?: string): Promise<any> {
+    return this.request(`/payment-vouchers/${id}/cfo-approve/`, {
+      method: 'POST',
+      body: JSON.stringify({ comments: comments || '' })
+    })
+  }
+
+  /**
+   * MD gives final approval
+   */
+  async mdApprovePaymentVoucher(id: number | string, comments?: string): Promise<any> {
+    return this.request(`/payment-vouchers/${id}/md-approve/`, {
+      method: 'POST',
+      body: JSON.stringify({ comments: comments || '' })
+    })
+  }
+
+  /**
+   * Confirm that payment has been made
+   */
+  async confirmPaymentVoucher(id: number | string, data: {
+    payment_reference: string
+    payment_date: string
+    notes?: string
+  }): Promise<any> {
+    return this.request(`/payment-vouchers/${id}/confirm-payment/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Reject payment voucher at any review stage
+   */
+  async rejectPaymentVoucher(id: number | string, reason: string): Promise<any> {
+    return this.request(`/payment-vouchers/${id}/reject/`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    })
+  }
+
+  /**
+   * Cancel payment voucher
+   */
+  async cancelPaymentVoucher(id: number | string): Promise<any> {
+    return this.request(`/payment-vouchers/${id}/cancel/`, {
+      method: 'POST'
+    })
+  }
+
+  /**
+   * Get payment voucher statistics
+   */
+  async getPaymentVoucherStats(): Promise<{
+    total: number
+    by_status: {
+      draft: number
+      pending: number
+      approved: number
+      paid: number
+      rejected: number
+      cancelled: number
+    }
+    total_amount: number
+    pending_amount: number
+  }> {
+    return this.request('/payment-vouchers/statistics/')
   }
 }
 

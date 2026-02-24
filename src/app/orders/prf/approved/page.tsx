@@ -339,6 +339,7 @@ export default function ApprovedPRFPage() {
                   currentPage={currentPage}
                   totalPages={totalPages}
                   totalCount={totalCount}
+                  pageSize={pageSize}
                   onPageChange={setCurrentPage}
                 />
               </div>

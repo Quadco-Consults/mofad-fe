@@ -113,7 +113,7 @@ export default function CreateStockTransferPage() {
     onError: (error: any) => {
       addToast({
         title: 'Failed to create transfer',
-        message: error.message || 'An error occurred',
+        description: error.message || 'An error occurred',
         type: 'error'
       })
     }

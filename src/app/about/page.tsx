@@ -1,5 +1,3 @@
-'use client'
-
 import PublicNavigation from '@/components/PublicNavigation'
 import Link from 'next/link'
 import {

@@ -197,7 +197,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <AppLayout title="Profile">
+    <AppLayout>
       <div className="space-y-6">
         {/* Profile Header */}
         <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-3xl p-8 text-white relative overflow-hidden">

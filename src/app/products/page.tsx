@@ -41,6 +41,7 @@ import {
   FileText,
   Calendar,
   User,
+  Filter,
 } from 'lucide-react'
 
 // Real API bin card transaction interface (matches backend response)
@@ -73,33 +74,46 @@ interface BinCardData {
 
 const getCategoryIcon = (category: string) => {
   switch (category?.toLowerCase()) {
+    case 'filter':
+    case 'filters':
+      return <Filter className="w-5 h-5 text-green-500" />
     case 'lubricants':
+    case 'engine_oil':
     case 'engine_oils':
-      return <Droplets className="w-5 h-5 text-blue-500" />
+      return <Droplets className="w-5 h-5 text-green-500" />
+    case 'hydraulic_oil':
     case 'hydraulics':
     case 'hydraulic_oils':
-      return <Settings className="w-5 h-5 text-purple-500" />
+      return <Settings className="w-5 h-5 text-green-500" />
     case 'transmission':
     case 'transmission_fluids':
       return <Power className="w-5 h-5 text-green-500" />
     case 'specialty_products':
     case 'marine':
-      return <Package className="w-5 h-5 text-orange-500" />
+      return <Package className="w-5 h-5 text-green-500" />
     case 'service':
-      return <TrendingUp className="w-5 h-5 text-pink-500" />
+      return <TrendingUp className="w-5 h-5 text-green-500" />
     case 'equipment':
       return <Package className="w-5 h-5 text-gray-500" />
     default:
-      return <Droplets className="w-5 h-5 text-blue-500" />
+      return <Droplets className="w-5 h-5 text-green-500" />
   }
 }
 
 const getCategoryLabel = (category: string) => {
   const labels: Record<string, string> = {
     'lubricants': 'Lubricants',
+    'engine_oil': 'Engine Oils',
     'engine_oils': 'Engine Oils',
+    'hydraulic_oil': 'Hydraulic Oils',
     'hydraulics': 'Hydraulic Oils',
     'hydraulic_oils': 'Hydraulic Oils',
+    'gear_oil': 'Gear Oils',
+    'brake_fluid': 'Brake Fluids',
+    'coolant': 'Coolants',
+    'grease': 'Greases',
+    'filter': 'Filters',
+    'additive': 'Additives',
     'transmission': 'Transmission Fluids',
     'transmission_fluids': 'Transmission Fluids',
     'specialty_products': 'Specialty Products',
@@ -108,7 +122,7 @@ const getCategoryLabel = (category: string) => {
     'equipment': 'Equipment',
     'other': 'Other',
   }
-  return labels[category] || category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+  return labels[category] || category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
 // Helper to get price from price schemes
@@ -126,6 +140,36 @@ const getPriceFromSchemes = (product: any, type: 'direct' | 'lubebay' | 'station
   return scheme?.price || 0
 }
 
+const getFilterSubType = (name: string): string => {
+  const lower = name.toLowerCase()
+  if (lower.includes('oil filter')) return 'Oil Filter'
+  if (lower.includes('air filter')) return 'Air Filter'
+  if (lower.includes('cabin') && lower.includes('filter')) return 'Cabin Filter'
+  if (lower.includes('fuel filter')) return 'Fuel Filter'
+  if (lower.includes('hydraulic') && lower.includes('filter')) return 'Hydraulic Filter'
+  if (lower.includes('transmission') && lower.includes('filter')) return 'Transmission Filter'
+  if (lower.includes('oil')) return 'Oil Filter'
+  return 'Filter'
+}
+
+const getFilterSubTypeBadge = (name: string) => {
+  const subType = getFilterSubType(name)
+  const colors: Record<string, string> = {
+    'Oil Filter':          'bg-green-100 text-green-800',
+    'Air Filter':          'bg-sky-100 text-sky-800',
+    'Cabin Filter':        'bg-teal-100 text-teal-800',
+    'Fuel Filter':         'bg-orange-100 text-orange-800',
+    'Hydraulic Filter':    'bg-purple-100 text-purple-800',
+    'Transmission Filter': 'bg-indigo-100 text-indigo-800',
+    'Filter':              'bg-gray-100 text-gray-700',
+  }
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${colors[subType] || colors['Filter']}`}>
+      {subType}
+    </span>
+  )
+}
+
 const getStatusBadge = (isActive: boolean) => {
   return isActive ? (
     <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -141,13 +185,12 @@ const getStatusBadge = (isActive: boolean) => {
 const initialFormData: ProductFormData = {
   name: '',
   description: '',
-  category: 'lubricants',
+  category: 'engine_oil',
   subcategory: '',
   brand: '',
   unit_of_measure: 'liters',
   cost_price: 0,
   direct_sales_price: 0,
-  minimum_selling_price: 0,
   tax_rate: 7.5,
   tax_inclusive: false,
   track_inventory: true,
@@ -164,6 +207,7 @@ export default function ProductsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
+  const [productTypeTab, setProductTypeTab] = useState<'all' | 'lubricants' | 'filters'>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -183,15 +227,27 @@ export default function ProductsPage() {
   // Selection hook for bulk operations
   const selection = useSelection<Product>()
 
+  // Filter categories (used to exclude from lubricants tab)
+  const filterCategories = ['filter']
+
+  // Resolve effective category param based on tab + dropdown selection
+  const getEffectiveCategory = () => {
+    if (categoryFilter !== 'all') return categoryFilter
+    if (productTypeTab === 'filters') return 'filter'
+    // 'lubricants' tab with 'all' sub-filter: backend doesn't support multi-value,
+    // so we pass no category and filter client-side
+    return undefined
+  }
+
   // Fetch products with proper API method and pagination
   const { data: productsData, isLoading, error, refetch } = useQuery({
-    queryKey: ['products', searchTerm, categoryFilter, statusFilter, currentPage, pageSize],
+    queryKey: ['products', searchTerm, categoryFilter, statusFilter, currentPage, pageSize, productTypeTab],
     queryFn: () => apiClient.getProducts({
       search: searchTerm || undefined,
-      category: categoryFilter !== 'all' ? categoryFilter : undefined,
+      category: getEffectiveCategory(),
       is_active: statusFilter === 'active' ? true : statusFilter === 'inactive' ? false : undefined,
       page: currentPage,
-      size: pageSize, // Backend uses 'size' not 'page_size'
+      size: pageSize,
     }),
   })
 
@@ -233,6 +289,12 @@ export default function ProductsPage() {
     setCurrentPage(1)
   }
 
+  const handleProductTypeTabChange = (tab: 'all' | 'lubricants' | 'filters') => {
+    setProductTypeTab(tab)
+    setCategoryFilter('all')
+    setCurrentPage(1)
+  }
+
   // Helper to extract array from API response (handles paginated and direct array responses)
   // Backend returns: { paginator: { count, page, ... }, results: [...] }
   const extractResults = (data: any): Product[] => {
@@ -270,21 +332,21 @@ export default function ProductsPage() {
   // Extract and filter products data
   const allProducts = extractResults(productsData)
 
+  // Client-side tab filtering for lubricants tab (excludes filter category)
+  const products = productTypeTab === 'lubricants' && categoryFilter === 'all'
+    ? allProducts.filter((p: any) => !filterCategories.includes(p.category))
+    : allProducts
+
   // Extract warehouses data
-  const warehouses = warehousesData?.results || (Array.isArray(warehousesData) ? warehousesData : [])
+  const warehouses = Array.isArray(warehousesData) ? warehousesData : (warehousesData as any)?.results || []
 
   // Extract suppliers data
-  const suppliers = suppliersData?.results || (Array.isArray(suppliersData) ? suppliersData : [])
+  const suppliers = Array.isArray(suppliersData) ? suppliersData : (suppliersData as any)?.results || []
 
   // Calculate low stock from the same products data
-  const lowStockProducts = allProducts.filter((product: any) => {
-    // Consider products with current stock below reorder point as low stock
-    // For mock data, we'll simulate some low stock items
+  const lowStockProducts = products.filter((product: any) => {
     return product.minimum_stock_level > 0 && product.minimum_stock_level < 100
   })
-
-  // Products are already filtered by API, just use allProducts
-  const products = allProducts
 
   // Create product mutation
   const createMutation = useMutation({
@@ -423,6 +485,10 @@ export default function ProductsPage() {
 
   const handleAdd = () => {
     resetForm()
+    // Pre-set category based on active tab
+    if (productTypeTab === 'filters') {
+      setFormData(prev => ({ ...prev, category: 'filter', unit_of_measure: 'pieces' }))
+    }
     setShowAddModal(true)
   }
 
@@ -450,7 +516,7 @@ export default function ProductsPage() {
     }
   }
 
-  const getTransactionTypeBadge = (type: BinCardEntry['type']) => {
+  const getTransactionTypeBadge = (type: 'receipt' | 'issue' | 'transfer' | 'return' | 'adjustment') => {
     const colors = {
       receipt: 'bg-green-100 text-green-800',
       issue: 'bg-red-100 text-red-800',
@@ -636,16 +702,64 @@ export default function ProductsPage() {
           </div>
         </div>
 
+        {/* Product Type Tabs */}
+        <div className="border-b border-border">
+          <nav className="flex space-x-1" aria-label="Product type tabs">
+            <button
+              onClick={() => handleProductTypeTabChange('all')}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                productTypeTab === 'all'
+                  ? 'border-green-500 text-green-600 bg-green-50/50'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              All Products
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                productTypeTab === 'all' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {totalCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => handleProductTypeTabChange('lubricants')}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                productTypeTab === 'lubricants'
+                  ? 'border-green-500 text-green-600 bg-green-50/50'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+              }`}
+            >
+              <Droplets className="w-4 h-4" />
+              Lubricants
+            </button>
+
+            <button
+              onClick={() => handleProductTypeTabChange('filters')}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                productTypeTab === 'filters'
+                  ? 'border-green-500 text-green-600 bg-green-50/50'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              Filters
+            </button>
+          </nav>
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Products</p>
+                  <p className="text-sm text-muted-foreground">
+                    {productTypeTab === 'filters' ? 'Total Filters' : productTypeTab === 'lubricants' ? 'Total Lubricants' : 'Total Products'}
+                  </p>
                   <p className="text-2xl font-bold text-primary">{totalProducts}</p>
                 </div>
-                <Package className="w-8 h-8 text-primary/60" />
+                {productTypeTab === 'filters' ? <Filter className="w-8 h-8 text-green-500/60" /> : <Package className="w-8 h-8 text-green-500/60" />}
               </div>
             </CardContent>
           </Card>
@@ -717,22 +831,24 @@ export default function ProductsPage() {
               </div>
 
               <div className="flex gap-2">
-                <select
-                  className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  value={categoryFilter}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
-                >
-                  <option value="all">All Categories</option>
-                  <option value="engine_oil">Engine Oils</option>
-                  <option value="hydraulic_oil">Hydraulic Oils</option>
-                  <option value="gear_oil">Gear Oils</option>
-                  <option value="brake_fluid">Brake Fluids</option>
-                  <option value="coolant">Coolants</option>
-                  <option value="grease">Greases</option>
-                  <option value="filter">Filters</option>
-                  <option value="additive">Additives</option>
-                  <option value="other">Other</option>
-                </select>
+                {productTypeTab !== 'filters' && (
+                  <select
+                    className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={categoryFilter}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                  >
+                    <option value="all">All {productTypeTab === 'lubricants' ? 'Lubricants' : 'Categories'}</option>
+                    {productTypeTab !== 'lubricants' && <option value="filter">Filters</option>}
+                    <option value="engine_oil">Engine Oils</option>
+                    <option value="hydraulic_oil">Hydraulic Oils</option>
+                    <option value="gear_oil">Gear Oils</option>
+                    <option value="brake_fluid">Brake Fluids</option>
+                    <option value="coolant">Coolants</option>
+                    <option value="grease">Greases</option>
+                    <option value="additive">Additives</option>
+                    <option value="other">Other</option>
+                  </select>
+                )}
 
                 <select
                   className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
@@ -788,16 +904,20 @@ export default function ProductsPage() {
               </div>
             ) : products.length === 0 ? (
               <div className="p-12 text-center">
-                <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+                {productTypeTab === 'filters'
+                  ? <Filter className="w-12 h-12 text-green-400 mx-auto mb-4" />
+                  : <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />}
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {productTypeTab === 'filters' ? 'No filters found' : productTypeTab === 'lubricants' ? 'No lubricants found' : 'No products found'}
+                </h3>
                 <p className="text-gray-500 mb-4">
                   {searchTerm || categoryFilter !== 'all' || statusFilter !== 'all'
                     ? 'Try adjusting your search or filters'
-                    : 'Get started by adding your first product'}
+                    : `Get started by adding your first ${productTypeTab === 'filters' ? 'filter product' : productTypeTab === 'lubricants' ? 'lubricant' : 'product'}`}
                 </p>
                 <Button className="mofad-btn-primary" onClick={handleAdd}>
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Product
+                  {productTypeTab === 'filters' ? 'Add Filter' : 'Add Product'}
                 </Button>
               </div>
             ) : (
@@ -816,6 +936,7 @@ export default function ProductsPage() {
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Code</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Category</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Brand</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Package Size</th>
                       <th className="text-right py-3 px-4 font-medium text-gray-900">Cost Price</th>
                       <th className="text-right py-3 px-4 font-medium text-gray-900">Direct (Wholesale)</th>
                       <th className="text-right py-3 px-4 font-medium text-gray-900">LubeBay</th>
@@ -844,7 +965,10 @@ export default function ProductsPage() {
                             </div>
                             <div>
                               <div className="font-medium text-gray-900">{product.name}</div>
-                              <div className="text-sm text-gray-500">{product.viscosity_grade}</div>
+                              {productTypeTab === 'filters'
+                                ? <div className="mt-0.5">{getFilterSubTypeBadge(product.name)}</div>
+                                : <div className="text-sm text-gray-500">{product.viscosity_grade}</div>
+                              }
                             </div>
                           </div>
                         </td>
@@ -856,6 +980,34 @@ export default function ProductsPage() {
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-sm text-gray-700 capitalize">{product.brand || '-'}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="text-sm text-gray-700">
+                            {product.package_sizes && Array.isArray(product.package_sizes) && product.package_sizes.length > 0 ? (
+                              <span className="flex flex-wrap gap-1">
+                                {product.package_sizes.map((size: number, idx: number) => (
+                                  <span key={idx} className="inline-block px-2 py-0.5 bg-gray-100 rounded text-xs font-medium">
+                                    {size}{product.unit_of_measure === 'liters' ? 'L' : product.unit_of_measure === 'gallons' ? 'gal' : product.unit_of_measure === 'kilograms' ? 'kg' : 'pc'}
+                                  </span>
+                                ))}
+                              </span>
+                            ) : product.bulk_size || product.retail_size ? (
+                              <span className="flex flex-wrap gap-1">
+                                {product.retail_size && (
+                                  <span className="inline-block px-2 py-0.5 bg-blue-100 rounded text-xs font-medium">
+                                    {product.retail_size}{product.unit_of_measure === 'liters' ? 'L' : product.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
+                                  </span>
+                                )}
+                                {product.bulk_size && (
+                                  <span className="inline-block px-2 py-0.5 bg-green-100 rounded text-xs font-medium">
+                                    {product.bulk_size}{product.unit_of_measure === 'liters' ? 'L' : product.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="font-medium text-gray-700">
@@ -983,14 +1135,14 @@ export default function ProductsPage() {
                       value={formData.category}
                       onChange={(e) => setFormData({...formData, category: e.target.value as ProductFormData['category']})}
                     >
-                      <option value="lubricants">Lubricants</option>
-                      <option value="engine_oils">Engine Oils</option>
-                      <option value="hydraulics">Hydraulic Oils</option>
-                      <option value="transmission">Transmission Fluids</option>
-                      <option value="specialty_products">Specialty Products</option>
-                      <option value="marine">Marine Products</option>
-                      <option value="service">Services</option>
-                      <option value="equipment">Equipment</option>
+                      <option value="engine_oil">Engine Oils</option>
+                      <option value="hydraulic_oil">Hydraulic Oils</option>
+                      <option value="gear_oil">Gear Oils</option>
+                      <option value="brake_fluid">Brake Fluids</option>
+                      <option value="coolant">Coolants</option>
+                      <option value="grease">Greases</option>
+                      <option value="filter">Filters</option>
+                      <option value="additive">Additives</option>
                       <option value="other">Other</option>
                     </select>
                   </div>
@@ -1323,14 +1475,14 @@ export default function ProductsPage() {
                       value={formData.category}
                       onChange={(e) => setFormData({...formData, category: e.target.value as ProductFormData['category']})}
                     >
-                      <option value="lubricants">Lubricants</option>
-                      <option value="engine_oils">Engine Oils</option>
-                      <option value="hydraulics">Hydraulic Oils</option>
-                      <option value="transmission">Transmission Fluids</option>
-                      <option value="specialty_products">Specialty Products</option>
-                      <option value="marine">Marine Products</option>
-                      <option value="service">Services</option>
-                      <option value="equipment">Equipment</option>
+                      <option value="engine_oil">Engine Oils</option>
+                      <option value="hydraulic_oil">Hydraulic Oils</option>
+                      <option value="gear_oil">Gear Oils</option>
+                      <option value="brake_fluid">Brake Fluids</option>
+                      <option value="coolant">Coolants</option>
+                      <option value="grease">Greases</option>
+                      <option value="filter">Filters</option>
+                      <option value="additive">Additives</option>
                       <option value="other">Other</option>
                     </select>
                   </div>
@@ -1648,7 +1800,7 @@ export default function ProductsPage() {
                     onClick={() => setActiveViewTab('details')}
                     className={`py-4 px-1 border-b-2 font-medium text-sm ${
                       activeViewTab === 'details'
-                        ? 'border-orange-500 text-orange-600'
+                        ? 'border-green-500 text-green-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                   >
@@ -1661,7 +1813,7 @@ export default function ProductsPage() {
                     onClick={() => setActiveViewTab('bincard')}
                     className={`py-4 px-1 border-b-2 font-medium text-sm ${
                       activeViewTab === 'bincard'
-                        ? 'border-orange-500 text-orange-600'
+                        ? 'border-green-500 text-green-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                   >
@@ -1720,12 +1872,12 @@ export default function ProductsPage() {
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-500">Direct Sales Price</label>
-                          <p className="text-primary font-bold text-lg">{formatCurrency(selectedProduct.direct_sales_price)}</p>
+                          <p className="text-primary font-bold text-lg">{formatCurrency(selectedProduct.direct_sales_price || 0)}</p>
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-500">Profit Margin</label>
                           <p className="text-green-600 font-bold">
-                            {calculateProfitMargin(selectedProduct.direct_sales_price, selectedProduct.cost_price).toFixed(1)}%
+                            {calculateProfitMargin(selectedProduct.direct_sales_price || 0, selectedProduct.cost_price || 0).toFixed(1)}%
                           </p>
                         </div>
                         <div>
@@ -1828,7 +1980,7 @@ export default function ProductsPage() {
                     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                       <div className="overflow-x-auto">
                         <table className="min-w-full">
-                          <thead className="bg-gradient-to-r from-orange-500 to-amber-500">
+                          <thead className="bg-gradient-to-r from-green-500 to-green-600">
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Date</th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Ref. No</th>
@@ -1850,7 +2002,7 @@ export default function ProductsPage() {
                             ) : binCardLoading ? (
                               <tr>
                                 <td colSpan={8} className="px-4 py-8 text-center">
-                                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-orange-500" />
+                                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-green-500" />
                                 </td>
                               </tr>
                             ) : binCardData?.transactions && binCardData.transactions.length > 0 ? (
@@ -1892,7 +2044,7 @@ export default function ProductsPage() {
                                   <td className="px-4 py-3 whitespace-nowrap text-right">
                                     <div className="text-sm">
                                       <div className="font-bold text-gray-900">{(entry.balance_after || 0).toLocaleString()}</div>
-                                      {entry.value && <div className="text-xs text-gray-500">{formatCurrency(entry.value)}</div>}
+                                      {(entry as any).value && <div className="text-xs text-gray-500">{formatCurrency((entry as any).value)}</div>}
                                     </div>
                                   </td>
                                   <td className="px-4 py-3 whitespace-nowrap">

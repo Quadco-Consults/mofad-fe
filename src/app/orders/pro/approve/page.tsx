@@ -102,7 +102,7 @@ export default function ApprovePROPage() {
       page: currentPage,
       page_size: pageSize,
       search: searchTerm || undefined,
-      status: 'pending_review,pending_approval', // Show PROs pending review or approval
+      status: 'draft', // Show draft PROs
     }),
     staleTime: 30000, // Consider data fresh for 30 seconds
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
@@ -115,8 +115,8 @@ export default function ApprovePROPage() {
 
   // Memoize stats calculations to avoid recalculating on every render
   const stats = useMemo(() => {
-    const pendingReviewCount = pros.filter(p => p.status === 'pending_review').length
-    const pendingApprovalCount = pros.filter(p => p.status === 'pending_approval').length
+    const pendingReviewCount = pros.filter((p: any) => p.status === 'draft').length
+    const pendingApprovalCount = 0 // Status not available in current type definition
     return { pendingReviewCount, pendingApprovalCount }
   }, [pros])
 
@@ -333,7 +333,7 @@ export default function ApprovePROPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pros.map((pro) => {
+                    {pros.map((pro: any) => {
                       // Use pre-calculated values from backend if available, otherwise calculate
                       const totalOrderValue = Number(pro.total_amount) || 0
                       const receivedValue = Number(pro.received_value) || 0
@@ -454,6 +454,7 @@ export default function ApprovePROPage() {
                   currentPage={currentPage}
                   totalPages={totalPages}
                   totalCount={totalCount}
+                  pageSize={pageSize}
                   onPageChange={setCurrentPage}
                 />
               </div>

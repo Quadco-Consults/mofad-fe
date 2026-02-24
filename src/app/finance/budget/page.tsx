@@ -714,7 +714,7 @@ export default function BudgetPage() {
                     <YAxis tickFormatter={(value) => `₦${(value / 1000000).toFixed(0)}M`} />
                     <Tooltip formatter={(value: any) => [formatCurrency(value), ""]} />
                     <Legend />
-                    <Bar dataKey="variance" name="Variance" fill={(entry: any) => entry.variance >= 0 ? "#EF4444" : "#10B981"} />
+                    <Bar dataKey="variance" name="Variance" fill="#10B981" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

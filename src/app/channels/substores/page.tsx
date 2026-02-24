@@ -303,20 +303,21 @@ export default function SubstoresPage() {
 
   const handleEdit = (substore: Substore) => {
     setSelectedSubstore(substore)
+    const sub = substore as any
     setFormData({
-      name: substore.name,
-      code: substore.code,
-      type: substore.type,
-      location: substore.location,
-      state: substore.state,
-      manager: substore.manager,
-      phone: substore.phone,
-      email: substore.email,
-      status: substore.status,
-      opening_date: substore.opening_date,
-      monthly_sales: substore.monthly_sales,
-      commission_rate: substore.commission_rate,
-      rating: substore.rating
+      name: sub.name,
+      code: sub.code,
+      type: sub.type,
+      location: sub.location,
+      state: sub.state,
+      manager: sub.manager,
+      phone: sub.phone,
+      email: sub.email,
+      status: sub.status,
+      opening_date: sub.opening_date,
+      monthly_sales: sub.monthly_sales,
+      commission_rate: sub.commission_rate,
+      rating: sub.rating
     })
     setFormErrors({})
     setShowEditModal(true)
@@ -355,7 +356,7 @@ export default function SubstoresPage() {
   const states: string[] = Array.from(new Set(substores.map((s: Substore) => s.state)))
 
   // Get unique types for filter
-  const types: string[] = Array.from(new Set(substores.map((s: Substore) => s.type)))
+  const types: string[] = Array.from(new Set(substores.map((s: Substore) => (s as any).type)))
 
   // Navigation handler
   const handleViewSubstore = (substoreId: number) => {

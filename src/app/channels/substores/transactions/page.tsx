@@ -297,7 +297,7 @@ function CreateTransactionModal({ isOpen, onClose, onSubmit, isLoading }: Create
     queryFn: () => apiClient.getSubstores(),
   })
 
-  const substores = Array.isArray(substoresList) ? substoresList : substoresList?.results || []
+  const substores = (Array.isArray(substoresList) ? substoresList : (substoresList as any)?.results) || []
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -574,7 +574,7 @@ export default function SubstoreTransactionsPage() {
   const transactions = extractResults(transactionsData)
   const totalCount = getTotalCount(transactionsData)
   const totalPages = getTotalPages(transactionsData)
-  const substores = Array.isArray(substoresList) ? substoresList : substoresList?.results || []
+  const substores = (Array.isArray(substoresList) ? substoresList : (substoresList as any)?.results) || []
 
   // Stats from API
   const stats = statsData || {

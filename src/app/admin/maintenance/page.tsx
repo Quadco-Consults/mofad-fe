@@ -173,7 +173,17 @@ const StatusBadge = ({ status }: { status: string }) => {
   )
 }
 
-const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = 'orange', unit = '' }: any) => {
+interface MetricCardProps {
+  title: string
+  value: number | string
+  subtitle?: string
+  icon: React.ComponentType<{ className?: string }>
+  trend?: number
+  color?: 'orange' | 'blue' | 'green' | 'red' | 'purple' | 'yellow'
+  unit?: string
+}
+
+const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = 'orange', unit = '' }: MetricCardProps) => {
   const colors = {
     orange: 'from-orange-500 to-orange-600',
     blue: 'from-blue-500 to-blue-600',
@@ -190,7 +200,7 @@ const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = 'orange
           <div className="space-y-2">
             <p className="text-sm font-medium text-gray-600">{title}</p>
             <p className="text-2xl font-bold text-gray-900">
-              {unit === 'currency' ? formatCurrency(value) :
+              {unit === 'currency' ? formatCurrency(typeof value === 'number' ? value : parseFloat(value as string) || 0) :
                unit === 'hours' ? `${value}h` :
                unit === 'percentage' ? `${value}%` : value}
             </p>

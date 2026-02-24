@@ -49,13 +49,13 @@ interface SalesLineChartProps {
 }
 
 const COLORS = {
-  primary: '#ea580c',
-  secondary: '#fb923c',
-  accent: '#fed7aa',
+  primary: '#22c55e',
+  secondary: '#16a34a',
+  accent: '#86efac',
   success: '#22c55e',
   warning: '#f59e0b',
   error: '#ef4444',
-  background: '#fef7ed'
+  background: '#f0fdf4'
 }
 
 // Enhanced Revenue Area Chart
@@ -63,7 +63,7 @@ export function RevenueAreaChart({ data, isLoading = false }: RevenueChartProps)
   if (isLoading) {
     return (
       <div className="h-80 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
       </div>
     )
   }
@@ -137,7 +137,7 @@ export function DonutChart({ data, centerValue, centerLabel, isLoading = false }
   if (isLoading) {
     return (
       <div className="h-80 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
       </div>
     )
   }
@@ -211,7 +211,7 @@ export function SalesLineChart({ data, isLoading = false }: SalesLineChartProps)
   if (isLoading) {
     return (
       <div className="h-80 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
       </div>
     )
   }

@@ -59,10 +59,10 @@ function CleanStatCard({
       badge: 'bg-blue-100 text-blue-700'
     },
     orange: {
-      bg: 'bg-orange-50',
-      icon: 'bg-orange-600',
-      text: 'text-orange-600',
-      badge: 'bg-orange-100 text-orange-700'
+      bg: 'bg-green-50',
+      icon: 'bg-green-600',
+      text: 'text-green-600',
+      badge: 'bg-green-100 text-green-700'
     },
     red: {
       bg: 'bg-red-50',
@@ -129,7 +129,7 @@ function RecentTransactionsTable() {
       'Completed': 'bg-green-100 text-green-700',
       'Pending': 'bg-yellow-100 text-yellow-700',
       'In Progress': 'bg-blue-100 text-blue-700',
-      'Under Review': 'bg-orange-100 text-orange-700'
+      'Under Review': 'bg-green-100 text-green-700'
     }
 
     return (
@@ -229,7 +229,7 @@ function ActiveOperations() {
                 className={`h-2 rounded-full ${
                   operation.progress >= 80 ? 'bg-green-600' :
                   operation.progress >= 60 ? 'bg-blue-600' :
-                  operation.progress >= 40 ? 'bg-orange-600' : 'bg-red-600'
+                  operation.progress >= 40 ? 'bg-green-600' : 'bg-red-600'
                 }`}
                 style={{ width: `${operation.progress}%` }}
               ></div>
@@ -304,7 +304,7 @@ export function KanoStyleDashboard() {
           value={38}
           change={5}
           icon={AlertTriangle}
-          color="orange"
+          color="green"
           subtitle="Require attention"
         />
         <CleanStatCard

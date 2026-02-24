@@ -550,7 +550,7 @@ export default function PRFViewPage() {
               <Printer className="w-4 h-4" />
               Print
             </Button>
-            <Button onClick={handleDownloadPDF} className="text-white flex items-center gap-2" style={{ backgroundColor: '#D4AF37', '&:hover': { backgroundColor: '#B8941F' } }} onMouseEnter={(e) => e.target.style.backgroundColor = '#B8941F'} onMouseLeave={(e) => e.target.style.backgroundColor = '#D4AF37'}>
+            <Button onClick={handleDownloadPDF} className="text-white flex items-center gap-2" style={{ backgroundColor: '#D4AF37' }} onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#B8941F'} onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = '#D4AF37'}>
               <Download className="w-4 h-4" />
               Download PDF
             </Button>

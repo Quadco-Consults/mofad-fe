@@ -134,12 +134,6 @@ interface PRFFormData {
   priority: 'low' | 'medium' | 'high' | 'urgent'
   items: PRFItem[]
   estimated_total: number
-  // Additional fields for edit modal
-  title?: string
-  department?: string
-  purpose?: string
-  description?: string
-  budget_code?: string
 }
 
 const initialFormData: PRFFormData = {
@@ -673,7 +667,7 @@ export default function PRFPage() {
 
         const updatedPRF: PRF = {
           ...existingPRFs[prfIndex],
-          status: 'pending_review',
+          status: 'submitted',
           updated_at: new Date().toISOString(),
         }
 
@@ -830,7 +824,7 @@ export default function PRFPage() {
     const item = { ...newItems[index] }
 
     if (field === 'product') {
-      const selectedProduct = products.find((p: any) => p.id === value)
+      const selectedProduct = products.find(p => p.id === value)
       if (selectedProduct) {
         item.product = value
         item.product_name = selectedProduct.name
@@ -840,7 +834,7 @@ export default function PRFPage() {
     } else if (field === 'quantity') {
       item.quantity = value
     } else {
-      (item as any)[field] = value
+      item[field] = value
     }
 
     // Recalculate total amount for this item
@@ -879,7 +873,7 @@ export default function PRFPage() {
   }
 
   const selectCustomer = (customerId: number) => {
-    const selectedCustomer = customers.find((c: any) => c.id === customerId)
+    const selectedCustomer = customers.find(c => c.id === customerId)
     if (selectedCustomer) {
       const orderRef = generateOrderReference(selectedCustomer.customer_code || 'GEN')
       const addressParts = [selectedCustomer.address, selectedCustomer.city].filter(Boolean)
@@ -919,7 +913,7 @@ export default function PRFPage() {
       notes: (prf as any).notes || prf.description || '',
       priority: prf.priority,
       items: (prf as any).items || [],
-      estimated_total: Number(prf.estimated_total) || 0,
+      estimated_total: prf.estimated_total,
     })
     setFormErrors({})
     setShowEditModal(true)
@@ -968,9 +962,9 @@ export default function PRFPage() {
 
   // Stats calculation
   const totalPRFs = prfs.length
-  const pendingPRFs = prfs.filter((p: any) => p.status === 'pending_review' || p.status === 'pending_approval').length
-  const approvedPRFs = prfs.filter((p: any) => p.status === 'approved').length
-  const totalValue = prfs.reduce((sum: number, p: any) => {
+  const pendingPRFs = prfs.filter((p) => p.status === 'pending_review' || p.status === 'pending_approval').length
+  const approvedPRFs = prfs.filter((p) => p.status === 'approved').length
+  const totalValue = prfs.reduce((sum, p) => {
     const amount = parseFloat(p.estimated_total) || 0
     return sum + amount
   }, 0)
@@ -1184,7 +1178,7 @@ export default function PRFPage() {
                           </div>
                         </td>
                         <td className="py-3 px-4">{(prf as any).customer_name || 'N/A'}</td>
-                        <td className="py-3 px-4 font-medium">{formatCurrency(Number(prf.estimated_total) || 0)}</td>
+                        <td className="py-3 px-4 font-medium">{formatCurrency(prf.estimated_total)}</td>
                         <td className="py-3 px-4">{getStatusBadge(prf.status)}</td>
                         <td className="py-3 px-4 text-sm text-muted-foreground">
                           {formatDateTime(prf.created_at)}
@@ -1213,7 +1207,7 @@ export default function PRFPage() {
                                 </Button>
                               </>
                             )}
-                            {prf.status === 'pending_approval' && (
+                            {prf.status === 'submitted' && (
                               <>
                                 <Button
                                   variant="ghost"
@@ -1305,7 +1299,7 @@ export default function PRFPage() {
                     </div>
                     {showCustomerDropdown && customers.length > 0 && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                        {customers.map((customer: any) => (
+                        {customers.map((customer) => (
                           <button
                             key={customer.id}
                             type="button"
@@ -1335,7 +1329,7 @@ export default function PRFPage() {
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <h4 className="font-medium text-blue-800 mb-2">Customer Details</h4>
                     {(() => {
-                      const customer = customers.find((c: any) => c.id === formData.customer)
+                      const customer = customers.find(c => c.id === formData.customer)
                       return (
                         <div className="text-sm text-blue-700 grid grid-cols-2 gap-x-4 gap-y-1">
                           <p><strong>Code:</strong> {customer?.customer_code || '—'}</p>
@@ -1408,7 +1402,7 @@ export default function PRFPage() {
                                     formErrors[`items.${index}.product`] ? 'border-red-500' : 'border-gray-300'
                                   }`}
                                   placeholder={isProductsLoading ? 'Loading...' : 'Search product...'}
-                                  value={productSearches[index] ?? (item.product ? (products.find((p: any) => p.id === item.product)?.name || '') : '')}
+                                  value={productSearches[index] ?? (item.product ? (products.find(p => p.id === item.product)?.name || '') : '')}
                                   onChange={(e) => {
                                     setProductSearches(prev => ({ ...prev, [index]: e.target.value }))
                                     setShowProductDropdowns(prev => ({ ...prev, [index]: true }))
@@ -1421,12 +1415,12 @@ export default function PRFPage() {
                               {showProductDropdowns[index] && (
                                 <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-48 overflow-y-auto">
                                   {products
-                                    .filter((p: any) => {
+                                    .filter(p => {
                                       const q = (productSearches[index] || '').toLowerCase()
                                       return !q || p.name?.toLowerCase().includes(q) || p.code?.toLowerCase().includes(q)
                                     })
                                     .slice(0, 20)
-                                    .map((product: any) => (
+                                    .map((product) => (
                                       <button
                                         key={product.id}
                                         type="button"
@@ -1444,7 +1438,7 @@ export default function PRFPage() {
                                       </button>
                                     ))
                                   }
-                                  {products.filter((p: any) => {
+                                  {products.filter(p => {
                                     const q = (productSearches[index] || '').toLowerCase()
                                     return !q || p.name?.toLowerCase().includes(q) || p.code?.toLowerCase().includes(q)
                                   }).length === 0 && (

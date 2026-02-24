@@ -217,7 +217,7 @@ function InventoryReportsPage() {
                   onChange={(e) => setWarehouseId(e.target.value)}
                 >
                   <option value="">All Warehouses</option>
-                  {(Array.isArray(warehouses) ? warehouses : warehouses?.results || []).map((wh: any) => (
+                  {(Array.isArray(warehouses) ? warehouses : (warehouses as any)?.results || []).map((wh: any) => (
                     <option key={wh.id} value={wh.id}>{wh.name}</option>
                   ))}
                 </select>

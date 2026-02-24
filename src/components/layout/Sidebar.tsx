@@ -70,7 +70,7 @@ const navigation: NavItem[] = [
     label: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
-    color: 'from-orange-600 to-orange-700',
+    color: 'from-green-600 to-green-700',
     roles: PRIVILEGED_ROLES,
   },
 ]
@@ -129,7 +129,7 @@ const navigationSections = [
         label: 'Car Wash',
         href: '/channels/carwash',
         icon: Droplets,
-        color: 'from-blue-500 to-blue-600',
+        color: 'from-green-500 to-green-600',
         roles: PRIVILEGED_ROLES,
         children: [
           { label: 'Car Washes', href: '/channels/carwash', icon: Droplets },
@@ -154,7 +154,7 @@ const navigationSections = [
         label: 'Reports',
         href: '/reports',
         icon: TrendingUp,
-        color: 'from-blue-500 to-blue-600',
+        color: 'from-green-500 to-green-600',
         roles: ['admin', 'manager', 'accountant'],
         children: [
           { label: 'Current Stock Report', href: '/reports/stock-report', icon: Package },
@@ -441,7 +441,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
           <div className={cn(
             "absolute inset-0 rounded-2xl transition-all duration-500 ease-out",
             isActive
-              ? `bg-gradient-to-r ${item.color || 'from-orange-600 to-orange-700'} shadow-lg shadow-orange-500/25 border border-orange-400/20`
+              ? `bg-gradient-to-r ${item.color || 'from-green-600 to-green-700'} shadow-lg shadow-green-500/25 border border-green-400/20`
               : isHovered
                 ? "bg-gradient-to-r from-white to-slate-50 shadow-md shadow-slate-200/50 border border-slate-200/40 backdrop-blur-sm"
                 : "hover:bg-gradient-to-r hover:from-slate-50/70 hover:to-white hover:shadow-sm hover:border hover:border-slate-200/30"
@@ -488,7 +488,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
                   {item.isNew && (
                     <div className="flex items-center gap-1.5">
                       <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
-                      <span className="text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">
+                      <span className="text-[10px] bg-gradient-to-r from-green-400 to-green-500 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">
                         NEW
                       </span>
                     </div>
@@ -585,7 +585,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
                     alt="MOFAD Energy Solutions"
                     className="h-14 w-auto drop-shadow-sm"
                   />
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
                 </div>
                 <div className="ml-4">
                   <h1 className="text-xl font-bold text-slate-900 leading-tight">MOFAD Energy</h1>
@@ -601,7 +601,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
                   alt="MOFAD"
                   className="h-10 w-auto drop-shadow-sm"
                 />
-                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full border border-white shadow-sm animate-pulse"></div>
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white shadow-sm animate-pulse"></div>
               </div>
             )}
           </div>
@@ -621,7 +621,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
               <div key={section.title} className={cn("mt-8", sectionIndex === 0 && "mt-6")}>
                 {/* Section Header */}
                 <div className="px-3 mb-4">
-                  <h3 className="text-xs font-bold text-orange-600 uppercase tracking-wider">
+                  <h3 className="text-xs font-bold text-green-600 uppercase tracking-wider">
                     {section.title}
                   </h3>
                 </div>
@@ -638,15 +638,15 @@ export function Sidebar({ collapsed }: SidebarProps) {
         {/* Enhanced Footer with better design */}
         {!collapsed && (
           <div className="p-5 border-t border-slate-200/50">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500/10 via-orange-600/10 to-orange-700/10 border border-orange-200/50 backdrop-blur-sm">
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-orange-600/5"></div>
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-500/10 via-green-600/10 to-green-700/10 border border-green-200/50 backdrop-blur-sm">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-green-600/5"></div>
               <div className="relative flex items-center gap-4 p-4">
                 <div className="flex-shrink-0">
                   <div className="relative">
-                    <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
                       <Activity className="w-5 h-5 text-white" />
                     </div>
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-400 rounded-full border-2 border-white shadow-sm animate-ping"></div>
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow-sm animate-ping"></div>
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">

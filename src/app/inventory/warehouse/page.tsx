@@ -53,7 +53,7 @@ export default function WarehouseListPage() {
     refetchOnWindowFocus: false,
   })
 
-  const warehouses: WarehouseItem[] = warehousesResponse?.results || []
+  const warehouses: WarehouseItem[] = (Array.isArray(warehousesResponse) ? warehousesResponse : (warehousesResponse as any)?.results) || []
 
   // Filter warehouses based on search and status
   const filteredWarehouses = warehouses.filter(warehouse => {

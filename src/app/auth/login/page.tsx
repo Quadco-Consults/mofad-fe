@@ -80,7 +80,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left side - Login Form */}
-      <div className="w-full lg:w-[45%] flex flex-col justify-center px-8 sm:px-12 lg:px-16 xl:px-24 bg-orange-50">
+      <div className="w-full lg:w-[45%] flex flex-col justify-center px-8 sm:px-12 lg:px-16 xl:px-24 bg-green-50">
         <div className="max-w-md w-full">
           {/* Header */}
           <div className="mb-8">
@@ -135,7 +135,7 @@ export default function LoginPage() {
                   },
                 })}
                 type="email"
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 transition-all text-base"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 text-gray-900 placeholder-gray-400 transition-all text-base"
                 placeholder="company@email.com"
               />
               {errors.email && (
@@ -158,7 +158,7 @@ export default function LoginPage() {
                     },
                   })}
                   type={showPassword ? 'text' : 'password'}
-                  className="w-full px-4 py-3 pr-12 bg-white border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 transition-all text-base"
+                  className="w-full px-4 py-3 pr-12 bg-white border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 text-gray-900 placeholder-gray-400 transition-all text-base"
                   placeholder="************"
                 />
                 <button
@@ -179,7 +179,7 @@ export default function LoginPage() {
               <div className="mt-2">
                 <a
                   href="/auth/forgot-password"
-                  className="text-sm text-orange-600 hover:text-orange-700 font-medium transition-colors"
+                  className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
                 >
                   forget password?
                 </a>
@@ -190,7 +190,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-6 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold rounded-lg shadow-lg shadow-orange-500/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-base"
+              className="w-full py-3 px-6 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg shadow-lg shadow-green-500/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-base"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center">
@@ -210,7 +210,7 @@ export default function LoginPage() {
                   onClick={() => {
                     alert('Please contact your administrator for account access')
                   }}
-                  className="font-medium text-orange-600 hover:text-orange-700 transition-colors"
+                  className="font-medium text-green-600 hover:text-green-700 transition-colors"
                 >
                   Sign up
                 </button>
@@ -226,7 +226,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right side - MOFAD Image */}
-      <div className="hidden lg:block lg:w-[55%] relative overflow-hidden bg-gradient-to-br from-orange-100 to-orange-200">
+      <div className="hidden lg:block lg:w-[55%] relative overflow-hidden bg-gradient-to-br from-green-50 to-green-100">
         {/* MOFAD Facility Image */}
         <div className="absolute inset-0">
           <img
@@ -235,7 +235,7 @@ export default function LoginPage() {
             className="w-full h-full object-cover"
           />
           {/* Enhanced Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-600/40 via-orange-500/20 to-orange-900/60" />
+          <div className="absolute inset-0 bg-gradient-to-br from-black/20 via-transparent to-black/30" />
         </div>
 
         {/* Overlay Content */}

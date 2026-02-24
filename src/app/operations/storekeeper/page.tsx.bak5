@@ -357,7 +357,7 @@ const StorekeeperPage = () => {
               <div className="text-gray-500">No warehouses available</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-                {warehouses.map((warehouse: any) => (
+                {warehouses.map((warehouse) => (
                   <div
                     key={warehouse.id}
                     onClick={() => setSelectedWarehouse(warehouse.id)}

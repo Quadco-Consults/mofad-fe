@@ -73,14 +73,14 @@ const getRelativeTime = (dateString: string) => {
 const getNotificationColor = (type: NotificationType) => {
   const colors: Record<NotificationType, string> = {
     system: 'bg-slate-100 text-slate-600',
-    order: 'bg-blue-100 text-blue-600',
+    order: 'bg-green-100 text-green-600',
     payment: 'bg-green-100 text-green-600',
-    inventory: 'bg-orange-100 text-orange-600',
+    inventory: 'bg-green-100 text-green-600',
     alert: 'bg-red-100 text-red-600',
-    reminder: 'bg-purple-100 text-purple-600',
-    task: 'bg-cyan-100 text-cyan-600',
-    message: 'bg-indigo-100 text-indigo-600',
-    promotion: 'bg-yellow-100 text-yellow-600',
+    reminder: 'bg-green-100 text-green-600',
+    task: 'bg-green-100 text-green-600',
+    message: 'bg-green-100 text-green-600',
+    promotion: 'bg-green-100 text-green-600',
   }
   return colors[type] || 'bg-gray-100 text-gray-600'
 }
@@ -137,14 +137,14 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   const quickActions: QuickAction[] = [
     { label: 'New PRF', href: '/orders/prf/new', icon: Package, color: 'blue', shortcut: 'Ctrl+P' },
     { label: 'Customer Search', href: '/customers', icon: User, color: 'green', shortcut: 'Ctrl+U' },
-    { label: 'Stock Check', href: '/inventory', icon: Activity, color: 'orange', shortcut: 'Ctrl+S' },
+    { label: 'Stock Check', href: '/inventory', icon: Activity, color: 'green', shortcut: 'Ctrl+S' },
     { label: 'Financial Report', href: '/finance/reports', icon: TrendingUp, color: 'purple', shortcut: 'Ctrl+R' }
   ]
 
   return (
     <header className="relative">
       {/* MOFAD Orange Header Background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-orange-600 via-orange-500 to-orange-600 border-b border-orange-700/30 shadow-lg"></div>
+      <div className="absolute inset-0 bg-gradient-to-r from-green-600 via-green-500 to-green-600 border-b border-green-700/30 shadow-lg"></div>
 
       {/* Content */}
       <div className="relative px-6 py-4">
@@ -231,9 +231,9 @@ export function Header({ onToggleSidebar }: HeaderProps) {
 
               {showQuickActions && (
                 <div className="absolute right-0 mt-3 w-72 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 z-50 overflow-hidden">
-                  <div className="p-4 border-b border-white/20 bg-gradient-to-r from-slate-50 to-blue-50">
+                  <div className="p-4 border-b border-white/20 bg-gradient-to-r from-slate-50 to-green-50">
                     <h3 className="font-semibold text-slate-800 flex items-center">
-                      <Sparkles className="h-4 w-4 mr-2 text-blue-600" />
+                      <Sparkles className="h-4 w-4 mr-2 text-green-600" />
                       Quick Actions
                     </h3>
                   </div>
@@ -248,10 +248,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                         >
                           <div className="flex items-center space-x-3">
                             <div className={`p-2 rounded-lg ${
-                              action.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                              action.color === 'blue' ? 'bg-green-100 text-green-600' :
                               action.color === 'green' ? 'bg-green-100 text-green-600' :
-                              action.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-                              action.color === 'purple' ? 'bg-purple-100 text-purple-600' :
+                              action.color === 'green' ? 'bg-green-100 text-green-600' :
+                              action.color === 'purple' ? 'bg-green-100 text-green-600' :
                               'bg-gray-100 text-gray-600'
                             } group-hover:scale-110 transition-transform`}>
                               <IconComponent className="h-4 w-4" />
@@ -312,11 +312,11 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                           key={notification.id}
                           className={cn(
                             "p-4 border-b border-white/10 hover:bg-white/40 transition-colors cursor-pointer relative",
-                            notification.status === 'unread' && "bg-blue-50/50"
+                            notification.status === 'unread' && "bg-green-50/50"
                           )}
                         >
                           {notification.status === 'unread' && (
-                            <div className="absolute left-2 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <div className="absolute left-2 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-green-500 rounded-full"></div>
                           )}
                           <div className="flex items-start space-x-3 pl-4">
                             <div className={`p-2 rounded-lg flex-shrink-0 ${getNotificationColor(notification.notification_type)}`}>
@@ -335,10 +335,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                       ))
                     )}
                   </div>
-                  <div className="p-4 border-t border-white/20 bg-gradient-to-r from-slate-50 to-blue-50">
+                  <div className="p-4 border-t border-white/20 bg-gradient-to-r from-slate-50 to-green-50">
                     <Link
                       href="/notifications"
-                      className="block w-full text-sm text-blue-600 hover:text-blue-800 font-semibold py-2 px-4 rounded-xl hover:bg-white/60 transition-colors text-center"
+                      className="block w-full text-sm text-green-600 hover:text-green-800 font-semibold py-2 px-4 rounded-xl hover:bg-white/60 transition-colors text-center"
                       onClick={() => setShowNotifications(false)}
                     >
                       View All Notifications
@@ -355,7 +355,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 className="group flex items-center space-x-3 px-4 py-2.5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
               >
                 <div className="relative">
-                  <div className="w-9 h-9 bg-gradient-to-r from-orange-700 to-orange-800 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+                  <div className="w-9 h-9 bg-gradient-to-r from-green-700 to-green-800 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
                     <User className="h-4 w-4 text-white" />
                   </div>
                   <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
@@ -391,7 +391,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                       href="/profile"
                       className="group flex items-center space-x-3 px-3 py-2.5 rounded-xl hover:bg-white/60 transition-all duration-200 border border-transparent hover:border-white/30"
                     >
-                      <div className="p-2 rounded-lg bg-blue-100 text-blue-600 group-hover:scale-110 transition-transform">
+                      <div className="p-2 rounded-lg bg-green-100 text-green-600 group-hover:scale-110 transition-transform">
                         <User className="h-4 w-4" />
                       </div>
                       <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">Profile Settings</span>
@@ -400,7 +400,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                       href="/settings"
                       className="group flex items-center space-x-3 px-3 py-2.5 rounded-xl hover:bg-white/60 transition-all duration-200 border border-transparent hover:border-white/30"
                     >
-                      <div className="p-2 rounded-lg bg-purple-100 text-purple-600 group-hover:scale-110 transition-transform">
+                      <div className="p-2 rounded-lg bg-green-100 text-green-600 group-hover:scale-110 transition-transform">
                         <Settings className="h-4 w-4" />
                       </div>
                       <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">System Settings</span>

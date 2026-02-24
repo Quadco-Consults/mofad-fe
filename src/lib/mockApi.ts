@@ -332,6 +332,56 @@ class MockApiClient {
     return { message: 'Successfully logged out' }
   }
 
+  async getCurrentUser(): Promise<any> {
+    await delay(300)
+
+    return {
+      id: 1,
+      name: 'Admin User',
+      email: 'admin@mofad.com',
+      role: 'admin',
+      permissions: ['create:prf', 'approve:prf', 'create:pro', 'approve:pro']
+    }
+  }
+
+  // Mock reset password
+  async resetPassword(email: string, totp: string, newPassword: string): Promise<{ message: string }> {
+    await delay(1000)
+
+    // Mock validation
+    if (!email || !totp || !newPassword) {
+      throw new Error('All fields are required')
+    }
+
+    if (newPassword.length < 8) {
+      throw new Error('Password must be at least 8 characters long')
+    }
+
+    return { message: 'Password reset successfully' }
+  }
+
+  // Mock resend OTP
+  async resendOtp(email: string, verificationType: 'EMAIL_VERIFICATION' | 'MFA' | 'PASSWORD_RESET'): Promise<{ message: string }> {
+    await delay(800)
+
+    if (!email) {
+      throw new Error('Email is required')
+    }
+
+    return { message: `OTP sent to ${email} for ${verificationType}` }
+  }
+
+  // Mock forgot password
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    await delay(1000)
+
+    if (!email) {
+      throw new Error('Email is required')
+    }
+
+    return { message: `Password reset instructions sent to ${email}` }
+  }
+
   // Mock recent transactions
   async getRecentTransactions() {
     await delay(1000)
@@ -3528,6 +3578,608 @@ class MockApiClient {
         return this.getMockUserActivityReportsData()
       default:
         throw new Error(`Report type '${reportType}' not supported`)
+    }
+  }
+
+  // Customer Management
+  async getCustomers(params?: {
+    search?: string;
+    customer_type?: string;
+    status?: string;
+    is_verified?: boolean;
+    page?: number;
+    page_size?: number;
+  }): Promise<any> {
+    await delay(800)
+
+    const mockCustomers = [
+      {
+        id: 1,
+        customer_code: 'CUST-001',
+        name: 'ABC Company Ltd',
+        email: 'contact@abccompany.com',
+        phone: '+234-800-123-4567',
+        address: '123 Main Street, Lagos',
+        customer_type: 'corporate',
+        status: 'active',
+        is_verified: true,
+        credit_limit: 5000000,
+        outstanding_balance: 1250000,
+        created_at: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 2,
+        customer_code: 'CUST-002',
+        name: 'XYZ Enterprises',
+        email: 'info@xyzenterprises.com',
+        phone: '+234-800-234-5678',
+        address: '456 Commerce Road, Abuja',
+        customer_type: 'corporate',
+        status: 'active',
+        is_verified: true,
+        credit_limit: 3000000,
+        outstanding_balance: 750000,
+        created_at: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 3,
+        customer_code: 'CUST-003',
+        name: 'John Doe',
+        email: 'john.doe@email.com',
+        phone: '+234-800-345-6789',
+        address: '789 Residential Avenue, Port Harcourt',
+        customer_type: 'individual',
+        status: 'active',
+        is_verified: false,
+        credit_limit: 500000,
+        outstanding_balance: 0,
+        created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 4,
+        customer_code: 'CUST-004',
+        name: 'Pending Customer Inc',
+        email: 'pending@customer.com',
+        phone: '+234-800-456-7890',
+        address: '321 Business District, Kano',
+        customer_type: 'corporate',
+        status: 'pending',
+        is_verified: false,
+        credit_limit: 0,
+        outstanding_balance: 0,
+        created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ]
+
+    let filteredCustomers = [...mockCustomers]
+
+    // Apply filters
+    if (params?.search) {
+      const searchLower = params.search.toLowerCase()
+      filteredCustomers = filteredCustomers.filter(
+        c =>
+          c.name.toLowerCase().includes(searchLower) ||
+          c.customer_code.toLowerCase().includes(searchLower) ||
+          c.email.toLowerCase().includes(searchLower)
+      )
+    }
+
+    if (params?.customer_type) {
+      filteredCustomers = filteredCustomers.filter(c => c.customer_type === params.customer_type)
+    }
+
+    if (params?.status) {
+      filteredCustomers = filteredCustomers.filter(c => c.status === params.status)
+    }
+
+    if (params?.is_verified !== undefined) {
+      filteredCustomers = filteredCustomers.filter(c => c.is_verified === params.is_verified)
+    }
+
+    // Pagination
+    const page = params?.page || 1
+    const pageSize = params?.page_size || 10
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedCustomers = filteredCustomers.slice(start, end)
+
+    return {
+      count: filteredCustomers.length,
+      next: end < filteredCustomers.length ? `?page=${page + 1}` : null,
+      previous: page > 1 ? `?page=${page - 1}` : null,
+      results: paginatedCustomers,
+    }
+  }
+
+  async getCustomer(id: number | string): Promise<any> {
+    await delay(500)
+
+    const mockCustomers = {
+      1: {
+        id: 1,
+        customer_code: 'CUST-001',
+        name: 'ABC Company Ltd',
+        email: 'contact@abccompany.com',
+        phone: '+234-800-123-4567',
+        address: '123 Main Street, Lagos',
+        customer_type: 'corporate',
+        status: 'active',
+        is_verified: true,
+        credit_limit: 5000000,
+        outstanding_balance: 1250000,
+        created_at: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+        updated_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    }
+
+    const customer = mockCustomers[id as keyof typeof mockCustomers]
+    if (!customer) {
+      throw new Error(`Customer with id ${id} not found`)
+    }
+
+    return customer
+  }
+
+  async createCustomer(data: any): Promise<any> {
+    await delay(1000)
+
+    if (!data.name || !data.email) {
+      throw new Error('Name and email are required')
+    }
+
+    return {
+      id: Math.floor(Math.random() * 10000),
+      customer_code: `CUST-${String(Math.floor(Math.random() * 9999) + 1).padStart(3, '0')}`,
+      ...data,
+      status: 'pending',
+      is_verified: false,
+      outstanding_balance: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+  }
+
+  async updateCustomer(id: number | string, data: any): Promise<any> {
+    await delay(1000)
+
+    return {
+      id,
+      ...data,
+      updated_at: new Date().toISOString(),
+    }
+  }
+
+  async deleteCustomer(id: number | string): Promise<void> {
+    await delay(800)
+    // Mock deletion - no return value
+  }
+
+  // Customer Type Management
+  async getCustomerTypes(params?: { search?: string; is_active?: boolean }): Promise<any> {
+    await delay(500)
+
+    const mockCustomerTypes = [
+      {
+        id: 1,
+        name: 'Corporate',
+        description: 'Corporate customers with bulk purchasing needs',
+        is_active: true,
+        created_at: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 2,
+        name: 'Individual',
+        description: 'Individual retail customers',
+        is_active: true,
+        created_at: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 3,
+        name: 'Government',
+        description: 'Government agencies and departments',
+        is_active: true,
+        created_at: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 4,
+        name: 'Distributor',
+        description: 'Authorized distributors',
+        is_active: false,
+        created_at: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ]
+
+    let filteredTypes = [...mockCustomerTypes]
+
+    // Apply filters
+    if (params?.search) {
+      const searchLower = params.search.toLowerCase()
+      filteredTypes = filteredTypes.filter(
+        t => t.name.toLowerCase().includes(searchLower) || t.description.toLowerCase().includes(searchLower)
+      )
+    }
+
+    if (params?.is_active !== undefined) {
+      filteredTypes = filteredTypes.filter(t => t.is_active === params.is_active)
+    }
+
+    return {
+      count: filteredTypes.length,
+      results: filteredTypes,
+    }
+  }
+
+  // Warehouse Management
+  async getWarehouseById(id: number | string): Promise<any> {
+    await delay(500)
+
+    const mockWarehouse = {
+      id: Number(id),
+      name: 'Main Warehouse',
+      code: `WH-${String(id).padStart(3, '0')}`,
+      location: 'Lagos, Nigeria',
+      address: '123 Warehouse Street, Lagos',
+      type: 'main',
+      capacity: 10000,
+      current_stock: 7500,
+      manager: 'John Doe',
+      phone: '+234-800-111-2222',
+      email: 'warehouse@company.com',
+      is_active: true,
+      created_at: new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    }
+
+    return mockWarehouse
+  }
+
+  // Product Management
+  async getProducts(params?: {
+    search?: string
+    category?: string
+    is_active?: boolean
+    page?: number
+    size?: number
+    page_size?: number
+  }): Promise<any> {
+    await delay(800)
+
+    const mockProducts = [
+      {
+        id: 1,
+        name: 'Mobil 1 Advanced 5W-30',
+        code: 'MOB-5W30',
+        category: 'Engine Oil',
+        description: 'Premium synthetic engine oil',
+        cost_price: 12000,
+        selling_price: 15000,
+        unit: 'Liters',
+        reorder_level: 50,
+        is_active: true,
+        created_at: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 2,
+        name: 'Shell Helix Ultra 5W-40',
+        code: 'SHL-HX8',
+        category: 'Engine Oil',
+        description: 'Fully synthetic engine oil',
+        cost_price: 15000,
+        selling_price: 18000,
+        unit: 'Liters',
+        reorder_level: 40,
+        is_active: true,
+        created_at: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 3,
+        name: 'Total Transmission Gear 8 75W-80',
+        code: 'TOT-GEAR',
+        category: 'Transmission Oil',
+        description: 'Manual transmission oil',
+        cost_price: 8000,
+        selling_price: 10000,
+        unit: 'Liters',
+        reorder_level: 30,
+        is_active: true,
+        created_at: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ]
+
+    let filteredProducts = [...mockProducts]
+
+    // Apply filters
+    if (params?.search) {
+      const searchLower = params.search.toLowerCase()
+      filteredProducts = filteredProducts.filter(
+        p =>
+          p.name.toLowerCase().includes(searchLower) ||
+          p.code.toLowerCase().includes(searchLower) ||
+          p.category.toLowerCase().includes(searchLower)
+      )
+    }
+
+    if (params?.category) {
+      filteredProducts = filteredProducts.filter(p => p.category === params.category)
+    }
+
+    if (params?.is_active !== undefined) {
+      filteredProducts = filteredProducts.filter(p => p.is_active === params.is_active)
+    }
+
+    // Pagination
+    const page = params?.page || 1
+    const pageSize = params?.page_size || params?.size || 10
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedProducts = filteredProducts.slice(start, end)
+
+    return {
+      count: filteredProducts.length,
+      next: end < filteredProducts.length ? `?page=${page + 1}` : null,
+      previous: page > 1 ? `?page=${page - 1}` : null,
+      results: paginatedProducts,
+    }
+  }
+
+  async getProductById(id: number | string): Promise<any> {
+    await delay(500)
+
+    return {
+      id: Number(id),
+      name: 'Mobil 1 Advanced 5W-30',
+      code: 'MOB-5W30',
+      category: 'Engine Oil',
+      description: 'Premium synthetic engine oil for modern engines',
+      cost_price: 12000,
+      selling_price: 15000,
+      unit: 'Liters',
+      reorder_level: 50,
+      is_active: true,
+      created_at: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    }
+  }
+
+  async getWarehouseInventory(warehouseId: number | string, params?: {
+    is_active?: boolean
+    low_stock?: boolean
+  }): Promise<any> {
+    await delay(1000)
+
+    return {
+      warehouse_id: Number(warehouseId),
+      warehouse_name: 'Main Warehouse',
+      total_products: 25,
+      total_value: 3750000,
+      low_stock_count: 3,
+      inventory: [
+        {
+          id: 1,
+          product_id: 1,
+          product_name: 'Mobil 1 Advanced 5W-30',
+          product_code: 'MOB-5W30',
+          current_stock: 120,
+          reorder_level: 50,
+          unit_cost: 12000,
+          total_value: 1440000,
+          status: 'in-stock',
+        },
+        {
+          id: 2,
+          product_id: 2,
+          product_name: 'Shell Helix Ultra 5W-40',
+          product_code: 'SHL-HX8',
+          current_stock: 25,
+          reorder_level: 40,
+          unit_cost: 15000,
+          total_value: 375000,
+          status: 'low-stock',
+        },
+        {
+          id: 3,
+          product_id: 3,
+          product_name: 'Total Transmission Gear 8 75W-80',
+          product_code: 'TOT-GEAR',
+          current_stock: 80,
+          reorder_level: 30,
+          unit_cost: 8000,
+          total_value: 640000,
+          status: 'in-stock',
+        },
+      ],
+    }
+  }
+
+  // PRO (Purchase Receipt Order) Management
+  async getPros(params?: {
+    search?: string
+    status?: string
+    delivery_status?: string
+    delivery_location?: number
+    payment_method?: string
+    page?: number
+    page_size?: number
+  }): Promise<any> {
+    await delay(800)
+
+    const mockPros = [
+      {
+        id: 1,
+        pro_number: 'PRO-2024-001',
+        supplier_name: 'ExxonMobil Nigeria',
+        delivery_location: 1,
+        total_amount: 7500000,
+        status: 'approved',
+        delivery_status: 'pending',
+        payment_method: 'bank_transfer',
+        created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 2,
+        pro_number: 'PRO-2024-002',
+        supplier_name: 'Shell Nigeria',
+        delivery_location: 1,
+        total_amount: 5400000,
+        status: 'approved',
+        delivery_status: 'partial',
+        payment_method: 'bank_transfer',
+        created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ]
+
+    let filteredPros = [...mockPros]
+
+    // Apply filters
+    if (params?.search) {
+      const searchLower = params.search.toLowerCase()
+      filteredPros = filteredPros.filter(
+        p => p.pro_number.toLowerCase().includes(searchLower) || p.supplier_name.toLowerCase().includes(searchLower)
+      )
+    }
+
+    if (params?.status) {
+      const statuses = params.status.split(',')
+      filteredPros = filteredPros.filter(p => statuses.includes(p.status))
+    }
+
+    if (params?.delivery_status) {
+      const statuses = params.delivery_status.split(',')
+      filteredPros = filteredPros.filter(p => statuses.includes(p.delivery_status))
+    }
+
+    if (params?.delivery_location) {
+      filteredPros = filteredPros.filter(p => p.delivery_location === params.delivery_location)
+    }
+
+    if (params?.payment_method) {
+      filteredPros = filteredPros.filter(p => p.payment_method === params.payment_method)
+    }
+
+    // Pagination
+    const page = params?.page || 1
+    const pageSize = params?.page_size || 10
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedPros = filteredPros.slice(start, end)
+
+    return {
+      count: filteredPros.length,
+      next: end < filteredPros.length ? `?page=${page + 1}` : null,
+      previous: page > 1 ? `?page=${page - 1}` : null,
+      results: paginatedPros,
+    }
+  }
+
+  async receivePro(id: number | string, data: {
+    items: Array<{
+      product_id: number
+      quantity_received: number
+    }>
+    notes?: string
+  }): Promise<any> {
+    await delay(1000)
+
+    return {
+      id,
+      message: 'PRO received successfully',
+      status: 'partially_delivered',
+      ...data,
+    }
+  }
+
+  async updateProStatus(id: number | string, status: string): Promise<any> {
+    await delay(800)
+
+    return {
+      id,
+      message: `PRO status updated to ${status}`,
+      status,
+    }
+  }
+
+  // PRF (Purchase Requisition Form) Management
+  async getPrfs(params?: {
+    page?: number
+    page_size?: number
+    search?: string
+    status?: string
+    priority?: string
+    department?: string
+    ordering?: string
+    client_id?: number
+    delivery_location?: number | string
+    warehouse?: number | string
+  }): Promise<any> {
+    await delay(800)
+
+    const mockPrfs = [
+      {
+        id: 1,
+        prf_number: 'PRF-2024-001',
+        department: 'Operations',
+        client_name: 'Lagos Island Substore',
+        client_id: 1,
+        priority: 'high',
+        status: 'pending',
+        total_amount: 250000,
+        created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 2,
+        prf_number: 'PRF-2024-002',
+        department: 'Sales',
+        client_name: 'VI Lubebay',
+        client_id: 2,
+        priority: 'medium',
+        status: 'approved',
+        total_amount: 180000,
+        created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ]
+
+    let filteredPrfs = [...mockPrfs]
+
+    // Apply filters
+    if (params?.search) {
+      const searchLower = params.search.toLowerCase()
+      filteredPrfs = filteredPrfs.filter(
+        p =>
+          p.prf_number.toLowerCase().includes(searchLower) ||
+          p.department.toLowerCase().includes(searchLower) ||
+          p.client_name.toLowerCase().includes(searchLower)
+      )
+    }
+
+    if (params?.status) {
+      const statuses = params.status.split(',')
+      filteredPrfs = filteredPrfs.filter(p => statuses.includes(p.status))
+    }
+
+    if (params?.priority) {
+      filteredPrfs = filteredPrfs.filter(p => p.priority === params.priority)
+    }
+
+    if (params?.department) {
+      filteredPrfs = filteredPrfs.filter(p => p.department === params.department)
+    }
+
+    if (params?.client_id) {
+      filteredPrfs = filteredPrfs.filter(p => p.client_id === params.client_id)
+    }
+
+    // Pagination
+    const page = params?.page || 1
+    const pageSize = params?.page_size || 10
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedPrfs = filteredPrfs.slice(start, end)
+
+    return {
+      count: filteredPrfs.length,
+      next: end < filteredPrfs.length ? `?page=${page + 1}` : null,
+      previous: page > 1 ? `?page=${page - 1}` : null,
+      results: paginatedPrfs,
     }
   }
 }

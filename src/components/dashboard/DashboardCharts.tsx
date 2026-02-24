@@ -53,7 +53,7 @@ const CustomTooltip = ({ active, payload, label, formatter }: any) => {
         <div className="relative">
           {/* Enhanced header with sparkle effect */}
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
+            <div className="w-3 h-3 bg-gradient-to-r from-green-500 to-green-600 rounded-full animate-pulse"></div>
             <p className="font-bold text-slate-800 text-sm uppercase tracking-wider">{`${label}`}</p>
           </div>
 
@@ -79,7 +79,7 @@ const CustomTooltip = ({ active, payload, label, formatter }: any) => {
         </div>
 
         {/* Subtle glow effect */}
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-green-500/10 via-green-500/5 to-green-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
       </div>
     )
   }
@@ -222,20 +222,20 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
       {/* Sales Trend with Volume - Premium Chart Container */}
       <div className="relative group">
         {/* Enhanced Background with Multiple Layers */}
-        <div className="absolute -inset-2 bg-gradient-to-br from-blue-50/80 via-white/90 to-cyan-50/80 rounded-[2.5rem] blur-sm"></div>
+        <div className="absolute -inset-2 bg-gradient-to-br from-green-50/80 via-white/90 to-green-50/80 rounded-[2.5rem] blur-sm"></div>
         <div className="relative bg-white/80 backdrop-blur-2xl border border-white/40 rounded-[2.5rem] p-8 shadow-2xl hover:shadow-4xl transition-all duration-700 overflow-hidden">
           {/* Floating Background Elements */}
-          <div className="absolute top-6 right-8 w-24 h-24 bg-gradient-to-r from-blue-400/15 to-cyan-400/15 rounded-full blur-2xl"></div>
+          <div className="absolute top-6 right-8 w-24 h-24 bg-gradient-to-r from-green-400/15 to-green-400/15 rounded-full blur-2xl"></div>
           <div className="absolute bottom-6 left-6 w-20 h-20 bg-gradient-to-r from-emerald-400/15 to-teal-400/15 rounded-full blur-2xl"></div>
 
           {/* Enhanced Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center space-x-4">
               <div className="relative">
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
-                <div className="relative p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl shadow-lg">
+                <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
+                <div className="relative p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl shadow-lg">
                   <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
-                    <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-gradient-to-r from-green-500 to-green-600 rounded-full"></div>
                   </div>
                 </div>
               </div>
@@ -255,7 +255,7 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
           {/* Chart Container with Enhanced Styling */}
           <div className="relative h-80">
             {/* Chart Background Glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-cyan-500/3 to-emerald-500/5 rounded-2xl"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-green-500/3 to-green-500/5 rounded-2xl"></div>
             <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={salesData}>
             <defs>
@@ -400,19 +400,19 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
 
         {/* Profit Margins Chart - Premium Card */}
         <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-br from-purple-50/80 via-white/90 to-pink-50/80 rounded-[2rem] blur-sm"></div>
+          <div className="absolute -inset-1 bg-gradient-to-br from-green-50/80 via-white/90 to-green-50/80 rounded-[2rem] blur-sm"></div>
           <div className="relative bg-white/80 backdrop-blur-2xl border border-white/40 rounded-[2rem] p-6 shadow-2xl hover:shadow-4xl transition-all duration-700 overflow-hidden">
             {/* Background Elements */}
-            <div className="absolute top-4 right-6 w-20 h-20 bg-gradient-to-r from-purple-400/15 to-pink-400/15 rounded-full blur-2xl"></div>
+            <div className="absolute top-4 right-6 w-20 h-20 bg-gradient-to-r from-green-400/15 to-green-400/15 rounded-full blur-2xl"></div>
 
             {/* Enhanced Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
                 <div className="relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
-                  <div className="relative p-2.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-green-600 rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
+                  <div className="relative p-2.5 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
                     <div className="w-5 h-5 bg-white rounded-lg flex items-center justify-center">
-                      <div className="w-2.5 h-2.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></div>
+                      <div className="w-2.5 h-2.5 bg-gradient-to-r from-green-500 to-green-600 rounded-full"></div>
                     </div>
                   </div>
                 </div>
@@ -421,15 +421,15 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
                   <p className="text-xs text-slate-600 font-semibold">Profitability analysis</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-purple-100/80 to-pink-100/80 border border-purple-200/50 rounded-xl backdrop-blur-sm shadow-lg">
-                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
+              <div className="flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-green-100/80 to-green-100/80 border border-green-200/50 rounded-xl backdrop-blur-sm shadow-lg">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-xs font-bold text-purple-700">Analysis</span>
               </div>
             </div>
 
             {/* Chart Container */}
             <div className="relative h-64">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/3 via-pink-500/2 to-violet-500/3 rounded-xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/3 via-green-500/2 to-green-500/3 rounded-xl"></div>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={productData} margin={{ left: 100 }}>
               <defs>
@@ -471,19 +471,19 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Sales Channels Chart - Premium Card */}
         <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-br from-orange-50/80 via-white/90 to-red-50/80 rounded-[2rem] blur-sm"></div>
+          <div className="absolute -inset-1 bg-gradient-to-br from-green-50/80 via-white/90 to-green-50/80 rounded-[2rem] blur-sm"></div>
           <div className="relative bg-white/80 backdrop-blur-2xl border border-white/40 rounded-[2rem] p-6 shadow-2xl hover:shadow-4xl transition-all duration-700 overflow-hidden">
             {/* Background Elements */}
-            <div className="absolute top-4 right-6 w-20 h-20 bg-gradient-to-r from-orange-400/15 to-red-400/15 rounded-full blur-2xl"></div>
+            <div className="absolute top-4 right-6 w-20 h-20 bg-gradient-to-r from-green-400/15 to-green-400/15 rounded-full blur-2xl"></div>
 
             {/* Enhanced Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
                 <div className="relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
-                  <div className="relative p-2.5 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl shadow-lg">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-green-600 rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
+                  <div className="relative p-2.5 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
                     <div className="w-5 h-5 bg-white rounded-lg flex items-center justify-center">
-                      <div className="w-2.5 h-2.5 bg-gradient-to-r from-orange-500 to-red-500 rounded-full"></div>
+                      <div className="w-2.5 h-2.5 bg-gradient-to-r from-green-500 to-green-600 rounded-full"></div>
                     </div>
                   </div>
                 </div>
@@ -492,15 +492,15 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
                   <p className="text-xs text-slate-600 font-semibold">Revenue distribution analysis</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-orange-100/80 to-red-100/80 border border-orange-200/50 rounded-xl backdrop-blur-sm shadow-lg">
-                <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></div>
+              <div className="flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-green-100/80 to-green-100/80 border border-green-200/50 rounded-xl backdrop-blur-sm shadow-lg">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-xs font-bold text-orange-700">Distribution</span>
               </div>
             </div>
 
             {/* Chart Container */}
             <div className="relative h-64">
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/3 via-red-500/2 to-rose-500/3 rounded-xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/3 via-green-500/2 to-green-500/3 rounded-xl"></div>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <defs>
@@ -540,19 +540,19 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
 
         {/* Regional Performance Chart - Premium Card */}
         <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-br from-teal-50/80 via-white/90 to-cyan-50/80 rounded-[2rem] blur-sm"></div>
+          <div className="absolute -inset-1 bg-gradient-to-br from-green-50/80 via-white/90 to-green-50/80 rounded-[2rem] blur-sm"></div>
           <div className="relative bg-white/80 backdrop-blur-2xl border border-white/40 rounded-[2rem] p-6 shadow-2xl hover:shadow-4xl transition-all duration-700 overflow-hidden">
             {/* Background Elements */}
-            <div className="absolute top-4 right-6 w-20 h-20 bg-gradient-to-r from-teal-400/15 to-cyan-400/15 rounded-full blur-2xl"></div>
+            <div className="absolute top-4 right-6 w-20 h-20 bg-gradient-to-r from-green-400/15 to-green-400/15 rounded-full blur-2xl"></div>
 
             {/* Enhanced Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
                 <div className="relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
-                  <div className="relative p-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-xl shadow-lg">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-green-600 rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
+                  <div className="relative p-2.5 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
                     <div className="w-5 h-5 bg-white rounded-lg flex items-center justify-center">
-                      <div className="w-2.5 h-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full"></div>
+                      <div className="w-2.5 h-2.5 bg-gradient-to-r from-green-500 to-green-600 rounded-full"></div>
                     </div>
                   </div>
                 </div>
@@ -561,15 +561,15 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
                   <p className="text-xs text-slate-600 font-semibold">Geographic sales insights</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-teal-100/80 to-cyan-100/80 border border-teal-200/50 rounded-xl backdrop-blur-sm shadow-lg">
-                <div className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse"></div>
+              <div className="flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-green-100/80 to-green-100/80 border border-green-200/50 rounded-xl backdrop-blur-sm shadow-lg">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-xs font-bold text-teal-700">Regions</span>
               </div>
             </div>
 
             {/* Chart Container */}
             <div className="relative h-64">
-              <div className="absolute inset-0 bg-gradient-to-br from-teal-500/3 via-cyan-500/2 to-blue-500/3 rounded-xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/3 via-green-500/2 to-green-500/3 rounded-xl"></div>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={geographicData}>
                   <defs>
@@ -613,20 +613,20 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
 
       {/* Inventory Status - Premium Card */}
       <div className="relative group">
-        <div className="absolute -inset-1 bg-gradient-to-br from-yellow-50/80 via-white/90 to-orange-50/80 rounded-[2rem] blur-sm"></div>
+        <div className="absolute -inset-1 bg-gradient-to-br from-green-50/80 via-white/90 to-green-50/80 rounded-[2rem] blur-sm"></div>
         <div className="relative bg-white/80 backdrop-blur-2xl border border-white/40 rounded-[2rem] p-8 shadow-2xl hover:shadow-4xl transition-all duration-700 overflow-hidden">
           {/* Background Elements */}
-          <div className="absolute top-6 right-8 w-24 h-24 bg-gradient-to-r from-yellow-400/15 to-orange-400/15 rounded-full blur-2xl"></div>
+          <div className="absolute top-6 right-8 w-24 h-24 bg-gradient-to-r from-green-400/15 to-green-400/15 rounded-full blur-2xl"></div>
           <div className="absolute bottom-6 left-6 w-20 h-20 bg-gradient-to-r from-amber-400/15 to-yellow-400/15 rounded-full blur-2xl"></div>
 
           {/* Enhanced Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center space-x-4">
               <div className="relative">
-                <div className="absolute -inset-1 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
-                <div className="relative p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl shadow-lg">
+                <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
+                <div className="relative p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl shadow-lg">
                   <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
-                    <div className="w-3 h-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-gradient-to-r from-green-500 to-green-600 rounded-full"></div>
                   </div>
                 </div>
               </div>
@@ -637,7 +637,7 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
             </div>
 
             {/* Premium Badge */}
-            <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-yellow-100/80 to-orange-100/80 border border-yellow-200/50 rounded-2xl backdrop-blur-sm shadow-lg">
+            <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-100/80 to-green-100/80 border border-green-200/50 rounded-2xl backdrop-blur-sm shadow-lg">
               <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
               <span className="text-xs font-bold text-amber-700">Stock Monitor</span>
             </div>
@@ -645,7 +645,7 @@ export function DashboardCharts({ data }: DashboardChartsProps) {
 
           {/* Chart Container */}
           <div className="relative h-64">
-            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 via-orange-500/3 to-amber-500/5 rounded-2xl"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-green-500/3 to-green-500/5 rounded-2xl"></div>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={inventoryData}>
                 <defs>

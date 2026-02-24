@@ -903,7 +903,7 @@ export default function CustomerTypesPage() {
 
         {/* Bulk Delete Confirmation Dialog */}
         <ConfirmDialog
-          open={showBulkDeleteModal}
+          isOpen={showBulkDeleteModal}
           onClose={() => setShowBulkDeleteModal(false)}
           onConfirm={handleBulkDelete}
           title="Delete Customer Types"

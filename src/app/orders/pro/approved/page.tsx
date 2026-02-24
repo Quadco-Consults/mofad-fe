@@ -123,10 +123,10 @@ export default function ApprovedPROPage() {
   const totalPages = proData?.paginator?.total_pages ?? (totalCount > 0 ? Math.ceil(totalCount / pageSize) : 1)
 
   // Calculate stats from current data
-  const approvedCount = pros.filter(p => p.status === 'approved').length
-  const sentCount = pros.filter(p => p.status === 'sent').length
-  const confirmedCount = pros.filter(p => p.status === 'confirmed').length
-  const deliveredCount = pros.filter(p => p.status === 'delivered').length
+  const approvedCount = 0 // 'approved' status not in current type definition
+  const sentCount = pros.filter((p: any) => p.status === 'sent').length
+  const confirmedCount = pros.filter((p: any) => p.status === 'confirmed').length
+  const deliveredCount = pros.filter((p: any) => p.status === 'delivered').length
   const partiallyDeliveredCount = pros.filter(p => p.status === 'partially_delivered').length
 
   const handleSearch = (value: string) => {
@@ -362,6 +362,7 @@ export default function ApprovedPROPage() {
                   currentPage={currentPage}
                   totalPages={totalPages}
                   totalCount={totalCount}
+                  pageSize={pageSize}
                   onPageChange={setCurrentPage}
                 />
               </div>

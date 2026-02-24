@@ -105,8 +105,8 @@ export default function CreateMemoPage() {
   })
 
   const suppliers = suppliersData?.results || suppliersData || []
-  const warehouses = warehousesData?.results || warehousesData || []
-  const products = productsData?.results || productsData || []
+  const warehouses = (Array.isArray(warehousesData) ? warehousesData : warehousesData?.results) || []
+  const products = (Array.isArray(productsData) ? productsData : productsData?.results) || []
 
   // Create memo mutation
   const createMemoMutation = useMutation({

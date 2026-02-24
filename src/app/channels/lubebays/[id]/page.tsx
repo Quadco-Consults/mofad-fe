@@ -23,7 +23,8 @@ import {
   Eye,
   X,
   Trash2,
-  Pencil
+  Pencil,
+  Search
 } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -224,8 +225,10 @@ export default function LubebayDashboardPage() {
   const queryClient = useQueryClient()
   const lubebayId = params.id as string
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'services' | 'expenses' | 'lodgements'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'filters' | 'services' | 'expenses' | 'lodgements'>('overview')
   const [showRecordSaleModal, setShowRecordSaleModal] = useState(false)
+  const [saleType, setSaleType] = useState<'lubricant' | 'filter'>('lubricant')
+  const [productSearchTerm, setProductSearchTerm] = useState('')
   const [showRecordServiceModal, setShowRecordServiceModal] = useState(false)
   const [showCreateExpenseModal, setShowCreateExpenseModal] = useState(false)
   const [showCreateLodgementModal, setShowCreateLodgementModal] = useState(false)
@@ -311,7 +314,10 @@ export default function LubebayDashboardPage() {
     queryKey: ['lubebay-detail', lubebayId],
     queryFn: async () => {
       try {
-        return await apiClient.get(`/lubebays/${lubebayId}/`)
+        const data = await apiClient.get(`/lubebays/${lubebayId}/`)
+        console.log('🏪 Lubebay data:', data)
+        console.log('🏭 Lubebay warehouse ID:', data?.warehouse)
+        return data
       } catch (error) {
         return mockLubebay
       }
@@ -346,18 +352,33 @@ export default function LubebayDashboardPage() {
     },
   })
 
-  // Fetch products
+  // Fetch products (filtered by lubebay's warehouse if available)
   const { data: productsData, isLoading: productsLoading } = useQuery({
-    queryKey: ['products'],
+    queryKey: ['products', lubebay?.warehouse],
     queryFn: async () => {
       try {
-        const response = await apiClient.get('/products/?is_active=true')
+        // Build query parameters
+        const params = new URLSearchParams({ is_active: 'true' })
+
+        // Add warehouse filter if lubebay has a warehouse
+        if (lubebay?.warehouse) {
+          params.append('warehouse', lubebay.warehouse.toString())
+          console.log('🏭 Fetching products for warehouse:', lubebay.warehouse)
+        } else {
+          console.log('⚠️ No warehouse found for lubebay, fetching all products')
+        }
+
+        const url = `/products/?${params.toString()}`
+        console.log('📦 Products API URL:', url)
+        const response = await apiClient.get(url)
+        console.log('✅ Products response:', response)
         return response
       } catch (error) {
         console.error('Error fetching products:', error)
         return null
       }
     },
+    enabled: !!lubebay, // Only fetch when lubebay data is loaded
   })
 
   // Fetch services
@@ -425,11 +446,33 @@ export default function LubebayDashboardPage() {
   const serviceTransactions_raw = (serviceTransactions && serviceTransactions.length > 0) ? serviceTransactions : mockServiceRecords
 
   // Split service transactions by type for proper display
-  const lubricantSales = serviceTransactions_raw.filter(t => t.transaction_type === 'lubricant_sales')
-  const serviceRecords = serviceTransactions_raw.filter(t => t.transaction_type === 'services')
+  const allProductSales = serviceTransactions_raw.filter((t: any) => t.transaction_type === 'lubricant_sales')
+  const serviceRecords = serviceTransactions_raw.filter((t: any) => t.transaction_type === 'services')
+
+  // Separate lubricant sales from filter sales based on product category
+  const lubricantSales = allProductSales.filter((sale: any) => {
+    // Check if any product in the sale is a lubricant (not a filter)
+    if (!sale.products || !Array.isArray(sale.products) || sale.products.length === 0) {
+      return true // Default to lubricant if no products info
+    }
+    return sale.products.some((product: any) =>
+      product.category !== 'filter' && product.category !== 'Filters'
+    )
+  })
+
+  const filterSales = allProductSales.filter((sale: any) => {
+    // Check if any product in the sale is a filter
+    if (!sale.products || !Array.isArray(sale.products) || sale.products.length === 0) {
+      return false
+    }
+    return sale.products.some((product: any) =>
+      product.category === 'filter' || product.category === 'Filters'
+    )
+  })
 
   // If no data, use mock data
   const finalLubricantSales = lubricantSales.length > 0 ? lubricantSales : mockLubricantSales
+  const finalFilterSales = filterSales
   const finalServiceRecords = serviceRecords.length > 0 ? serviceRecords : mockServiceRecords
 
   const getStatusBadge = (status: string | boolean) => {
@@ -465,13 +508,13 @@ export default function LubebayDashboardPage() {
   }
 
   // Safely calculate totals with fallback
-  const totalSalesToday = finalLubricantSales.reduce((sum, sale) => {
+  const totalSalesToday = finalLubricantSales.reduce((sum: number, sale: any) => {
     const amount = sale?.total_amount || sale?.total || sale?.amount || 0
     const numAmount = typeof amount === 'number' ? amount : parseFloat(amount) || 0
     return sum + numAmount
   }, 0)
 
-  const totalServicesToday = finalServiceRecords.reduce((sum, service) => {
+  const totalServicesToday = finalServiceRecords.reduce((sum: number, service: any) => {
     const amount = service?.total_amount || service?.total || service?.amount || 0
     const numAmount = typeof amount === 'number' ? amount : parseFloat(amount) || 0
     return sum + numAmount
@@ -854,7 +897,17 @@ export default function LubebayDashboardPage() {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Product Sales
+            Lubricant Sales
+          </button>
+          <button
+            onClick={() => setActiveTab('filters')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'filters'
+                ? 'bg-white text-primary shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Filter Sales
           </button>
           <button
             onClick={() => setActiveTab('services')}
@@ -954,7 +1007,7 @@ export default function LubebayDashboardPage() {
                         </div>
                         {service.status && (
                           <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium mt-1 ${getServiceStatusBadge(service.status || 'completed')}`}>
-                            {(service.status || 'completed').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            {(service.status || 'completed').replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                           </span>
                         )}
                       </div>
@@ -973,14 +1026,18 @@ export default function LubebayDashboardPage() {
         {activeTab === 'sales' && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Product Sales</h2>
-              <p className="text-sm text-muted-foreground">Lubricants, Filters, Parts & Accessories</p>
+              <h2 className="text-xl font-semibold">Lubricant Sales</h2>
+              <p className="text-sm text-muted-foreground">Engine Oil, Transmission Fluid, Grease & Other Lubricants</p>
               <Button
-                onClick={() => setShowRecordSaleModal(true)}
+                onClick={() => {
+                  setSaleType('lubricant')
+                  setProductSearchTerm('')
+                  setShowRecordSaleModal(true)
+                }}
                 className="mofad-btn-primary"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Record Product Sale
+                Record Lubricant Sale
               </Button>
             </div>
 
@@ -1002,7 +1059,7 @@ export default function LubebayDashboardPage() {
                         <tr key={sale.id} className="hover:bg-gray-50">
                           <td className="py-3 px-4">
                             <div>
-                              {sale.products && Array.isArray(sale.products) && sale.products.slice(0, 2).map((product, index) => (
+                              {sale.products && Array.isArray(sale.products) && sale.products.slice(0, 2).map((product: any, index: number) => (
                                 <div key={index} className="text-sm">
                                   {product.name || product.product_name || 'N/A'} (x{product.quantity || 1})
                                 </div>
@@ -1112,6 +1169,160 @@ export default function LubebayDashboardPage() {
           </div>
         )}
 
+        {activeTab === 'filters' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Filter Sales</h2>
+              <p className="text-sm text-muted-foreground">Oil Filters, Air Filters, Fuel Filters & Cabin Filters</p>
+              <Button
+                onClick={() => {
+                  setSaleType('filter')
+                  setProductSearchTerm('')
+                  setShowRecordSaleModal(true)
+                }}
+                className="mofad-btn-primary"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Record Filter Sale
+              </Button>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="text-left py-3 px-4 font-medium">Products</th>
+                        <th className="text-right py-3 px-4 font-medium">Amount</th>
+                        <th className="text-left py-3 px-4 font-medium">Payment</th>
+                        <th className="text-left py-3 px-4 font-medium">Transaction Date</th>
+                        <th className="text-center py-3 px-4 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {Array.isArray(finalFilterSales) && finalFilterSales.length > 0 ? (
+                        finalFilterSales.map((sale) => (
+                          <tr key={sale.id} className="hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div>
+                                {sale.products && Array.isArray(sale.products) && sale.products.slice(0, 2).map((product: any, index: number) => (
+                                  <div key={index} className="text-sm">
+                                    {product.name || product.product_name || 'N/A'} (x{product.quantity || 1})
+                                  </div>
+                                ))}
+                                {sale.products && sale.products.length > 2 && (
+                                  <div className="text-sm text-muted-foreground">
+                                    +{sale.products.length - 2} more
+                                  </div>
+                                )}
+                                {(!sale.products || !Array.isArray(sale.products)) && (
+                                  <div className="text-sm">Filter sale</div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="font-bold text-primary">{formatCurrency(sale.total_amount || sale.total || sale.amount || 0)}</div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                                {sale.paymentMethod || sale.payment_method || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-sm">{formatDateTime(sale.date || sale.transaction_date || sale.created_datetime || sale.created_at)}</td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      // Fetch full transaction details with items
+                                      const details = await apiClient.get(`/lubebay-service-transactions/${sale.id}/`)
+                                      console.log('Transaction details fetched:', details)
+                                      console.log('Items in transaction:', details.items)
+                                      setSelectedTransaction(details)
+                                      setShowTransactionDetailModal(true)
+                                    } catch (error) {
+                                      console.error('Error fetching transaction details:', error)
+                                      // Fallback to showing what we have
+                                      setSelectedTransaction(sale)
+                                      setShowTransactionDetailModal(true)
+                                    }
+                                  }}
+                                  title="View Details"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      const details = await apiClient.get(`/lubebay-service-transactions/${sale.id}/`)
+                                      console.log('Edit Sale - Full details:', details)
+                                      setSelectedTransaction(details)
+                                      // Initialize edit form with existing data
+                                      setEditTransactionForm({
+                                        payment_method: details.payment_method || 'cash',
+                                        bank_reference: details.bank_reference || '',
+                                        comment: details.comment || '',
+                                        items: (details.items || []).map((item: any) => ({
+                                          id: item.id,
+                                          service: item.service_id || item.service,
+                                          service_name: item.service_name,
+                                          quantity: item.quantity,
+                                          unit_price: parseFloat(item.unit_price),
+                                          notes: item.notes || ''
+                                        }))
+                                      })
+                                      setShowEditSaleModal(true)
+                                    } catch (error) {
+                                      console.error('Error fetching transaction:', error)
+                                      setSelectedTransaction(sale)
+                                      setShowEditSaleModal(true)
+                                    }
+                                  }}
+                                  title="Edit"
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setDeleteTarget({
+                                      type: 'sale',
+                                      id: sale.id,
+                                      name: sale.transaction_number || `Sale #${sale.id}`
+                                    })
+                                    setShowDeleteConfirm(true)
+                                  }}
+                                  title="Delete"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                            No filter sales recorded yet
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {activeTab === 'services' && (
           <div>
             <div className="flex justify-between items-center mb-6">
@@ -1155,7 +1366,7 @@ export default function LubebayDashboardPage() {
                           </td>
                           <td className="py-3 px-4">
                             <div>
-                              {service.services && Array.isArray(service.services) && service.services.slice(0, 2).map((svc, index) => (
+                              {service.services && Array.isArray(service.services) && service.services.slice(0, 2).map((svc: any, index: number) => (
                                 <div key={index} className="text-sm">
                                   {svc.name || svc.service_name || 'N/A'}
                                 </div>
@@ -1176,11 +1387,11 @@ export default function LubebayDashboardPage() {
                           <td className="py-3 px-4 text-center">
                             {service.approval_status ? (
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusBadge(service.approval_status)}`}>
-                                {service.approval_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                {service.approval_status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                               </span>
                             ) : service.status ? (
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusBadge(service.status)}`}>
-                                {service.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                {service.status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                               </span>
                             ) : (
                               <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
@@ -1497,12 +1708,15 @@ export default function LubebayDashboardPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">Record Sales Transaction</h3>
+                <h3 className="text-xl font-bold">
+                  Record {saleType === 'filter' ? 'Filter' : 'Lubricant'} Sale
+                </h3>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
                     setShowRecordSaleModal(false)
+                    setProductSearchTerm('')
                     resetSaleForm()
                   }}
                 >
@@ -1545,27 +1759,53 @@ export default function LubebayDashboardPage() {
                             )}
                           </div>
 
-                          <select
-                            className="w-full p-3 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
-                            value={item.service}
-                            onChange={(e) => {
-                              const productId = e.target.value
-                              const product = products.find((p: any) => p.id === parseInt(productId))
-                              setSaleForm(prev => ({
-                                ...prev,
-                                items: prev.items.map((it, i) =>
-                                  i === index ? { ...it, service: productId, unit_price: product?.selling_price || 0 } : it
-                                )
-                              }))
-                            }}
-                          >
-                            <option value="">Select product</option>
-                            {products.filter((p: any) => p.name).map((prod: any) => (
-                              <option key={prod.id} value={prod.id}>
-                                {prod.name} {prod.brand ? `- ${prod.brand}` : ''} ({formatCurrency(prod.selling_price || 0)})
-                              </option>
-                            ))}
-                          </select>
+                          <div className="space-y-2">
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                              <input
+                                type="text"
+                                placeholder="Search products by name, code, or brand..."
+                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                                value={productSearchTerm}
+                                onChange={(e) => setProductSearchTerm(e.target.value)}
+                              />
+                            </div>
+                            <select
+                              className="w-full p-3 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary focus:border-transparent max-h-48"
+                              value={item.service}
+                              onChange={(e) => {
+                                const productId = e.target.value
+                                const product = products.find((p: any) => p.id === parseInt(productId))
+                                setSaleForm(prev => ({
+                                  ...prev,
+                                  items: prev.items.map((it, i) =>
+                                    i === index ? { ...it, service: productId, unit_price: product?.selling_price || 0 } : it
+                                  )
+                                }))
+                              }}
+                              size={8}
+                            >
+                              <option value="">Select product</option>
+                              {products.filter((p: any) => {
+                                // Filter by category based on sale type
+                                const isCorrectCategory = saleType === 'filter'
+                                  ? (p.category === 'filter' || p.category === 'Filters')
+                                  : (p.category !== 'filter' && p.category !== 'Filters')
+
+                                // Filter by search term
+                                const matchesSearch = !productSearchTerm ||
+                                  (p.name || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                                  (p.code || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                                  (p.brand || '').toLowerCase().includes(productSearchTerm.toLowerCase())
+
+                                return p.name && isCorrectCategory && matchesSearch
+                              }).map((prod: any) => (
+                                <option key={prod.id} value={prod.id}>
+                                  {prod.name} {prod.brand ? `- ${prod.brand}` : ''} ({formatCurrency(prod.selling_price || 0)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
 
                           <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -1688,6 +1928,7 @@ export default function LubebayDashboardPage() {
                       className="w-full"
                       onClick={() => {
                         setShowRecordSaleModal(false)
+                        setProductSearchTerm('')
                         resetSaleForm()
                       }}
                     >
@@ -2153,7 +2394,7 @@ export default function LubebayDashboardPage() {
                       <div>
                         <p className="text-sm text-muted-foreground">Status</p>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusBadge(selectedTransaction.approval_status)}`}>
-                          {selectedTransaction.approval_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          {selectedTransaction.approval_status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                         </span>
                       </div>
                     )}

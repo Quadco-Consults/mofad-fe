@@ -82,8 +82,7 @@ export default function CustomersPage() {
       search: searchTerm || undefined,
       page: currentPage,
       page_size: itemsPerPage
-    }),
-    keepPreviousData: true
+    })
   })
 
   // Fetch customer types for the form
@@ -256,7 +255,7 @@ export default function CustomersPage() {
                       </td>
                     </tr>
                   ) : (
-                    paginatedCustomers.map((customer, index) => (
+                    paginatedCustomers.map((customer: any, index: number) => (
                       <tr key={customer.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
                         <td className="px-6 py-4">
                           <div className="font-medium text-gray-900">{customer.name}</div>

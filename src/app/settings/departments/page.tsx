@@ -351,10 +351,7 @@ function DepartmentsPage() {
   }
 
   return (
-    <AppLayout
-      title="Department Management"
-      description="Manage organizational departments and their details."
-    >
+    <AppLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-start">
@@ -451,24 +448,29 @@ function DepartmentsPage() {
           <BulkActionBar
             selectedCount={selection.selectedCount}
             onClearSelection={selection.clearSelection}
-            actions={[
-              {
-                label: 'Activate',
-                onClick: handleBulkActivate,
-                disabled: submitting,
-              },
-              {
-                label: 'Deactivate',
-                onClick: handleBulkDeactivate,
-                disabled: submitting,
-              },
-              {
-                label: 'Delete',
-                onClick: handleBulkDelete,
-                disabled: submitting,
-                variant: 'destructive',
-              },
-            ]}
+            onBulkDelete={handleBulkDelete}
+            isDeleting={submitting}
+            entityName="departments"
+            customActions={
+              <>
+                <Button
+                  size="sm"
+                  onClick={handleBulkActivate}
+                  disabled={submitting}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Activate
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleBulkDeactivate}
+                  disabled={submitting}
+                  className="bg-gray-600 hover:bg-gray-700"
+                >
+                  Deactivate
+                </Button>
+              </>
+            }
           />
         )}
 
@@ -891,34 +893,34 @@ function DepartmentsPage() {
 
         {/* Confirmation Dialogs */}
         <ConfirmDialog
-          isOpen={showDeleteDialog}
+          open={showDeleteDialog}
           onClose={() => setShowDeleteDialog(false)}
           onConfirm={handleDeleteDepartment}
           title="Delete Department"
           message={`Are you sure you want to delete ${departmentToDelete?.name}? This action cannot be undone.`}
-          confirmLabel="Delete"
-          loading={submitting}
-          variant="destructive"
+          confirmText="Delete"
+          isLoading={submitting}
+          variant="danger"
         />
 
         <ConfirmDialog
-          isOpen={showActivateDialog}
+          open={showActivateDialog}
           onClose={() => setShowActivateDialog(false)}
           onConfirm={() => departmentToActivate && handleToggleDepartmentStatus(departmentToActivate, true)}
           title="Activate Department"
           message={`Are you sure you want to activate ${departmentToActivate?.name}?`}
-          confirmLabel="Activate"
-          loading={submitting}
+          confirmText="Activate"
+          isLoading={submitting}
         />
 
         <ConfirmDialog
-          isOpen={showDeactivateDialog}
+          open={showDeactivateDialog}
           onClose={() => setShowDeactivateDialog(false)}
           onConfirm={() => departmentToDeactivate && handleToggleDepartmentStatus(departmentToDeactivate, false)}
           title="Deactivate Department"
           message={`Are you sure you want to deactivate ${departmentToDeactivate?.name}?`}
-          confirmLabel="Deactivate"
-          loading={submitting}
+          confirmText="Deactivate"
+          isLoading={submitting}
         />
       </div>
     </AppLayout>

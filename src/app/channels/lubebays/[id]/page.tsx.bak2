@@ -31,7 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 
-interface CarWash {
+interface Lubebay {
   id: string
   name: string
   // API fields
@@ -52,7 +52,7 @@ interface CarWash {
   rating?: number
 }
 
-interface CarWashService {
+interface LubricantSale {
   id: string
   date: string
   customerName: string
@@ -107,9 +107,9 @@ interface ServiceRecord {
 }
 
 // Mock data for lubebay
-const mockCarWash: CarWash = {
+const mockLubebay: Lubebay = {
   id: 'LB001',
-  name: 'Victoria Island CarWash',
+  name: 'Victoria Island Lubebay',
   location: 'Plot 123, Ahmadu Bello Way, Victoria Island',
   state: 'Lagos',
   manager: 'Emeka Okafor',
@@ -123,7 +123,7 @@ const mockCarWash: CarWash = {
 }
 
 // Mock lubricant sales
-const mockServiceSales: CarWashService[] = [
+const mockLubricantSales: LubricantSale[] = [
   {
     id: 'LS001',
     date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
@@ -219,13 +219,13 @@ const mockServiceRecords: ServiceRecord[] = [
   }
 ]
 
-export default function CarWashDashboardPage() {
+export default function LubebayDashboardPage() {
   const params = useParams()
   const router = useRouter()
   const queryClient = useQueryClient()
-  const carWashId = params.id as string
+  const lubebayId = params.id as string
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'services' | 'services' | 'expenses' | 'lodgements'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'filters' | 'services' | 'expenses' | 'lodgements'>('overview')
   const [showRecordSaleModal, setShowRecordSaleModal] = useState(false)
   const [saleType, setSaleType] = useState<'lubricant' | 'filter'>('lubricant')
   const [productSearchTerm, setProductSearchTerm] = useState('')
@@ -309,30 +309,30 @@ export default function CarWashDashboardPage() {
     }
   })
 
-  // Fetch carwash details from API
-  const { data: carWash, isLoading: lubebayLoading } = useQuery({
-    queryKey: ['carwash-detail', carWashId],
+  // Fetch lubebay details from API
+  const { data: lubebay, isLoading: lubebayLoading } = useQuery({
+    queryKey: ['lubebay-detail', lubebayId],
     queryFn: async () => {
       try {
-        const data = await apiClient.get(`/carwashes/${carWashId}/`)
-        console.log('🏪 CarWash data:', data)
-        console.log('🏭 CarWash warehouse ID:', data?.warehouse)
+        const data = await apiClient.get(`/lubebays/${lubebayId}/`)
+        console.log('🏪 Lubebay data:', data)
+        console.log('🏭 Lubebay warehouse ID:', data?.warehouse)
         return data
       } catch (error) {
-        return mockCarWash
+        return mockLubebay
       }
     },
   })
 
-  // Fetch carwash transactions
+  // Fetch lubebay transactions
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: ['carwash-transactions', carWashId],
+    queryKey: ['lubebay-transactions', lubebayId],
     queryFn: async () => {
       try {
-        const response = await apiClient.get(`/carwash-transactions/?car_wash=${carWashId}`)
+        const response = await apiClient.get(`/lubebay-transactions/?lubebay=${lubebayId}`)
         return response
       } catch (error) {
-        console.error('Error fetching carwash transactions:', error)
+        console.error('Error fetching lubebay transactions:', error)
         return null
       }
     },
@@ -340,10 +340,10 @@ export default function CarWashDashboardPage() {
 
   // Fetch service transactions
   const { data: serviceTransactionsData, isLoading: serviceTransactionsLoading } = useQuery({
-    queryKey: ['carwash-service-transactions', carWashId],
+    queryKey: ['lubebay-service-transactions', lubebayId],
     queryFn: async () => {
       try {
-        const response = await apiClient.get(`/carwash-service-transactions/?car_wash=${carWashId}`)
+        const response = await apiClient.get(`/lubebay-service-transactions/?lubebay=${lubebayId}`)
         return response
       } catch (error) {
         console.error('Error fetching service transactions:', error)
@@ -352,20 +352,20 @@ export default function CarWashDashboardPage() {
     },
   })
 
-  // Fetch products (filtered by carwash's warehouse if available)
+  // Fetch products (filtered by lubebay's warehouse if available)
   const { data: productsData, isLoading: productsLoading } = useQuery({
-    queryKey: ['products', carWash?.warehouse],
+    queryKey: ['products', lubebay?.warehouse],
     queryFn: async () => {
       try {
         // Build query parameters
         const params = new URLSearchParams({ is_active: 'true' })
 
-        // Add warehouse filter if carwash has a warehouse
-        if (carWash?.warehouse) {
-          params.append('warehouse', carWash.warehouse.toString())
-          console.log('🏭 Fetching products for warehouse:', carWash.warehouse)
+        // Add warehouse filter if lubebay has a warehouse
+        if (lubebay?.warehouse) {
+          params.append('warehouse', lubebay.warehouse.toString())
+          console.log('🏭 Fetching products for warehouse:', lubebay.warehouse)
         } else {
-          console.log('⚠️ No warehouse found for carWash, fetching all products')
+          console.log('⚠️ No warehouse found for lubebay, fetching all products')
         }
 
         const url = `/products/?${params.toString()}`
@@ -378,7 +378,7 @@ export default function CarWashDashboardPage() {
         return null
       }
     },
-    enabled: !!carWash, // Only fetch when carwash data is loaded
+    enabled: !!lubebay, // Only fetch when lubebay data is loaded
   })
 
   // Fetch services
@@ -395,12 +395,12 @@ export default function CarWashDashboardPage() {
     },
   })
 
-  // Fetch carwash expenses
+  // Fetch lubebay expenses
   const { data: expensesData, isLoading: expensesLoading } = useQuery({
-    queryKey: ['carwash-expenses', carWashId],
+    queryKey: ['lubebay-expenses', lubebayId],
     queryFn: async () => {
       try {
-        const response = await apiClient.get(`/carwash-expenses/?car_wash=${carWashId}`)
+        const response = await apiClient.get(`/lubebay-expenses/?lubebay=${lubebayId}`)
         return response
       } catch (error) {
         console.error('Error fetching expenses:', error)
@@ -409,12 +409,12 @@ export default function CarWashDashboardPage() {
     },
   })
 
-  // Fetch carwash lodgements
+  // Fetch lubebay lodgements
   const { data: lodgementsData, isLoading: lodgementsLoading } = useQuery({
-    queryKey: ['carwash-lodgements', carWashId],
+    queryKey: ['lubebay-lodgements', lubebayId],
     queryFn: async () => {
       try {
-        const response = await apiClient.get(`/lodgements/?car_wash=${carWashId}&lodgement_type=carwash`)
+        const response = await apiClient.get(`/lodgements/?lubebay=${lubebayId}&lodgement_type=lubebay`)
         return response
       } catch (error) {
         console.error('Error fetching lodgements:', error)
@@ -440,17 +440,27 @@ export default function CarWashDashboardPage() {
   const lodgements = extractResults(lodgementsData)
 
   // Use API data or fallback to mock data
-  // Note: carwash only provides services (no product sales like lubebay)
-  // carwash-service-transactions only contain service transactions
+  // Note: lubebay-transactions are cash movements (CREDIT/DEBIT), not product sales
+  // lubebay-service-transactions include BOTH services AND lubricant_sales
   const transactions_raw = (transactions && transactions.length > 0) ? transactions : []
   const serviceTransactions_raw = (serviceTransactions && serviceTransactions.length > 0) ? serviceTransactions : mockServiceRecords
 
-  // For carwash, all service transactions are services (no lubricant_sales type)
-  const allProductSales: any[] = [] // Carwash doesn't sell products
-  const serviceRecords = serviceTransactions_raw // All are services
+  // Split service transactions by type for proper display
+  const allProductSales = serviceTransactions_raw.filter((t: any) => t.transaction_type === 'lubricant_sales')
+  const serviceRecords = serviceTransactions_raw.filter((t: any) => t.transaction_type === 'services')
 
-  // No product sales for carwash
-  const carWashServices = allProductSales.filter(sale => {
+  // Separate lubricant sales from filter sales based on product category
+  const lubricantSales = allProductSales.filter((sale: any) => {
+    // Check if any product in the sale is a lubricant (not a filter)
+    if (!sale.products || !Array.isArray(sale.products) || sale.products.length === 0) {
+      return true // Default to lubricant if no products info
+    }
+    return sale.products.some((product: any) =>
+      product.category !== 'filter' && product.category !== 'Filters'
+    )
+  })
+
+  const filterSales = allProductSales.filter((sale: any) => {
     // Check if any product in the sale is a filter
     if (!sale.products || !Array.isArray(sale.products) || sale.products.length === 0) {
       return false
@@ -461,8 +471,8 @@ export default function CarWashDashboardPage() {
   })
 
   // If no data, use mock data
-  const finalLubricantSales = carWashServices.length > 0 ? carWashServices : mockServiceSales
-  const finalFilterSales = carWashServices
+  const finalLubricantSales = lubricantSales.length > 0 ? lubricantSales : mockLubricantSales
+  const finalFilterSales = filterSales
   const finalServiceRecords = serviceRecords.length > 0 ? serviceRecords : mockServiceRecords
 
   const getStatusBadge = (status: string | boolean) => {
@@ -478,12 +488,12 @@ export default function CarWashDashboardPage() {
     return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800'
   }
 
-  const getStatusText = (lubebay: CarWash) => {
-    if (typeof carWash.is_active === 'boolean') {
-      return carWash.is_active ? 'Active' : 'Inactive'
+  const getStatusText = (lubebay: Lubebay) => {
+    if (typeof lubebay.is_active === 'boolean') {
+      return lubebay.is_active ? 'Active' : 'Inactive'
     }
-    if (carWash.status) {
-      return carWash.status.charAt(0).toUpperCase() + carWash.status.slice(1)
+    if (lubebay.status) {
+      return lubebay.status.charAt(0).toUpperCase() + lubebay.status.slice(1)
     }
     return 'Unknown'
   }
@@ -498,7 +508,7 @@ export default function CarWashDashboardPage() {
   }
 
   // Safely calculate totals with fallback
-  const totalSalesToday = finalLubricantSales.reduce((sum, sale) => {
+  const totalSalesToday = finalLubricantSales.reduce((sum: number, sale: any) => {
     const amount = sale?.total_amount || sale?.total || sale?.amount || 0
     const numAmount = typeof amount === 'number' ? amount : parseFloat(amount) || 0
     return sum + numAmount
@@ -512,38 +522,38 @@ export default function CarWashDashboardPage() {
 
   const totalRevenueToday = (totalSalesToday || 0) + (totalServicesToday || 0)
 
-  // Mutation for creating product sale transaction (disabled for carwash - services only)
+  // Mutation for creating product sale transaction
   const createProductSaleMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiClient.post('/carwash-service-transactions/', {
-        car_wash: parseInt(carWashId),
-        transaction_type: 'services',
+      return await apiClient.post('/lubebay-service-transactions/', {
+        lubebay: parseInt(lubebayId),
+        transaction_type: 'lubricant_sales',
         ...data
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['carwash-service-transactions', carWashId] })
+      queryClient.invalidateQueries({ queryKey: ['lubebay-service-transactions', lubebayId] })
       setShowRecordSaleModal(false)
       resetSaleForm()
-      alert('Service recorded successfully!')
+      alert('Product sale recorded successfully!')
     },
     onError: (error: any) => {
-      console.error('Error creating service:', error)
-      alert(`Error: ${error.response?.data?.message || 'Failed to record service'}`)
+      console.error('Error creating product sale:', error)
+      alert(`Error: ${error.response?.data?.message || 'Failed to record product sale'}`)
     }
   })
 
   // Mutation for creating service transaction
   const createServiceMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiClient.post('/carwash-service-transactions/', {
-        car_wash: parseInt(carWashId),
+      return await apiClient.post('/lubebay-service-transactions/', {
+        lubebay: parseInt(lubebayId),
         transaction_type: 'services',
         ...data
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['carwash-service-transactions', carWashId] })
+      queryClient.invalidateQueries({ queryKey: ['lubebay-service-transactions', lubebayId] })
       setShowRecordServiceModal(false)
       resetServiceForm()
       alert('Service recorded successfully!')
@@ -711,7 +721,7 @@ export default function CarWashDashboardPage() {
     })
   }
 
-  if (lubebayLoading || !carWash) {
+  if (lubebayLoading || !lubebay) {
     return (
       <AppLayout>
         <div className="space-y-6">
@@ -722,7 +732,7 @@ export default function CarWashDashboardPage() {
               onClick={() => router.back()}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to CarWashs
+              Back to Lubebays
             </Button>
           </div>
           <Card>
@@ -730,7 +740,7 @@ export default function CarWashDashboardPage() {
               <div className="flex items-center justify-center h-48">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Loading carwash details...</p>
+                  <p className="text-muted-foreground">Loading lubebay details...</p>
                 </div>
               </div>
             </CardContent>
@@ -751,11 +761,11 @@ export default function CarWashDashboardPage() {
             onClick={() => router.back()}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to CarWashs
+            Back to Lubebays
           </Button>
         </div>
 
-        {/* CarWash Info Card */}
+        {/* Lubebay Info Card */}
         <Card>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -766,28 +776,28 @@ export default function CarWashDashboardPage() {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h1 className="text-2xl font-bold text-foreground">{carWash.name}</h1>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(carWash.is_active !== undefined ? carWash.is_active : carWash.status || 'unknown')}`}>
-                        {getStatusText(carWash)}
+                      <h1 className="text-2xl font-bold text-foreground">{lubebay.name}</h1>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(lubebay.is_active !== undefined ? lubebay.is_active : lubebay.status || 'unknown')}`}>
+                        {getStatusText(lubebay)}
                       </span>
                     </div>
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4" />
-                        <span>{carWash.address || carWash.location || 'Unknown'}, {carWash.state_name || carWash.state || 'Unknown'}</span>
+                        <span>{lubebay.address || lubebay.location || 'Unknown'}, {lubebay.state_name || lubebay.state || 'Unknown'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4" />
-                        <span>Manager: {carWash.manager_name || carWash.manager || 'N/A'}</span>
+                        <span>Manager: {lubebay.manager_name || lubebay.manager || 'N/A'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Phone className="w-4 h-4" />
-                        <span>{carWash.phone || 'N/A'}</span>
+                        <span>{lubebay.phone || 'N/A'}</span>
                       </div>
-                      {carWash.rating && (
+                      {lubebay.rating && (
                         <div className="flex items-center gap-2">
                           <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                          <span>{carWash.rating} rating</span>
+                          <span>{lubebay.rating} rating</span>
                         </div>
                       )}
                     </div>
@@ -795,16 +805,16 @@ export default function CarWashDashboardPage() {
                 </div>
               </div>
               <div className="space-y-4">
-                {carWash.bays !== undefined && (
+                {lubebay.bays !== undefined && (
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Service Bays</div>
-                    <div className="text-2xl font-bold text-primary">{carWash.bays}</div>
+                    <div className="text-2xl font-bold text-primary">{lubebay.bays}</div>
                   </div>
                 )}
-                {carWash.monthlyRevenue !== undefined && (
+                {lubebay.monthlyRevenue !== undefined && (
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Monthly Revenue</div>
-                    <div className="text-xl font-bold text-green-600">{formatCurrency(carWash.monthlyRevenue || 0)}</div>
+                    <div className="text-xl font-bold text-green-600">{formatCurrency(lubebay.monthlyRevenue || 0)}</div>
                   </div>
                 )}
               </div>
@@ -887,17 +897,17 @@ export default function CarWashDashboardPage() {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Car Wash Services
+            Lubricant Sales
           </button>
           <button
-            onClick={() => setActiveTab('services')}
+            onClick={() => setActiveTab('filters')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'services'
+              activeTab === 'filters'
                 ? 'bg-white text-primary shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Car Wash Services
+            Filter Sales
           </button>
           <button
             onClick={() => setActiveTab('services')}
@@ -1016,7 +1026,7 @@ export default function CarWashDashboardPage() {
         {activeTab === 'sales' && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Car Wash Services</h2>
+              <h2 className="text-xl font-semibold">Lubricant Sales</h2>
               <p className="text-sm text-muted-foreground">Engine Oil, Transmission Fluid, Grease & Other Lubricants</p>
               <Button
                 onClick={() => {
@@ -1027,7 +1037,7 @@ export default function CarWashDashboardPage() {
                 className="mofad-btn-primary"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Record Car Wash Service
+                Record Lubricant Sale
               </Button>
             </div>
 
@@ -1049,7 +1059,7 @@ export default function CarWashDashboardPage() {
                         <tr key={sale.id} className="hover:bg-gray-50">
                           <td className="py-3 px-4">
                             <div>
-                              {sale.products && Array.isArray(sale.products) && sale.products.slice(0, 2).map((product: any, index: number) => (
+                              {sale.products && Array.isArray(sale.products) && sale.products.slice(0, 2).map((product, index) => (
                                 <div key={index} className="text-sm">
                                   {product.name || product.product_name || 'N/A'} (x{product.quantity || 1})
                                 </div>
@@ -1081,7 +1091,7 @@ export default function CarWashDashboardPage() {
                                 onClick={async () => {
                                   try {
                                     // Fetch full transaction details with items
-                                    const details = await apiClient.get(`/carwash-service-transactions/${sale.id}/`)
+                                    const details = await apiClient.get(`/lubebay-service-transactions/${sale.id}/`)
                                     console.log('Transaction details fetched:', details)
                                     console.log('Items in transaction:', details.items)
                                     setSelectedTransaction(details)
@@ -1102,7 +1112,7 @@ export default function CarWashDashboardPage() {
                                 size="sm"
                                 onClick={async () => {
                                   try {
-                                    const details = await apiClient.get(`/carwash-service-transactions/${sale.id}/`)
+                                    const details = await apiClient.get(`/lubebay-service-transactions/${sale.id}/`)
                                     console.log('Edit Sale - Full details:', details)
                                     setSelectedTransaction(details)
                                     // Initialize edit form with existing data
@@ -1159,10 +1169,10 @@ export default function CarWashDashboardPage() {
           </div>
         )}
 
-        {activeTab === 'services' && (
+        {activeTab === 'filters' && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Car Wash Services</h2>
+              <h2 className="text-xl font-semibold">Filter Sales</h2>
               <p className="text-sm text-muted-foreground">Oil Filters, Air Filters, Fuel Filters & Cabin Filters</p>
               <Button
                 onClick={() => {
@@ -1173,7 +1183,7 @@ export default function CarWashDashboardPage() {
                 className="mofad-btn-primary"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Record Car Wash Service
+                Record Filter Sale
               </Button>
             </div>
 
@@ -1196,7 +1206,7 @@ export default function CarWashDashboardPage() {
                           <tr key={sale.id} className="hover:bg-gray-50">
                             <td className="py-3 px-4">
                               <div>
-                                {sale.products && Array.isArray(sale.products) && sale.products.slice(0, 2).map((product: any, index: number) => (
+                                {sale.products && Array.isArray(sale.products) && sale.products.slice(0, 2).map((product, index) => (
                                   <div key={index} className="text-sm">
                                     {product.name || product.product_name || 'N/A'} (x{product.quantity || 1})
                                   </div>
@@ -1228,7 +1238,7 @@ export default function CarWashDashboardPage() {
                                   onClick={async () => {
                                     try {
                                       // Fetch full transaction details with items
-                                      const details = await apiClient.get(`/carwash-service-transactions/${sale.id}/`)
+                                      const details = await apiClient.get(`/lubebay-service-transactions/${sale.id}/`)
                                       console.log('Transaction details fetched:', details)
                                       console.log('Items in transaction:', details.items)
                                       setSelectedTransaction(details)
@@ -1249,7 +1259,7 @@ export default function CarWashDashboardPage() {
                                   size="sm"
                                   onClick={async () => {
                                     try {
-                                      const details = await apiClient.get(`/carwash-service-transactions/${sale.id}/`)
+                                      const details = await apiClient.get(`/lubebay-service-transactions/${sale.id}/`)
                                       console.log('Edit Sale - Full details:', details)
                                       setSelectedTransaction(details)
                                       // Initialize edit form with existing data
@@ -1356,7 +1366,7 @@ export default function CarWashDashboardPage() {
                           </td>
                           <td className="py-3 px-4">
                             <div>
-                              {service.services && Array.isArray(service.services) && service.services.slice(0, 2).map((svc: any, index: number) => (
+                              {service.services && Array.isArray(service.services) && service.services.slice(0, 2).map((svc, index) => (
                                 <div key={index} className="text-sm">
                                   {svc.name || svc.service_name || 'N/A'}
                                 </div>
@@ -1398,7 +1408,7 @@ export default function CarWashDashboardPage() {
                                 onClick={async () => {
                                   try {
                                     // Fetch full transaction details with items
-                                    const details = await apiClient.get(`/carwash-service-transactions/${service.id}/`)
+                                    const details = await apiClient.get(`/lubebay-service-transactions/${service.id}/`)
                                     setSelectedTransaction(details)
                                     setShowTransactionDetailModal(true)
                                   } catch (error) {
@@ -1417,7 +1427,7 @@ export default function CarWashDashboardPage() {
                                 size="sm"
                                 onClick={async () => {
                                   try {
-                                    const details = await apiClient.get(`/carwash-service-transactions/${service.id}/`)
+                                    const details = await apiClient.get(`/lubebay-service-transactions/${service.id}/`)
                                     console.log('Edit Service - Full details:', details)
                                     setSelectedTransaction(details)
                                     // Initialize edit form with existing data
@@ -1477,7 +1487,7 @@ export default function CarWashDashboardPage() {
         {activeTab === 'expenses' && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">CarWash Expenses</h2>
+              <h2 className="text-xl font-semibold">Lubebay Expenses</h2>
               <p className="text-sm text-muted-foreground">Daily Operating Expenses</p>
               <Button
                 onClick={() => setShowCreateExpenseModal(true)}
@@ -2601,15 +2611,15 @@ export default function CarWashDashboardPage() {
               <form onSubmit={async (e) => {
                 e.preventDefault()
                 try {
-                  await apiClient.put(`/carwash-expenses/${selectedExpense.id}/`, {
-                    car_wash: carWashId,
+                  await apiClient.put(`/lubebay-expenses/${selectedExpense.id}/`, {
+                    lubebay: lubebayId,
                     name: editExpenseForm.name || selectedExpense.name,
                     amount: editExpenseForm.amount || selectedExpense.amount,
                     expense_date: editExpenseForm.expense_date || selectedExpense.expense_date,
                     expense_type: editExpenseForm.expense_type !== null ? editExpenseForm.expense_type : selectedExpense.expense_type,
                     notes: editExpenseForm.notes || selectedExpense.notes
                   })
-                  queryClient.invalidateQueries({ queryKey: ['carwash-expenses'] })
+                  queryClient.invalidateQueries({ queryKey: ['lubebay-expenses'] })
                   setShowEditExpenseModal(false)
                   setSelectedExpense(null)
                   alert('Expense updated successfully!')
@@ -2710,8 +2720,8 @@ export default function CarWashDashboardPage() {
                 e.preventDefault()
                 try {
                   await apiClient.put(`/lodgements/${selectedLodgement.id}/`, {
-                    car_wash: carWashId,
-                    lodgement_type: 'carwash',
+                    lubebay: lubebayId,
+                    lodgement_type: 'lubebay',
                     amount_lodged: editLodgementForm.amount_lodged || selectedLodgement.amount_lodged,
                     lodgement_date: editLodgementForm.lodgement_date || selectedLodgement.lodgement_date,
                     payment_method: editLodgementForm.payment_method || selectedLodgement.payment_method,
@@ -2720,7 +2730,7 @@ export default function CarWashDashboardPage() {
                     description: editLodgementForm.description || selectedLodgement.description,
                     notes: editLodgementForm.notes || selectedLodgement.notes
                   })
-                  queryClient.invalidateQueries({ queryKey: ['carwash-lodgements'] })
+                  queryClient.invalidateQueries({ queryKey: ['lubebay-lodgements'] })
                   setShowEditLodgementModal(false)
                   setSelectedLodgement(null)
                   alert('Lodgement updated successfully!')
@@ -2848,8 +2858,8 @@ export default function CarWashDashboardPage() {
                     })) : undefined
                   }
 
-                  await apiClient.put(`/carwash-service-transactions/${selectedTransaction.id}/`, updateData)
-                  queryClient.invalidateQueries({ queryKey: ['carwash-service-transactions'] })
+                  await apiClient.put(`/lubebay-service-transactions/${selectedTransaction.id}/`, updateData)
+                  queryClient.invalidateQueries({ queryKey: ['lubebay-service-transactions'] })
                   setShowEditSaleModal(false)
                   setShowEditServiceModal(false)
                   setSelectedTransaction(null)
@@ -3130,10 +3140,10 @@ export default function CarWashDashboardPage() {
                       switch (deleteTarget.type) {
                         case 'sale':
                         case 'service':
-                          endpoint = `/carwash-service-transactions/${deleteTarget.id}/`
+                          endpoint = `/lubebay-service-transactions/${deleteTarget.id}/`
                           break
                         case 'expense':
-                          endpoint = `/carwash-expenses/${deleteTarget.id}/`
+                          endpoint = `/lubebay-expenses/${deleteTarget.id}/`
                           break
                         case 'lodgement':
                           endpoint = `/lodgements/${deleteTarget.id}/`
@@ -3143,9 +3153,9 @@ export default function CarWashDashboardPage() {
                       await apiClient.delete(endpoint)
 
                       // Refresh the data
-                      queryClient.invalidateQueries({ queryKey: ['carwash-service-transactions'] })
-                      queryClient.invalidateQueries({ queryKey: ['carwash-expenses'] })
-                      queryClient.invalidateQueries({ queryKey: ['carwash-lodgements'] })
+                      queryClient.invalidateQueries({ queryKey: ['lubebay-service-transactions'] })
+                      queryClient.invalidateQueries({ queryKey: ['lubebay-expenses'] })
+                      queryClient.invalidateQueries({ queryKey: ['lubebay-lodgements'] })
 
                       setShowDeleteConfirm(false)
                       setDeleteTarget(null)

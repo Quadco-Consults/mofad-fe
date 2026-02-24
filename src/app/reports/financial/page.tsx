@@ -194,7 +194,7 @@ function FinancialReportsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {dashboardData.gross_margin_by_location?.map((location: any, index: number) => (
+                      {(dashboardData as any).gross_margin_by_location?.map((location: any, index: number) => (
                         <tr key={index} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">{location.location}</td>
                           <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(location.station_margin)}</td>
@@ -205,10 +205,10 @@ function FinancialReportsPage() {
                       ))}
                       <tr className="bg-primary-50 font-bold">
                         <td className="px-4 py-3 text-sm text-gray-900">TOTAL GROSS MARGIN</td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(dashboardData.gross_margin_totals?.station || 0)}</td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(dashboardData.gross_margin_totals?.lubebay || 0)}</td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(dashboardData.gross_margin_totals?.direct_sales || 0)}</td>
-                        <td className="px-4 py-3 text-sm text-right text-green-600 bg-green-50">{formatCurrency(dashboardData.gross_margin_for_month)}</td>
+                        <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency((dashboardData as any).gross_margin_totals?.station || 0)}</td>
+                        <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency((dashboardData as any).gross_margin_totals?.lubebay || 0)}</td>
+                        <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency((dashboardData as any).gross_margin_totals?.direct_sales || 0)}</td>
+                        <td className="px-4 py-3 text-sm text-right text-green-600 bg-green-50">{formatCurrency((dashboardData as any).gross_margin_for_month || 0)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -226,7 +226,7 @@ function FinancialReportsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {dashboardData.head_office_expenses && Object.entries(dashboardData.head_office_expenses).map(([key, value]: [string, any]) => (
+                      {(dashboardData as any).head_office_expenses && Object.entries((dashboardData as any).head_office_expenses).map(([key, value]: [string, any]) => (
                         <tr key={key} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">{key}</td>
                           <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(value)}</td>
@@ -234,7 +234,7 @@ function FinancialReportsPage() {
                       ))}
                       <tr className="bg-red-50 font-bold">
                         <td className="px-4 py-3 text-sm text-gray-900">TOTAL EXPENSES</td>
-                        <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency(dashboardData.total_expenses)}</td>
+                        <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency((dashboardData as any).total_expenses || 0)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -244,35 +244,35 @@ function FinancialReportsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-6">
                   <p className="text-sm text-gray-600 mb-1">Gross Margin for Month</p>
-                  <p className="text-3xl font-bold text-green-600">{formatCurrency(dashboardData.gross_margin_for_month)}</p>
+                  <p className="text-3xl font-bold text-green-600">{formatCurrency((dashboardData as any).gross_margin_for_month || 0)}</p>
                 </div>
 
                 <div className="bg-gradient-to-br from-red-50 to-rose-50 border-l-4 border-red-500 rounded-lg p-6">
                   <p className="text-sm text-gray-600 mb-1">Total Expenses</p>
-                  <p className="text-3xl font-bold text-red-600">{formatCurrency(dashboardData.total_expenses)}</p>
+                  <p className="text-3xl font-bold text-red-600">{formatCurrency((dashboardData as any).total_expenses)}</p>
                 </div>
 
-                <div className={`bg-gradient-to-br ${dashboardData.net_profit >= 0 ? 'from-blue-50 to-indigo-50 border-l-4 border-blue-500' : 'from-orange-50 to-red-50 border-l-4 border-red-500'} rounded-lg p-6`}>
+                <div className={`bg-gradient-to-br ${(dashboardData as any).net_profit >= 0 ? 'from-blue-50 to-indigo-50 border-l-4 border-blue-500' : 'from-orange-50 to-red-50 border-l-4 border-red-500'} rounded-lg p-6`}>
                   <p className="text-sm text-gray-600 mb-1">Net Profit for Month</p>
-                  <p className={`text-3xl font-bold ${dashboardData.net_profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                    {formatCurrency(dashboardData.net_profit)}
+                  <p className={`text-3xl font-bold ${(dashboardData as any).net_profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                    {formatCurrency((dashboardData as any).net_profit)}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Margin: {formatPercentage(dashboardData.profit_margin)}
+                    Margin: {formatPercentage((dashboardData as any).profit_margin)}
                   </p>
                 </div>
               </div>
 
-              {(dashboardData.under_lodgement_pos || dashboardData.sweepable_funds) && (
+              {((dashboardData as any).under_lodgement_pos || (dashboardData as any).sweepable_funds) && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="bg-white rounded-lg shadow-lg p-6">
                     <h3 className="text-sm font-semibold text-gray-600 mb-2">Under Lodgement (POS Payment)</h3>
-                    <p className="text-2xl font-bold text-orange-600">{formatCurrency(dashboardData.under_lodgement_pos || 0)}</p>
+                    <p className="text-2xl font-bold text-orange-600">{formatCurrency((dashboardData as any).under_lodgement_pos || 0)}</p>
                   </div>
 
                   <div className="bg-white rounded-lg shadow-lg p-6">
                     <h3 className="text-sm font-semibold text-gray-600 mb-2">Sweepable Funds</h3>
-                    <p className="text-2xl font-bold text-purple-600">{formatCurrency(dashboardData.sweepable_funds || 0)}</p>
+                    <p className="text-2xl font-bold text-purple-600">{formatCurrency((dashboardData as any).sweepable_funds || 0)}</p>
                   </div>
                 </div>
               )}
@@ -288,10 +288,10 @@ function FinancialReportsPage() {
 
               <div className="bg-green-50 rounded-lg shadow-lg p-6">
                 <h3 className="text-sm font-semibold text-gray-600 mb-2">GROSS MARGIN FOR THE MONTH</h3>
-                <p className="text-4xl font-bold text-green-600">{formatCurrency(directSalesData.gross_margin_for_month)}</p>
-                {directSalesData.gross_margin_breakdown?.length > 0 && (
+                <p className="text-4xl font-bold text-green-600">{formatCurrency((directSalesData as any).gross_margin_for_month)}</p>
+                {(directSalesData as any).gross_margin_breakdown?.length > 0 && (
                   <div className="mt-4 space-y-2">
-                    {directSalesData.gross_margin_breakdown.map((item: any, index: number) => (
+                    {(directSalesData as any).gross_margin_breakdown.map((item: any, index: number) => (
                       <div key={index} className="flex justify-between text-sm">
                         <span className="text-gray-600">{item.location}</span>
                         <span className="font-semibold text-gray-900">{formatCurrency(item.gross_margin)}</span>
@@ -306,7 +306,7 @@ function FinancialReportsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <tbody className="divide-y divide-gray-200">
-                      {directSalesData.expenses && Object.entries(directSalesData.expenses).map(([key, value]: [string, any]) => (
+                      {(directSalesData as any).expenses && Object.entries((directSalesData as any).expenses).map(([key, value]: [string, any]) => (
                         <tr key={key} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">{key}</td>
                           <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(value)}</td>
@@ -314,7 +314,7 @@ function FinancialReportsPage() {
                       ))}
                       <tr className="bg-red-50 font-bold">
                         <td className="px-4 py-3 text-sm text-gray-900">TOTAL EXPENSES</td>
-                        <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency(directSalesData.total_expenses)}</td>
+                        <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency((directSalesData as any).total_expenses)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -323,8 +323,8 @@ function FinancialReportsPage() {
 
               <div className="bg-blue-50 rounded-lg shadow-lg p-6">
                 <h3 className="text-sm font-semibold text-gray-600 mb-2">NET PROFIT FOR THE MONTH</h3>
-                <p className={`text-4xl font-bold ${directSalesData.net_profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                  {formatCurrency(directSalesData.net_profit)}
+                <p className={`text-4xl font-bold ${(directSalesData as any).net_profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                  {formatCurrency((directSalesData as any).net_profit)}
                 </p>
               </div>
             </div>
@@ -339,10 +339,10 @@ function FinancialReportsPage() {
 
               <div className="bg-green-50 rounded-lg shadow-lg p-6">
                 <h3 className="text-sm font-semibold text-gray-600 mb-2">GROSS PROFIT FOR THE MONTH</h3>
-                <p className="text-4xl font-bold text-green-600">{formatCurrency(lubebayData.gross_profit_for_month)}</p>
-                {lubebayData.gross_profit_breakdown?.length > 0 && (
+                <p className="text-4xl font-bold text-green-600">{formatCurrency((lubebayData as any).gross_profit_for_month)}</p>
+                {(lubebayData as any).gross_profit_breakdown?.length > 0 && (
                   <div className="mt-4 space-y-2">
-                    {lubebayData.gross_profit_breakdown.map((item: any, index: number) => (
+                    {(lubebayData as any).gross_profit_breakdown.map((item: any, index: number) => (
                       <div key={index} className="flex justify-between text-sm">
                         <span className="text-gray-600">{item.location}</span>
                         <span className="font-semibold text-gray-900">{formatCurrency(item.gross_profit)}</span>
@@ -357,7 +357,7 @@ function FinancialReportsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <tbody className="divide-y divide-gray-200">
-                      {lubebayData.expenses && Object.entries(lubebayData.expenses).map(([key, value]: [string, any]) => (
+                      {(lubebayData as any).expenses && Object.entries((lubebayData as any).expenses).map(([key, value]: [string, any]) => (
                         <tr key={key} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">{key}</td>
                           <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(value)}</td>
@@ -365,7 +365,7 @@ function FinancialReportsPage() {
                       ))}
                       <tr className="bg-red-50 font-bold">
                         <td className="px-4 py-3 text-sm text-gray-900">TOTAL EXPENSES</td>
-                        <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency(lubebayData.total_expenses)}</td>
+                        <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency((lubebayData as any).total_expenses)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -374,8 +374,8 @@ function FinancialReportsPage() {
 
               <div className="bg-green-50 rounded-lg shadow-lg p-6">
                 <h3 className="text-sm font-semibold text-gray-600 mb-2">NET PROFIT FOR THE MONTH</h3>
-                <p className={`text-4xl font-bold ${lubebayData.net_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(lubebayData.net_profit)}
+                <p className={`text-4xl font-bold ${(lubebayData as any).net_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency((lubebayData as any).net_profit)}
                 </p>
               </div>
             </div>
