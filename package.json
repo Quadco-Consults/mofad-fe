@@ -21,6 +21,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.53.2",
+    "react-hot-toast": "^2.6.0",
     "recharts": "^2.13.3",
     "tailwind-merge": "^2.5.4",
     "zustand": "^5.0.2"
