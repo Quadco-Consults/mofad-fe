@@ -2780,8 +2780,8 @@ class ApiClient {
   }
 
   async getGRNsByWarehouse(warehouseId: number | string, ordering?: string): Promise<any> {
-    const params = ordering ? { ordering } : {}
-    return this.request(`/grns/by-warehouse/${warehouseId}/`, params)
+    const params = ordering ? { ordering } : undefined
+    return this.get(`/grns/by-warehouse/${warehouseId}/`, params)
   }
 
   async getGRNsByPRO(proId: number | string): Promise<any> {
