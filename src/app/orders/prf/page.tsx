@@ -111,6 +111,71 @@ const getPriorityBadge = (priority: string) => {
   )
 }
 
+const getPaymentStatusBadge = (prf: any) => {
+  if (prf.payment_confirmed) {
+    return (
+      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center gap-1">
+        <CheckCircle className="w-3 h-3" />
+        Confirmed
+      </span>
+    )
+  }
+
+  const totalLodged = prf.total_lodged || 0
+  const estimatedTotal = prf.estimated_total || 0
+  const percentPaid = estimatedTotal > 0 ? (totalLodged / estimatedTotal) * 100 : 0
+
+  if (percentPaid >= 100) {
+    return (
+      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 flex items-center gap-1">
+        <Clock className="w-3 h-3" />
+        Ready
+      </span>
+    )
+  } else if (percentPaid > 0) {
+    return (
+      <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 flex items-center gap-1">
+        <Clock className="w-3 h-3" />
+        Partial
+      </span>
+    )
+  }
+
+  return (
+    <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 flex items-center gap-1">
+      <Clock className="w-3 h-3" />
+      Pending
+    </span>
+  )
+}
+
+const getGoodsIssueStatusBadge = (prf: any) => {
+  if (prf.goods_issued) {
+    return (
+      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center gap-1">
+        <CheckCircle className="w-3 h-3" />
+        Issued
+      </span>
+    )
+  }
+
+  if (prf.status === 'ready_for_issue' && prf.payment_confirmed) {
+    return (
+      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 flex items-center gap-1">
+        <AlertTriangle className="w-3 h-3" />
+        Ready
+      </span>
+    )
+  }
+
+  return (
+    <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 flex items-center gap-1">
+      <Clock className="w-3 h-3" />
+      Not Ready
+    </span>
+  )
+}
+
 interface PRFItem {
   id?: number
   product: number
@@ -1164,6 +1229,8 @@ export default function PRFPage() {
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Customer</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Amount</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Payment</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Goods Issue</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
                     </tr>
@@ -1186,6 +1253,8 @@ export default function PRFPage() {
                         <td className="py-3 px-4">{(prf as any).customer_name || 'N/A'}</td>
                         <td className="py-3 px-4 font-medium">{formatCurrency(Number(prf.estimated_total) || 0)}</td>
                         <td className="py-3 px-4">{getStatusBadge(prf.status)}</td>
+                        <td className="py-3 px-4">{getPaymentStatusBadge(prf)}</td>
+                        <td className="py-3 px-4">{getGoodsIssueStatusBadge(prf)}</td>
                         <td className="py-3 px-4 text-sm text-muted-foreground">
                           {formatDateTime(prf.created_at)}
                         </td>

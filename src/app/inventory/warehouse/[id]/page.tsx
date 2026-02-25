@@ -62,21 +62,6 @@ interface PendingReceipt {
   status: 'pending' | 'partial' | 'overdue'
 }
 
-interface PendingIssue {
-  id: string
-  prfNumber: string
-  department: string
-  requestedBy: string
-  productCode: string
-  productName: string
-  requestedQty: number
-  issuedQty: number
-  pendingQty: number
-  unitPrice: number
-  requestDate: string
-  urgency: 'low' | 'medium' | 'high'
-  status: 'pending' | 'partial' | 'approved'
-}
 
 // Mock data for pending receipts (fallback)
 const mockPendingReceipts: PendingReceipt[] = [
@@ -133,54 +118,6 @@ const mockPendingReceipts: PendingReceipt[] = [
   }
 ]
 
-// Mock data for pending issues from PRF
-const mockPendingIssues: PendingIssue[] = [
-  {
-    id: 'PI001',
-    prfNumber: 'PRF-2024-045',
-    department: 'Lube Bay Operations',
-    requestedBy: 'Ahmed Musa',
-    productCode: 'MOB-15W40',
-    productName: 'Mobil Super 15W-40',
-    requestedQty: 100,
-    issuedQty: 60,
-    pendingQty: 40,
-    unitPrice: 8500,
-    requestDate: '2024-01-22',
-    urgency: 'high',
-    status: 'partial'
-  },
-  {
-    id: 'PI002',
-    prfNumber: 'PRF-2024-046',
-    department: 'Station Operations',
-    requestedBy: 'Fatima Ibrahim',
-    productCode: 'SHL-HX7',
-    productName: 'Shell Helix HX7 10W-30',
-    requestedQty: 50,
-    issuedQty: 0,
-    pendingQty: 50,
-    unitPrice: 12500,
-    requestDate: '2024-01-23',
-    urgency: 'medium',
-    status: 'approved'
-  },
-  {
-    id: 'PI003',
-    prfNumber: 'PRF-2024-047',
-    department: 'Maintenance',
-    requestedBy: 'Kemi Adebayo',
-    productCode: 'TOT-5000',
-    productName: 'Total Quartz 5000 20W-50',
-    requestedQty: 25,
-    issuedQty: 0,
-    pendingQty: 25,
-    unitPrice: 9800,
-    requestDate: '2024-01-23',
-    urgency: 'low',
-    status: 'pending'
-  }
-]
 
 export default function WarehouseInventoryPage() {
   const params = useParams()
@@ -194,9 +131,8 @@ export default function WarehouseInventoryPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showDeclineModal, setShowDeclineModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [activeTab, setActiveTab] = useState<'inventory' | 'receipts' | 'issues'>('inventory')
+  const [activeTab, setActiveTab] = useState<'inventory' | 'receipts'>('inventory')
   const [selectedReceipt, setSelectedReceipt] = useState<PendingReceipt | null>(null)
-  const [selectedIssue, setSelectedIssue] = useState<PendingIssue | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'out-of-stock'>('all')
   const [showReceiveGoodsModal, setShowReceiveGoodsModal] = useState(false)
@@ -205,8 +141,6 @@ export default function WarehouseInventoryPage() {
   const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split('T')[0])
   const [receiveNotes, setReceiveNotes] = useState('')
   const [isReceiving, setIsReceiving] = useState(false)
-  const [showIssueGoodsModal, setShowIssueGoodsModal] = useState(false)
-  const [issueQuantity, setIssueQuantity] = useState<number>(0)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -302,33 +236,6 @@ export default function WarehouseInventoryPage() {
     staleTime: 2 * 60 * 1000 // 2 minutes
   })
 
-  // Fetch pending issues - PRFs that need to pick items from this warehouse
-  const { data: pendingIssues = [], isLoading: issuesLoading } = useQuery({
-    queryKey: ['pending-issues', warehouseId],
-    queryFn: async () => {
-      // Fetch PRFs assigned to this warehouse that have approved payment
-      try {
-        const response = await api.getPrfs({
-          delivery_location: warehouseId,
-          status: 'approved,partially_fulfilled',
-          page_size: 100
-        })
-        console.log('PRFs for warehouse with approved lodgements:', response)
-        // Filter to show only PRFs with approved lodgements (payment made)
-        const results = response.results || []
-        return results.filter((prf: any) => {
-          const totalLodged = Number(prf.total_lodged || 0)
-          // Show if payment has been made (total_lodged > 0)
-          return totalLodged > 0
-        })
-      } catch (error) {
-        console.error('Error fetching pending PRFs:', error)
-        return []
-      }
-    },
-    enabled: !!warehouseId,
-    staleTime: 2 * 60 * 1000 // 2 minutes
-  })
 
   // Get all products and warehouse inventory
   const allProducts = productsData?.results || (Array.isArray(productsData) ? productsData : [])
@@ -542,19 +449,11 @@ export default function WarehouseInventoryPage() {
                 </span>
               </button>
               <button
-                onClick={() => setActiveTab('issues')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'issues'
-                    ? 'border-orange-500 text-orange-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                onClick={() => router.push('/inventory/warehouse/goods-issue')}
+                className="py-4 px-4 ml-auto bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all flex items-center gap-2 font-medium shadow-md"
               >
-                Pending Issues (PRF)
-                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
-                  activeTab === 'issues' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {issuesLoading ? '...' : pendingIssues.length}
-                </span>
+                <Package className="w-4 h-4" />
+                Goods Issue Dashboard
               </button>
             </nav>
           </div>
@@ -870,88 +769,6 @@ export default function WarehouseInventoryPage() {
           </div>
         )}
 
-        {/* Pending Issues Tab */}
-        {activeTab === 'issues' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">Pending Issues from PRF</h3>
-                <p className="text-sm text-gray-600 mt-1">Products requested for issue to departments</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PRF Number</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty (Requested/Issued/Pending)</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Urgency</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {pendingIssues.map((issue: PendingIssue, index: number) => (
-                      <tr key={issue.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{issue.prfNumber}</td>
-                        <td className="px-6 py-4">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{issue.productName}</div>
-                            <div className="text-sm text-gray-500">{issue.productCode}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{issue.department}</div>
-                            <div className="text-sm text-gray-500">Requested by: {issue.requestedBy}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm">
-                            <div className="text-gray-900">Requested: {(issue.requestedQty || 0).toLocaleString()}</div>
-                            <div className="text-green-600">Issued: {(issue.issuedQty || 0).toLocaleString()}</div>
-                            <div className="text-orange-600 font-medium">Pending: {(issue.pendingQty || 0).toLocaleString()}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            issue.urgency === 'high' ? 'bg-red-100 text-red-800' :
-                            issue.urgency === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
-                            {issue.urgency.charAt(0).toUpperCase() + issue.urgency.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            issue.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            issue.status === 'partial' ? 'bg-blue-100 text-blue-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
-                            {issue.status.charAt(0).toUpperCase() + issue.status.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <button
-                            className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3 py-1 rounded text-xs hover:from-orange-600 hover:to-amber-600"
-                            onClick={() => {
-                              setSelectedIssue(issue)
-                              setIssueQuantity(issue.pendingQty)
-                              setShowIssueGoodsModal(true)
-                            }}
-                          >
-                            Issue Goods
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Success Modal */}
         {showSuccessModal && (
@@ -1011,8 +828,6 @@ export default function WarehouseInventoryPage() {
           </div>
         )}
 
-        {/* Issue Goods Modal */}
-        {showIssueGoodsModal && selectedIssue && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center p-6 border-b">

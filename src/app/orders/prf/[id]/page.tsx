@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/Toast'
 import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { PRF } from '@/types/api'
+import PRFPaymentGoodsIssue from '@/components/orders/PRFPaymentGoodsIssue'
 import {
   ArrowLeft,
   Download,
@@ -817,6 +818,13 @@ export default function PRFViewPage() {
                 </table>
               </div>
             </div>
+
+            {/* Payment and Goods Issue Management */}
+            {prf.client_id && (
+              <div className="mb-8">
+                <PRFPaymentGoodsIssue prf={prf} />
+              </div>
+            )}
 
             {/* Approval Workflow Section */}
             <div className="mb-8">
