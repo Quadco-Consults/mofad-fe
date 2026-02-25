@@ -516,14 +516,6 @@ export default function WarehouseInventoryPage() {
                   {grnsLoading ? '...' : grnHistory.length}
                 </span>
               </button>
-              <button
-                onClick={() => router.push('/inventory/warehouse/goods-issue')}
-                className="py-4 px-4 ml-auto bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all flex items-center gap-2 font-medium shadow-md text-xs"
-                title="View all warehouses goods issue dashboard"
-              >
-                <Package className="w-3 h-3" />
-                All Warehouses
-              </button>
             </nav>
           </div>
         </div>

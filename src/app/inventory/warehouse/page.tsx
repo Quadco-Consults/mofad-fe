@@ -94,6 +94,13 @@ export default function WarehouseListPage() {
             <h1 className="text-2xl font-bold text-gray-900">Warehouse Management</h1>
             <p className="text-gray-600">Select a warehouse to manage inventory and operations</p>
           </div>
+          <button
+            onClick={() => router.push('/inventory/warehouse/goods-issue')}
+            className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all flex items-center gap-2 font-medium shadow-md"
+          >
+            <Package className="w-5 h-5" />
+            Goods Issue Dashboard
+          </button>
         </div>
 
         {/* Search and Filter */}
@@ -204,95 +211,123 @@ export default function WarehouseListPage() {
               </div>
             </div>
 
-            {/* Warehouse Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredWarehouses.map((warehouse) => (
-                <div
-                  key={warehouse.id}
-                  onClick={() => handleWarehouseClick(warehouse.id)}
-                  className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer border border-gray-200 hover:border-orange-500 group"
-                >
-                  <div className="p-6">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center">
-                        <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg flex items-center justify-center text-white">
-                          <Warehouse className="w-6 h-6" />
-                        </div>
-                        <div className="ml-3">
-                          <h3 className="text-lg font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">
-                            {warehouse.name}
-                          </h3>
-                          {warehouse.code && (
-                            <p className="text-sm text-gray-500">Code: {warehouse.code}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        {getStatusBadge(warehouse.is_active)}
-                        <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-orange-500 transition-colors" />
-                      </div>
-                    </div>
-
-                    {/* Location */}
-                    {warehouse.location && (
-                      <div className="flex items-center text-gray-600 mb-3">
-                        <MapPin className="w-4 h-4 mr-2" />
-                        <span className="text-sm">{warehouse.location}</span>
-                      </div>
-                    )}
-
-                    {/* Contact Info */}
-                    <div className="space-y-2 mb-4">
-                      {warehouse.manager && (
-                        <div className="flex items-center text-gray-600">
-                          <div className="w-4 h-4 mr-2 flex items-center justify-center">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                          </div>
-                          <span className="text-sm">Manager: {warehouse.manager}</span>
-                        </div>
-                      )}
-                      {warehouse.phone && (
-                        <div className="flex items-center text-gray-600">
-                          <div className="w-4 h-4 mr-2 flex items-center justify-center">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                          </div>
-                          <span className="text-sm">Phone: {warehouse.phone}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Stats (if available) */}
-                    {(warehouse.total_products !== undefined || warehouse.total_value !== undefined) && (
-                      <div className="border-t border-gray-200 pt-4 mt-4">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          {warehouse.total_products !== undefined && (
-                            <div>
-                              <span className="text-gray-500">Products</span>
-                              <div className="font-semibold text-gray-900">{warehouse.total_products.toLocaleString()}</div>
+            {/* Warehouse Table */}
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Warehouse
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Location
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Manager
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Contact
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Products
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total Value
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredWarehouses.map((warehouse) => (
+                      <tr
+                        key={warehouse.id}
+                        onClick={() => handleWarehouseClick(warehouse.id)}
+                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg flex items-center justify-center text-white flex-shrink-0">
+                              <Warehouse className="w-5 h-5" />
                             </div>
-                          )}
-                          {warehouse.total_value !== undefined && (
-                            <div>
-                              <span className="text-gray-500">Total Value</span>
-                              <div className="font-semibold text-gray-900">₦{warehouse.total_value.toLocaleString()}</div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{warehouse.name}</div>
+                              {warehouse.code && (
+                                <div className="text-sm text-gray-500">Code: {warehouse.code}</div>
+                              )}
                             </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {warehouse.location ? (
+                            <div className="flex items-center text-sm text-gray-900">
+                              <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                              {warehouse.location}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
                           )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Created Date */}
-                    <div className="flex items-center justify-between text-xs text-gray-400 mt-4 pt-3 border-t border-gray-100">
-                      <div className="flex items-center">
-                        <Calendar className="w-3 h-3 mr-1" />
-                        <span>Created: {new Date(warehouse.created_at).toLocaleDateString()}</span>
-                      </div>
-                      <span className="font-medium">Click to manage →</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {warehouse.manager ? (
+                            <div className="text-sm text-gray-900">{warehouse.manager}</div>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {warehouse.phone || warehouse.email ? (
+                            <div className="text-sm text-gray-900">
+                              {warehouse.phone && <div>{warehouse.phone}</div>}
+                              {warehouse.email && <div className="text-gray-500">{warehouse.email}</div>}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(warehouse.is_active)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {warehouse.total_products !== undefined ? (
+                            <div className="text-sm font-medium text-gray-900">
+                              {warehouse.total_products.toLocaleString()}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {warehouse.total_value !== undefined ? (
+                            <div className="text-sm font-medium text-gray-900">
+                              ₦{warehouse.total_value.toLocaleString()}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleWarehouseClick(warehouse.id)
+                            }}
+                            className="text-orange-600 hover:text-orange-900 inline-flex items-center"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </>
         )}
