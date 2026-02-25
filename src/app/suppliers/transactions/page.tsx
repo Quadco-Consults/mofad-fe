@@ -165,7 +165,7 @@ export default function SuppliersTransactionsPage() {
                 <div>
                   <p className="text-sm text-gray-600">YTD Purchases</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency(filteredSuppliers.reduce((sum, s) => sum + (s.ytd_amount || 0), 0))}
+                    {formatCurrency(filteredSuppliers.reduce((sum: number, s: any) => sum + (s.ytd_amount || 0), 0))}
                   </p>
                 </div>
               </div>
@@ -181,7 +181,7 @@ export default function SuppliersTransactionsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Total Transactions</p>
                   <p className="text-2xl font-bold text-orange-600">
-                    {filteredSuppliers.reduce((sum, s) => sum + (s.total_transactions || 0), 0)}
+                    {filteredSuppliers.reduce((sum: number, s: any) => sum + (s.total_transactions || 0), 0)}
                   </p>
                 </div>
               </div>
@@ -197,7 +197,7 @@ export default function SuppliersTransactionsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Pending Amount</p>
                   <p className="text-2xl font-bold text-red-600">
-                    {formatCurrency(filteredSuppliers.reduce((sum, s) => sum + (s.pending_amount || 0), 0))}
+                    {formatCurrency(filteredSuppliers.reduce((sum: number, s: any) => sum + (s.pending_amount || 0), 0))}
                   </p>
                 </div>
               </div>

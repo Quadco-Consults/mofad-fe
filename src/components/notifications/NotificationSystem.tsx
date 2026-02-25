@@ -218,7 +218,7 @@ export function NotificationSystem({
   const urgentCount = notifications.filter(n => n.type === 'urgent' || n.priority === 'critical').length
 
   // Get unique categories
-  const categories = [...new Set(notifications.map(n => n.category))]
+  const categories = Array.from(new Set(notifications.map(n => n.category)))
 
   if (notifications.length === 0) {
     return (

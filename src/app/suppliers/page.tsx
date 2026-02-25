@@ -98,7 +98,7 @@ interface SupplierFormData {
   phone: string
   address: string
   tax_number: string
-  payment_terms: number | null
+  payment_terms: string | null
   credit_limit: number | null
 }
 
@@ -119,7 +119,7 @@ export default function SuppliersPage() {
     phone: '',
     address: '',
     tax_number: '',
-    payment_terms: 30,
+    payment_terms: 'Net 30 days',
     credit_limit: null
   })
 
@@ -137,7 +137,7 @@ export default function SuppliersPage() {
         phone: '',
         address: '',
         tax_number: '',
-        payment_terms: 30,
+        payment_terms: 'Net 30 days',
         credit_limit: null
       })
     },
@@ -161,7 +161,7 @@ export default function SuppliersPage() {
         phone: '',
         address: '',
         tax_number: '',
-        payment_terms: 30,
+        payment_terms: 'Net 30 days',
         credit_limit: null
       })
     },
@@ -179,173 +179,14 @@ export default function SuppliersPage() {
 
   const suppliers = suppliersResponse?.results || []
 
-  // Mock suppliers data (backup - will be removed)
-  const mockSuppliers: Supplier[] = [
-    {
-      id: 1,
-      name: 'Ardova Plc',
-      contact_person: 'Ahmed Hassan',
-      email: 'ahmed.hassan@ardovaplc.com',
-      phone: '+234 801 234 5678',
-      address: '2, Ajose Adeogun Street, Victoria Island, Lagos',
-      tax_number: 'ARD-001-234',
-      payment_terms: 30,
-      credit_limit: 50000000,
-      is_active: true,
-      created_at: '2023-01-15T00:00:00Z',
-      updated_at: '2024-01-15T00:00:00Z',
-      total_orders: 15,
-      total_ordered_value: 250000000,
-      total_paid: 230000000,
-      outstanding_balance: -20000000, // Negative means we owe them
-      deposits: 15000000,
-      last_order_date: '2024-01-20T00:00:00Z',
-      last_payment_date: '2024-01-18T00:00:00Z'
-    },
-    {
-      id: 2,
-      name: 'Eterna Plc',
-      contact_person: 'Fatima Ibrahim',
-      email: 'fatima.ibrahim@eternaplc.com',
-      phone: '+234 802 345 6789',
-      address: 'Eterna House, Saka Tinubu Street, Victoria Island, Lagos',
-      tax_number: 'ETN-002-567',
-      payment_terms: 45,
-      credit_limit: 75000000,
-      is_active: true,
-      created_at: '2023-02-10T00:00:00Z',
-      updated_at: '2024-01-10T00:00:00Z',
-      total_orders: 22,
-      total_ordered_value: 180000000,
-      total_paid: 185000000,
-      outstanding_balance: 5000000, // Positive means they owe us
-      deposits: 12000000,
-      last_order_date: '2024-01-15T00:00:00Z',
-      last_payment_date: '2024-01-12T00:00:00Z'
-    },
-    {
-      id: 3,
-      name: 'Conoil Plc',
-      contact_person: 'Kemi Adebayo',
-      email: 'kemi.adebayo@conoilplc.com',
-      phone: '+234 803 456 7890',
-      address: 'Bull Plaza, 35 Marina, Lagos Island, Lagos',
-      tax_number: 'CON-003-890',
-      payment_terms: 60,
-      credit_limit: 40000000,
-      is_active: true,
-      created_at: '2023-03-05T00:00:00Z',
-      updated_at: '2024-01-05T00:00:00Z',
-      total_orders: 8,
-      total_ordered_value: 95000000,
-      total_paid: 90000000,
-      outstanding_balance: -5000000,
-      deposits: 8000000,
-      last_order_date: '2024-01-08T00:00:00Z',
-      last_payment_date: '2024-01-10T00:00:00Z'
-    },
-    {
-      id: 4,
-      name: 'MRS Oil Nigeria Plc',
-      contact_person: 'Yusuf Mohammed',
-      email: 'yusuf.mohammed@mrsoilnigeria.com',
-      phone: '+234 804 567 8901',
-      address: '16 Creek Road, Apapa, Lagos',
-      tax_number: 'MRS-004-123',
-      payment_terms: 30,
-      credit_limit: 60000000,
-      is_active: true,
-      created_at: '2023-04-20T00:00:00Z',
-      updated_at: '2024-01-20T00:00:00Z',
-      total_orders: 12,
-      total_ordered_value: 135000000,
-      total_paid: 125000000,
-      outstanding_balance: -10000000,
-      deposits: 20000000,
-      last_order_date: '2024-01-25T00:00:00Z',
-      last_payment_date: '2024-01-22T00:00:00Z'
-    },
-    {
-      id: 5,
-      name: 'Forte Oil Plc',
-      contact_person: 'Grace Okafor',
-      email: 'grace.okafor@forteoil.com',
-      phone: '+234 805 678 9012',
-      address: '26 Wharf Road, Apapa, Lagos',
-      tax_number: 'FTE-005-456',
-      payment_terms: 30,
-      credit_limit: 30000000,
-      is_active: false,
-      created_at: '2023-05-15T00:00:00Z',
-      updated_at: '2023-12-15T00:00:00Z',
-      total_orders: 5,
-      total_ordered_value: 45000000,
-      total_paid: 45000000,
-      outstanding_balance: 0,
-      deposits: 5000000,
-      last_order_date: '2023-12-10T00:00:00Z',
-      last_payment_date: '2023-12-12T00:00:00Z'
-    }
-  ]
-
-  // Mock orders data for selected supplier
-  const mockOrders: SupplierOrder[] = [
-    {
-      id: 1,
-      pro_number: 'PRO-2024-001',
-      title: 'Lubricants Purchase - January 2024',
-      order_date: '2024-01-20T00:00:00Z',
-      delivery_date: '2024-02-05T00:00:00Z',
-      total_amount: 15000000,
-      paid_amount: 15000000,
-      outstanding_amount: 0,
-      status: 'completed',
-      items_count: 12
-    },
-    {
-      id: 2,
-      pro_number: 'PRO-2024-002',
-      title: 'Fuel Products - December 2023',
-      order_date: '2023-12-15T00:00:00Z',
-      delivery_date: '2024-01-10T00:00:00Z',
-      total_amount: 25000000,
-      paid_amount: 20000000,
-      outstanding_amount: 5000000,
-      status: 'partial',
-      items_count: 8
-    }
-  ]
-
-  // Mock payments data for selected supplier
-  const mockPayments: SupplierPayment[] = [
-    {
-      id: 1,
-      reference_number: 'PAY-2024-001',
-      payment_date: '2024-01-18T00:00:00Z',
-      amount: 15000000,
-      payment_method: 'Bank Transfer',
-      description: 'Payment for PRO-2024-001',
-      pro_number: 'PRO-2024-001'
-    },
-    {
-      id: 2,
-      reference_number: 'PAY-2024-002',
-      payment_date: '2024-01-12T00:00:00Z',
-      amount: 20000000,
-      payment_method: 'Check',
-      description: 'Partial payment for PRO-2024-002',
-      pro_number: 'PRO-2024-002'
-    }
-  ]
-
-  // Filtered suppliers based on search (search now done on backend)
-  const filteredSuppliers = suppliers
-
   // Calculate summary statistics
   const totalSuppliers = suppliers.length
   const activeSuppliers = suppliers.filter((s: Supplier) => s.status === 'active').length
   const totalOutstanding = suppliers.reduce((sum: number, s: Supplier) => sum + Math.abs(s.current_balance || 0), 0)
-  const totalDeposits = 0 // Will be calculated from actual data
+  const totalOrders = suppliers.reduce((sum: number, s: Supplier) => sum + (s.total_orders_ytd || 0), 0)
+
+  // Filtered suppliers based on search (search now done on backend)
+  const filteredSuppliers = suppliers
 
   const handleAddSupplier = () => {
     setFormData({
@@ -355,18 +196,13 @@ export default function SuppliersPage() {
       phone: '',
       address: '',
       tax_number: '',
-      payment_terms: 30,
+      payment_terms: 'Net 30 days',
       credit_limit: null
     })
     setShowAddModal(true)
   }
 
   const handleEditSupplier = (supplier: Supplier) => {
-    // Extract payment terms number from string like "Net 30"
-    const paymentTermsNum = supplier.payment_terms
-      ? parseInt(supplier.payment_terms.replace(/\D/g, '')) || 30
-      : 30
-
     setFormData({
       name: supplier.name,
       contact_person: supplier.contact_person || '',
@@ -374,7 +210,7 @@ export default function SuppliersPage() {
       phone: supplier.phone || '',
       address: supplier.address || '',
       tax_number: supplier.tax_id || '',
-      payment_terms: paymentTermsNum,
+      payment_terms: supplier.payment_terms || 'Net 30 days',
       credit_limit: supplier.credit_limit || null
     })
     setSelectedSupplier(supplier)
@@ -459,16 +295,6 @@ export default function SuppliersPage() {
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Deposits</p>
-                <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalDeposits)}</p>
-                <p className="text-xs text-green-600">Available funds</p>
-              </div>
-              <DollarSign className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
                 <p className="text-sm font-medium text-gray-600">Outstanding Balances</p>
                 <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalOutstanding)}</p>
                 <p className="text-xs text-yellow-600">Pending amounts</p>
@@ -479,11 +305,9 @@ export default function SuppliersPage() {
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Active Orders</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {mockSuppliers.reduce((sum, s) => sum + s.total_orders, 0)}
-                </p>
-                <p className="text-xs text-blue-600">Total orders placed</p>
+                <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                <p className="text-2xl font-bold text-gray-900">{totalOrders}</p>
+                <p className="text-xs text-blue-600">Orders placed YTD</p>
               </div>
               <Package className="h-8 w-8 text-blue-600" />
             </div>
@@ -558,7 +382,7 @@ export default function SuppliersPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredSuppliers.map((supplier, index) => (
+                  filteredSuppliers.map((supplier: Supplier, index: number) => (
                     <tr key={supplier.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -724,14 +548,13 @@ export default function SuppliersPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms (Days)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
                     <input
-                      type="number"
+                      type="text"
                       value={formData.payment_terms || ''}
-                      onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value ? parseInt(e.target.value) : null })}
+                      onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value || null })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                      placeholder="30"
-                      min="0"
+                      placeholder="Net 30 days"
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -858,7 +681,7 @@ export default function SuppliersPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm font-medium text-green-700">Total Paid</p>
-                            <p className="text-2xl font-bold text-green-900">{formatCurrency(selectedSupplier.total_paid)}</p>
+                            <p className="text-2xl font-bold text-green-900">{formatCurrency(selectedSupplier.total_paid || 0)}</p>
                           </div>
                           <DollarSign className="h-8 w-8 text-green-600" />
                         </div>
@@ -867,7 +690,7 @@ export default function SuppliersPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm font-medium text-yellow-700">Deposits</p>
-                            <p className="text-2xl font-bold text-yellow-900">{formatCurrency(selectedSupplier.deposits)}</p>
+                            <p className="text-2xl font-bold text-yellow-900">{formatCurrency(selectedSupplier.deposits || 0)}</p>
                           </div>
                           <CreditCard className="h-8 w-8 text-yellow-600" />
                         </div>
@@ -897,7 +720,7 @@ export default function SuppliersPage() {
                         <h3 className="font-semibold text-gray-900 mb-3">Business Information</h3>
                         <div className="space-y-2">
                           <p className="text-sm">
-                            <span className="font-medium">Tax Number:</span> {selectedSupplier.tax_number || 'Not provided'}
+                            <span className="font-medium">Tax ID:</span> {selectedSupplier.tax_id || 'Not provided'}
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Payment Terms:</span> {selectedSupplier.payment_terms || 'N/A'} days
@@ -917,7 +740,7 @@ export default function SuppliersPage() {
                           <Calculator className="h-8 w-8 text-gray-400" />
                           <div>
                             <p className="font-medium">Current Balance Status</p>
-                            {getBalanceDisplay(selectedSupplier.outstanding_balance)}
+                            {getBalanceDisplay(selectedSupplier.outstanding_balance || 0)}
                           </div>
                         </div>
                         <div className="text-right">
@@ -938,7 +761,7 @@ export default function SuppliersPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-gray-900">Order History</h3>
-                      <span className="text-sm text-gray-600">{mockOrders.length} orders</span>
+                      <span className="text-sm text-gray-600">0 orders</span>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full border border-gray-200 rounded-lg">
@@ -953,24 +776,11 @@ export default function SuppliersPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                          {mockOrders.map((order) => (
-                            <tr key={order.id}>
-                              <td className="px-4 py-3 text-sm font-medium text-blue-600">{order.pro_number}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900">{order.title}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {new Date(order.order_date).toLocaleDateString()}
-                              </td>
-                              <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-                                {formatCurrency(order.total_amount)}
-                              </td>
-                              <td className="px-4 py-3 text-sm font-medium text-red-600 text-right">
-                                {formatCurrency(order.outstanding_amount)}
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                {getStatusBadge(order.status)}
-                              </td>
-                            </tr>
-                          ))}
+                          <tr>
+                            <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                              No orders found for this supplier
+                            </td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>
@@ -981,7 +791,7 @@ export default function SuppliersPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-gray-900">Payment History</h3>
-                      <span className="text-sm text-gray-600">{mockPayments.length} payments</span>
+                      <span className="text-sm text-gray-600">0 payments</span>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full border border-gray-200 rounded-lg">
@@ -995,19 +805,11 @@ export default function SuppliersPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                          {mockPayments.map((payment) => (
-                            <tr key={payment.id}>
-                              <td className="px-4 py-3 text-sm font-medium text-blue-600">{payment.reference_number}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {new Date(payment.payment_date).toLocaleDateString()}
-                              </td>
-                              <td className="px-4 py-3 text-sm font-medium text-green-600 text-right">
-                                {formatCurrency(payment.amount)}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-900">{payment.payment_method}</td>
-                              <td className="px-4 py-3 text-sm text-blue-600">{payment.pro_number}</td>
-                            </tr>
-                          ))}
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                              No payments found for this supplier
+                            </td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>

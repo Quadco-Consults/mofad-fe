@@ -125,7 +125,7 @@ function RecentTransactionsTable() {
   ]
 
   const getStatusBadge = (status: string) => {
-    const statusColors = {
+    const statusColors: { [key: string]: string } = {
       'Completed': 'bg-green-100 text-green-700',
       'Pending': 'bg-yellow-100 text-yellow-700',
       'In Progress': 'bg-blue-100 text-blue-700',
