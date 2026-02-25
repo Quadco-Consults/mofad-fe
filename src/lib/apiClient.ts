@@ -1194,6 +1194,19 @@ class ApiClient {
     return this.request(endpoint)
   }
 
+  async updateWarehouse(id: number | string, data: any): Promise<any> {
+    return this.request(`/warehouses/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async deleteWarehouse(id: number | string): Promise<any> {
+    return this.request(`/warehouses/${id}/`, {
+      method: 'DELETE'
+    })
+  }
+
   async getSubstores(params?: { search?: string; is_active?: boolean; page?: number; page_size?: number }): Promise<any[]> {
     let endpoint = '/substores/'
     if (params) {

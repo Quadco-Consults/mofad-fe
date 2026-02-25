@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import apiClient from '@/lib/apiClient'
@@ -18,7 +18,11 @@ import {
   Search,
   Filter,
   Loader2,
-  AlertCircle as AlertCircleIcon
+  AlertCircle as AlertCircleIcon,
+  Edit,
+  Trash2,
+  X,
+  Save
 } from 'lucide-react'
 
 interface WarehouseItem {
@@ -40,8 +44,13 @@ interface WarehouseItem {
 
 export default function WarehouseListPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [editingWarehouse, setEditingWarehouse] = useState<WarehouseItem | null>(null)
+  const [deletingWarehouse, setDeletingWarehouse] = useState<WarehouseItem | null>(null)
+  const [formData, setFormData] = useState<Partial<WarehouseItem>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Fetch warehouses
   const { data: warehousesResponse, isLoading, error } = useQuery({
@@ -83,6 +92,56 @@ export default function WarehouseListPage() {
         Inactive
       </span>
     )
+  }
+
+  const handleEditClick = (warehouse: WarehouseItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingWarehouse(warehouse)
+    setFormData({
+      name: warehouse.name,
+      code: warehouse.code || '',
+      location: warehouse.location || '',
+      manager: warehouse.manager || '',
+      phone: warehouse.phone || '',
+      email: warehouse.email || '',
+      is_active: warehouse.is_active
+    })
+  }
+
+  const handleDeleteClick = (warehouse: WarehouseItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDeletingWarehouse(warehouse)
+  }
+
+  const handleUpdateWarehouse = async () => {
+    if (!editingWarehouse) return
+
+    setIsSubmitting(true)
+    try {
+      await apiClient.updateWarehouse(editingWarehouse.id, formData)
+      queryClient.invalidateQueries({ queryKey: ['warehouses'] })
+      setEditingWarehouse(null)
+      setFormData({})
+    } catch (error: any) {
+      alert(`Failed to update warehouse: ${error.message || 'Unknown error'}`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteWarehouse = async () => {
+    if (!deletingWarehouse) return
+
+    setIsSubmitting(true)
+    try {
+      await apiClient.deleteWarehouse(deletingWarehouse.id)
+      queryClient.invalidateQueries({ queryKey: ['warehouses'] })
+      setDeletingWarehouse(null)
+    } catch (error: any) {
+      alert(`Failed to delete warehouse: ${error.message || 'Unknown error'}`)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -312,16 +371,32 @@ export default function WarehouseListPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleWarehouseClick(warehouse.id)
-                            }}
-                            className="text-orange-600 hover:text-orange-900 inline-flex items-center"
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleWarehouseClick(warehouse.id)
+                              }}
+                              className="text-blue-600 hover:text-blue-900 inline-flex items-center"
+                              title="View warehouse details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => handleEditClick(warehouse, e)}
+                              className="text-orange-600 hover:text-orange-900 inline-flex items-center"
+                              title="Edit warehouse"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteClick(warehouse, e)}
+                              className="text-red-600 hover:text-red-900 inline-flex items-center"
+                              title="Delete warehouse"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -338,6 +413,204 @@ export default function WarehouseListPage() {
             <p className="text-sm text-gray-600 text-center">
               Showing {filteredWarehouses.length} of {warehouses.length} warehouses
             </p>
+          </div>
+        )}
+
+        {/* Edit Warehouse Modal */}
+        {editingWarehouse && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Edit Warehouse</h2>
+                  <button
+                    onClick={() => {
+                      setEditingWarehouse(null)
+                      setFormData({})
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Warehouse Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.name || ''}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Enter warehouse name"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Warehouse Code
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.code || ''}
+                        onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Enter warehouse code"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Location
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.location || ''}
+                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Enter location"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Manager
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.manager || ''}
+                        onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Enter manager name"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone
+                      </label>
+                      <input
+                        type="tel"
+                        value={formData.phone || ''}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Enter phone number"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        value={formData.email || ''}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Enter email address"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="is_active"
+                      checked={formData.is_active || false}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                    />
+                    <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
+                      Active
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setEditingWarehouse(null)
+                      setFormData({})
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdateWarehouse}
+                    disabled={isSubmitting || !formData.name}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Save Changes
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Dialog */}
+        {deletingWarehouse && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Delete Warehouse</h3>
+                    <p className="text-sm text-gray-600">This action cannot be undone</p>
+                  </div>
+                </div>
+
+                <p className="text-gray-700 mb-6">
+                  Are you sure you want to delete <strong>{deletingWarehouse.name}</strong>?
+                  This will permanently remove the warehouse and all associated data.
+                </p>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setDeletingWarehouse(null)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteWarehouse}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        Delete Warehouse
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
