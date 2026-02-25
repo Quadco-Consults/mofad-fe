@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
-import api from '@/lib/api-client'
+import api from '@/lib/apiClient'
 import {
   ArrowLeft,
   Building,

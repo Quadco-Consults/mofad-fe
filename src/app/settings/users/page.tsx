@@ -8,7 +8,7 @@ import { BulkActionBar } from '@/components/ui/BulkActionBar'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useSelection } from '@/hooks/useSelection'
 import { AppLayout } from '@/components/layout/AppLayout'
-import api from '@/lib/api-client'
+import api from '@/lib/apiClient'
 
 interface User {
   id: number
@@ -395,7 +395,8 @@ function UsersPage() {
 
     try {
       setIsSaving(true)
-      await api.updateUser(selectedUser.id, editForm)
+      const cleanedForm = { ...editForm, phone: editForm.phone ?? undefined }
+      await api.updateUser(selectedUser.id, cleanedForm as any)
       showSuccess('User updated successfully')
       setShowEditModal(false)
       setEditForm(null)
@@ -1077,7 +1078,6 @@ function UsersPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-bold mb-4">Edit User - {selectedUser.full_name}</h3>
-              {console.log('Modal editForm:', editForm)} {/* Debug log */}
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>

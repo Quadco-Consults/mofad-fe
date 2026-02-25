@@ -239,7 +239,7 @@ export default function PRODetailPage() {
     enabled: showAssignReviewerDialog,
   })
 
-  const users = usersData?.results || usersData || []
+  const users = Array.isArray(usersData) ? usersData : (usersData?.results || [])
 
   // Status update mutations
   const statusMutation = useMutation({

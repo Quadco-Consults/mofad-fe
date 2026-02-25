@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { Loader2, ArrowLeft, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
-import api from '@/lib/api-client'
+import api from '@/lib/apiClient'
 import { getRedirectPath } from '@/components/RouteTracker'
 
 export default function MfaVerifyPage() {

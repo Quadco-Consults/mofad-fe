@@ -54,7 +54,7 @@ const initialFormData: StateFormData = {
 
 function StatesPage() {
   const queryClient = useQueryClient()
-  const { showToast } = useToast()
+  const { addToast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [zoneFilter, setZoneFilter] = useState<string>('all')
@@ -132,13 +132,13 @@ function StatesPage() {
     mutationFn: (data: StateFormData) => apiClient.createState(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['states'] })
-      showToast('State created successfully', 'success')
+      addToast({ title: 'State created successfully', type: 'success' })
       setShowAddModal(false)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to create state', 'error')
+      addToast({ title: error.message || 'Failed to create state', type: 'error' })
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -151,14 +151,14 @@ function StatesPage() {
       apiClient.updateState(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['states'] })
-      showToast('State updated successfully', 'success')
+      addToast({ title: 'State updated successfully', type: 'success' })
       setShowEditModal(false)
       setSelectedState(null)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to update state', 'error')
+      addToast({ title: error.message || 'Failed to update state', type: 'error' })
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -170,12 +170,12 @@ function StatesPage() {
     mutationFn: (id: number) => apiClient.deleteState(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['states'] })
-      showToast('State deleted successfully', 'success')
+      addToast({ title: 'State deleted successfully', type: 'success' })
       setShowDeleteModal(false)
       setSelectedState(null)
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to delete state', 'error')
+      addToast({ title: error.message || 'Failed to delete state', type: 'error' })
     },
   })
 
@@ -185,10 +185,10 @@ function StatesPage() {
       apiClient.updateState(id, { is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['states'] })
-      showToast('State status updated successfully', 'success')
+      addToast({ title: 'State status updated successfully', type: 'success' })
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to update state status', 'error')
+      addToast({ title: error.message || 'Failed to update state status', type: 'error' })
     },
   })
 
@@ -201,13 +201,13 @@ function StatesPage() {
       selection.clearSelection()
 
       if (response.failed_count > 0) {
-        showToast(`Deleted ${response.deleted_count} states. ${response.failed_count} failed.`, 'warning')
+        addToast({ title: `Deleted ${response.deleted_count} states. ${response.failed_count} failed.`, type: 'warning' })
       } else {
-        showToast(`Successfully deleted ${response.deleted_count} states`, 'success')
+        addToast({ title: `Successfully deleted ${response.deleted_count} states`, type: 'success' })
       }
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to delete states', 'error')
+      addToast({ title: error.message || 'Failed to delete states', type: 'error' })
     },
   })
 

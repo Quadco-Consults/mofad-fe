@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { Loader2, ArrowLeft, Mail, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
-import api from '@/lib/api-client'
+import api from '@/lib/apiClient'
 
 interface ForgotPasswordForm {
   email: string

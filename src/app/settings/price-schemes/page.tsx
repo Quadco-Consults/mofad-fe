@@ -93,7 +93,7 @@ const initialFormData: PriceSchemeFormData = {
 
 function PriceSchemesPage() {
   const queryClient = useQueryClient()
-  const { showToast } = useToast()
+  const { addToast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>('all')
@@ -109,7 +109,7 @@ function PriceSchemesPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
   // Selection hook for bulk operations
-  const selection = useSelection<PriceScheme>()
+  const selection = useSelection()
 
   // Fetch price schemes
   const { data: schemesData, isLoading, error, refetch } = useQuery({
@@ -203,13 +203,13 @@ function PriceSchemesPage() {
     mutationFn: (data: any) => apiClient.createPriceScheme(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['price-schemes'] })
-      showToast('Price scheme created successfully', 'success')
+      addToast({ title: 'Price scheme created successfully', type: 'success' })
       setShowAddModal(false)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to create price scheme', 'error')
+      addToast({ title: error.message || 'Failed to create price scheme', type: 'error' })
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -222,14 +222,14 @@ function PriceSchemesPage() {
       apiClient.updatePriceScheme(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['price-schemes'] })
-      showToast('Price scheme updated successfully', 'success')
+      addToast({ title: 'Price scheme updated successfully', type: 'success' })
       setShowEditModal(false)
       setSelectedScheme(null)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to update price scheme', 'error')
+      addToast({ title: error.message || 'Failed to update price scheme', type: 'error' })
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -241,12 +241,12 @@ function PriceSchemesPage() {
     mutationFn: (id: number) => apiClient.deletePriceScheme(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['price-schemes'] })
-      showToast('Price scheme deleted successfully', 'success')
+      addToast({ title: 'Price scheme deleted successfully', type: 'success' })
       setShowDeleteModal(false)
       setSelectedScheme(null)
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to delete price scheme', 'error')
+      addToast({ title: error.message || 'Failed to delete price scheme', type: 'error' })
     },
   })
 
@@ -256,10 +256,10 @@ function PriceSchemesPage() {
       apiClient.updatePriceScheme(id, { is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['price-schemes'] })
-      showToast('Price scheme status updated successfully', 'success')
+      addToast({ title: 'Price scheme status updated successfully', type: 'success' })
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to update price scheme status', 'error')
+      addToast({ title: error.message || 'Failed to update price scheme status', type: 'error' })
     },
   })
 
@@ -272,13 +272,13 @@ function PriceSchemesPage() {
       selection.clearSelection()
 
       if (response.failed_count > 0) {
-        showToast(`Deleted ${response.deleted_count} price schemes. ${response.failed_count} failed.`, 'warning')
+        addToast({ title: `Deleted ${response.deleted_count} price schemes. ${response.failed_count} failed.`, type: 'warning' })
       } else {
-        showToast(`Successfully deleted ${response.deleted_count} price schemes`, 'success')
+        addToast({ title: `Successfully deleted ${response.deleted_count} price schemes`, type: 'success' })
       }
     },
     onError: (error: any) => {
-      showToast(error.message || 'Failed to delete price schemes', 'error')
+      addToast({ title: error.message || 'Failed to delete price schemes', type: 'error' })
     },
   })
 
@@ -397,12 +397,12 @@ function PriceSchemesPage() {
 
   // Product handlers
   const handleViewProduct = (product: Product) => {
-    showToast(`Viewing details for ${product.name}`, 'info')
+    addToast({ title: `Viewing details for ${product.name}`, type: 'info' })
     // TODO: Implement product view modal or navigate to product detail page
   }
 
   const handleEditProduct = (product: Product) => {
-    showToast(`Editing pricing for ${product.name}`, 'info')
+    addToast({ title: `Editing pricing for ${product.name}`, type: 'info' })
     // TODO: Implement product pricing edit modal
   }
 

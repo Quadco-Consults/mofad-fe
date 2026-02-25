@@ -9,7 +9,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Pagination } from '@/components/ui/Pagination'
 import { useSelection } from '@/hooks/useSelection'
-import api from '@/lib/api-client'
+import api from '@/lib/apiClient'
 
 interface Permission {
   id: number
@@ -132,14 +132,11 @@ function RolesPage() {
   const deletableRoles = paginatedRoles.filter(r => !r.is_system_role)
 
   // Selection for bulk actions
-  const selection = useSelection({
-    items: deletableRoles,
-    getId: (item) => item.id,
-  })
+  const selection = useSelection()
 
   // Bulk delete handler
   const handleBulkDelete = async () => {
-    const selectedIds = selection.getSelectedIds()
+    const selectedIds = selection.selectedIds
     if (selectedIds.length === 0) return
 
     setIsBulkDeleting(true)
@@ -324,7 +321,7 @@ function RolesPage() {
       newPermissions = form.permissions.filter(id => !modulePermIds.includes(id))
     } else {
       // Select all module permissions
-      newPermissions = [...new Set([...form.permissions, ...modulePermIds])]
+      newPermissions = Array.from(new Set([...form.permissions, ...modulePermIds]))
     }
     setForm({ ...form, permissions: newPermissions })
   }
@@ -501,9 +498,9 @@ function RolesPage() {
                   <tr>
                     <th className="px-4 py-3 text-left">
                       <Checkbox
-                        checked={selection.isAllSelected}
-                        indeterminate={selection.isPartiallySelected}
-                        onChange={selection.toggleSelectAll}
+                        checked={selection.isAllSelected(deletableRoles)}
+                        indeterminate={selection.isPartiallySelected(deletableRoles)}
+                        onChange={() => selection.toggleAll(deletableRoles)}
                       />
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -530,7 +527,7 @@ function RolesPage() {
                         {!role.is_system_role ? (
                           <Checkbox
                             checked={selection.isSelected(role.id)}
-                            onChange={() => selection.toggleSelect(role.id)}
+                            onChange={() => selection.toggle(role.id)}
                           />
                         ) : (
                           <div className="w-4 h-4" />
@@ -829,13 +826,13 @@ function RolesPage() {
         {/* Bulk Action Bar */}
         <BulkActionBar
           selectedCount={selection.selectedCount}
-          onDelete={() => setShowBulkDeleteModal(true)}
+          onBulkDelete={() => setShowBulkDeleteModal(true)}
           onClearSelection={selection.clearSelection}
         />
 
         {/* Bulk Delete Confirmation Dialog */}
         <ConfirmDialog
-          isOpen={showBulkDeleteModal}
+          open={showBulkDeleteModal}
           onClose={() => setShowBulkDeleteModal(false)}
           onConfirm={handleBulkDelete}
           title="Delete Roles"

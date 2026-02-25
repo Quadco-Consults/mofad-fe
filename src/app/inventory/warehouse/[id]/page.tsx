@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
-import api from '@/lib/api-client'
+import api from '@/lib/apiClient'
 import { Eye, CheckCircle, XCircle, Plus, Package, Warehouse, AlertTriangle, TrendingUp, TrendingDown, Loader2, AlertCircle as AlertCircleIcon, ArrowLeft, MapPin, Search, Filter, FileText, Calendar, User, ArrowUp, ArrowDown, Settings, Upload } from 'lucide-react'
 
 interface InventoryItem {
@@ -333,7 +333,7 @@ export default function WarehouseInventoryPage() {
   // Get all products and warehouse inventory
   const allProducts = productsData?.results || (Array.isArray(productsData) ? productsData : [])
   // Backend returns inventory in "inventory" field, not "results"
-  const warehouseInventory = inventoryResponse?.inventory || inventoryResponse?.results || []
+  const warehouseInventory = inventoryResponse?.inventory || []
 
   // Transform backend data to match frontend expectations
   // The serializer already provides product_name and product_code, so we use those directly

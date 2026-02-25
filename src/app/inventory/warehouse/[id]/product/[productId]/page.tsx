@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
-import api from '@/lib/api-client'
+import api from '@/lib/apiClient'
 import { ArrowLeft, Package, FileText, Loader2, AlertCircle as AlertCircleIcon } from 'lucide-react'
 
 export default function WarehouseProductDetailPage() {
@@ -35,20 +35,20 @@ export default function WarehouseProductDetailPage() {
     queryFn: async () => {
       const response = await api.getWarehouseInventory(warehouseId)
       // Backend returns inventory in "inventory" field, and product is just an ID number
-      const items = response?.inventory || response?.results || []
+      const items = response?.inventory || []
       const inventoryItem = items.find((item: any) => item.product === productId)
 
       if (inventoryItem) {
         // Transform to match expected structure
         return {
           id: inventoryItem.id,
-          current_stock: parseFloat(inventoryItem.quantity_on_hand || 0),
-          reorder_level: parseFloat(inventoryItem.reorder_point || inventoryItem.minimum_level || 0),
-          unit_cost: parseFloat(inventoryItem.average_cost || 0),
-          total_value: parseFloat(inventoryItem.total_cost_value || 0),
-          last_updated: inventoryItem.updated_at,
-          status: parseFloat(inventoryItem.quantity_on_hand || 0) === 0 ? 'out-of-stock' :
-                  parseFloat(inventoryItem.quantity_on_hand || 0) <= parseFloat(inventoryItem.reorder_point || inventoryItem.minimum_level || 0) ? 'low-stock' :
+          current_stock: parseFloat(String(inventoryItem.quantity_on_hand || 0)),
+          reorder_level: parseFloat(String(inventoryItem.reorder_point || 0)),
+          unit_cost: parseFloat(String(inventoryItem.average_cost || 0)),
+          total_value: parseFloat(String(inventoryItem.total_cost_value || 0)),
+          last_updated: inventoryItem.last_movement_date,
+          status: parseFloat(String(inventoryItem.quantity_on_hand || 0)) === 0 ? 'out-of-stock' :
+                  parseFloat(String(inventoryItem.quantity_on_hand || 0)) <= parseFloat(String(inventoryItem.reorder_point || 0)) ? 'low-stock' :
                   'in-stock',
         }
       }

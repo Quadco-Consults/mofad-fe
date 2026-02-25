@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { Loader2, ArrowLeft, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
-import api from '@/lib/api-client'
+import api from '@/lib/apiClient'
 
 interface ResetPasswordForm {
   otp: string

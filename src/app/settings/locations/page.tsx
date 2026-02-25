@@ -122,10 +122,7 @@ function LocationsPage() {
   const locations = allLocations.slice(startIndex, startIndex + pageSize)
 
   // Selection for bulk actions
-  const selection = useSelection({
-    items: locations,
-    getId: (item) => item.id,
-  })
+  const selection = useSelection()
 
   // Get states from response
   const states: State[] = Array.isArray(statesData)
@@ -137,13 +134,13 @@ function LocationsPage() {
     mutationFn: (data: any) => apiClient.createLocation(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] })
-      addToast('Location created successfully', 'success')
+      addToast({ title: 'Location created successfully', type: 'success' })
       setShowAddModal(false)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      addToast(error.message || 'Failed to create location', 'error')
+      addToast({ title: error.message || 'Failed to create location', type: 'error' })
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -156,14 +153,14 @@ function LocationsPage() {
       apiClient.updateLocation(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] })
-      addToast('Location updated successfully', 'success')
+      addToast({ title: 'Location updated successfully', type: 'success' })
       setShowEditModal(false)
       setSelectedLocation(null)
       setFormData(initialFormData)
       setFormErrors({})
     },
     onError: (error: any) => {
-      addToast(error.message || 'Failed to update location', 'error')
+      addToast({ title: error.message || 'Failed to update location', type: 'error' })
       if (error.errors) {
         setFormErrors(error.errors)
       }
@@ -175,12 +172,12 @@ function LocationsPage() {
     mutationFn: (id: number) => apiClient.deleteLocation(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] })
-      addToast('Location deleted successfully', 'success')
+      addToast({ title: 'Location deleted successfully', type: 'success' })
       setShowDeleteModal(false)
       setSelectedLocation(null)
     },
     onError: (error: any) => {
-      addToast(error.message || 'Failed to delete location', 'error')
+      addToast({ title: error.message || 'Failed to delete location', type: 'error' })
     },
   })
 
@@ -190,16 +187,16 @@ function LocationsPage() {
       apiClient.updateLocation(id, { is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] })
-      addToast('Location status updated successfully', 'success')
+      addToast({ title: 'Location status updated successfully', type: 'success' })
     },
     onError: (error: any) => {
-      addToast(error.message || 'Failed to update location status', 'error')
+      addToast({ title: error.message || 'Failed to update location status', type: 'error' })
     },
   })
 
   // Bulk delete handler
   const handleBulkDelete = async () => {
-    const selectedIds = selection.getSelectedIds()
+    const selectedIds = selection.selectedIds
     if (selectedIds.length === 0) return
 
     setIsBulkDeleting(true)
@@ -208,11 +205,11 @@ function LocationsPage() {
         await apiClient.deleteLocation(id)
       }
       queryClient.invalidateQueries({ queryKey: ['locations'] })
-      addToast(`Successfully deleted ${selectedIds.length} location(s)`, 'success')
+      addToast({ title: `Successfully deleted ${selectedIds.length} location(s)`, type: 'success' })
       selection.clearSelection()
       setShowBulkDeleteModal(false)
     } catch (error: any) {
-      addToast(error.message || 'Failed to delete some locations', 'error')
+      addToast({ title: error.message || 'Failed to delete some locations', type: 'error' })
     } finally {
       setIsBulkDeleting(false)
     }
@@ -469,9 +466,9 @@ function LocationsPage() {
                   <tr>
                     <th className="py-3 px-4 text-left">
                       <Checkbox
-                        checked={selection.isAllSelected}
-                        indeterminate={selection.isPartiallySelected}
-                        onChange={selection.toggleSelectAll}
+                        checked={selection.isAllSelected(locations)}
+                        indeterminate={selection.isPartiallySelected(locations)}
+                        onChange={() => selection.toggleAll(locations)}
                       />
                     </th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Location</th>
@@ -489,7 +486,7 @@ function LocationsPage() {
                       <td className="py-3 px-4">
                         <Checkbox
                           checked={selection.isSelected(location.id)}
-                          onChange={() => selection.toggleSelect(location.id)}
+                          onChange={() => selection.toggle(location.id)}
                         />
                       </td>
                       <td className="py-3 px-4">
@@ -1072,13 +1069,13 @@ function LocationsPage() {
         {/* Bulk Action Bar */}
         <BulkActionBar
           selectedCount={selection.selectedCount}
-          onDelete={() => setShowBulkDeleteModal(true)}
+          onBulkDelete={() => setShowBulkDeleteModal(true)}
           onClearSelection={selection.clearSelection}
         />
 
         {/* Bulk Delete Confirmation Dialog */}
         <ConfirmDialog
-          isOpen={showBulkDeleteModal}
+          open={showBulkDeleteModal}
           onClose={() => setShowBulkDeleteModal(false)}
           onConfirm={handleBulkDelete}
           title="Delete Locations"

@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import { useAuthStore } from '@/store/authStore'
 import { Loader2, ArrowLeft, Lock, Eye, EyeOff, CheckCircle, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
-import api from '@/lib/api-client'
+import api from '@/lib/apiClient'
 
 interface ChangePasswordForm {
   otp?: string
