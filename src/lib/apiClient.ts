@@ -2687,6 +2687,98 @@ class ApiClient {
     return this.request(`/pros/${proId}/payments/`)
   }
 
+  // Goods Receipt Note (GRN) Management
+  async getGRNs(params?: {
+    search?: string
+    warehouse?: number
+    pro?: number
+    status?: string
+    qc_status?: string
+    start_date?: string
+    end_date?: string
+    page?: number
+    page_size?: number
+    ordering?: string
+  }): Promise<any> {
+    return this.get('/grns/', params)
+  }
+
+  async getGRNById(id: number | string): Promise<any> {
+    return this.request(`/grns/${id}/`)
+  }
+
+  async createGRN(data: {
+    pro_id: number
+    warehouse_id: number
+    received_date?: string
+    supplier_invoice_number?: string
+    supplier_delivery_note?: string
+    vehicle_number?: string
+    driver_name?: string
+    driver_phone?: string
+    notes?: string
+    items: Array<{
+      pro_item_id: number
+      product_id: number
+      quantity_received: number
+      batch_number?: string
+      manufacturing_date?: string
+      expiry_date?: string
+      packaging_condition?: string
+      notes?: string
+    }>
+  }): Promise<any> {
+    return this.request('/grns/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async approveGRN(id: number | string, notes?: string): Promise<any> {
+    return this.request(`/grns/${id}/approve/`, {
+      method: 'POST',
+      body: JSON.stringify({ notes: notes || '' })
+    })
+  }
+
+  async rejectGRN(id: number | string, rejectionReason: string): Promise<any> {
+    return this.request(`/grns/${id}/reject/`, {
+      method: 'POST',
+      body: JSON.stringify({ rejection_reason: rejectionReason })
+    })
+  }
+
+  async inspectGRNItem(grnId: number | string, itemId: number | string, data: {
+    quantity_accepted: number
+    quantity_rejected?: number
+    qc_status: 'passed' | 'failed' | 'partial'
+    packaging_condition?: string
+    inspection_notes?: string
+    rejection_reason?: string
+  }): Promise<any> {
+    return this.request(`/grns/${grnId}/inspect-item/${itemId}/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async getGRNsPendingInspection(): Promise<any> {
+    return this.request('/grns/pending-inspection/')
+  }
+
+  async getGRNsByWarehouse(warehouseId: number | string, ordering?: string): Promise<any> {
+    const params = ordering ? { ordering } : {}
+    return this.request(`/grns/by-warehouse/${warehouseId}/`, params)
+  }
+
+  async getGRNsByPRO(proId: number | string): Promise<any> {
+    return this.request(`/grns/by-pro/${proId}/`)
+  }
+
+  async getGRNStatistics(): Promise<any> {
+    return this.request('/grns/statistics/')
+  }
+
   // Stock Transfer Management
   async getStockTransfers(params?: {
     search?: string

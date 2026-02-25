@@ -679,3 +679,123 @@ export interface AuditLogStats {
   failed_actions_count: number
   total_logs_30_days: number
 }
+
+// Goods Receipt Note (GRN) Types
+export interface GRNItem {
+  id: number
+  grn: number
+  pro_item: number
+  product: number
+  product_name: string
+  product_code: string
+  product_unit: string
+  quantity_ordered: number
+  quantity_received: number
+  quantity_accepted: number
+  quantity_rejected: number
+  batch_number?: string
+  manufacturing_date?: string
+  expiry_date?: string
+  qc_status: 'pending' | 'passed' | 'failed' | 'partial'
+  packaging_condition?: 'excellent' | 'good' | 'fair' | 'poor' | 'damaged'
+  inspection_notes?: string
+  rejection_reason?: string
+  unit_cost: number
+  total_cost: number
+  quantity_variance: number
+  variance_reason?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface GoodsReceiptNote {
+  id: number
+  grn_number: string
+  pro: number
+  pro_number: string
+  supplier_name: string
+  warehouse: number
+  warehouse_name: string
+  received_date: string
+  supplier_invoice_number?: string
+  supplier_delivery_note?: string
+  vehicle_number?: string
+  driver_name?: string
+  driver_phone?: string
+  qc_status: 'pending' | 'in_progress' | 'passed' | 'partial' | 'failed'
+  inspection_notes?: string
+  inspected_by?: number
+  inspected_by_name?: string
+  inspected_at?: string
+  status: 'draft' | 'under_inspection' | 'approved' | 'partially_approved' | 'rejected' | 'completed'
+  total_quantity_received: number
+  total_quantity_accepted: number
+  total_quantity_rejected: number
+  total_value: number
+  received_by?: number
+  received_by_name?: string
+  approved_by?: number
+  approved_by_name?: string
+  notes?: string
+  rejection_reason?: string
+  created_at: string
+  updated_at: string
+  approved_at?: string
+  completed_at?: string
+  items: GRNItem[]
+}
+
+export interface GRNListItem {
+  id: number
+  grn_number: string
+  pro: number
+  pro_number: string
+  supplier_name: string
+  warehouse: number
+  warehouse_name: string
+  received_date: string
+  status: string
+  qc_status: string
+  total_quantity_received: number
+  total_quantity_accepted: number
+  total_quantity_rejected: number
+  total_value: number
+  received_by?: number
+  received_by_name?: string
+  items_count: number
+  created_at: string
+}
+
+export interface GRNItemCreate {
+  pro_item_id: number
+  product_id: number
+  quantity_received: number
+  batch_number?: string
+  manufacturing_date?: string
+  expiry_date?: string
+  packaging_condition?: 'excellent' | 'good' | 'fair' | 'poor' | 'damaged'
+  notes?: string
+}
+
+export interface GRNCreate {
+  pro_id: number
+  warehouse_id: number
+  received_date?: string
+  supplier_invoice_number?: string
+  supplier_delivery_note?: string
+  vehicle_number?: string
+  driver_name?: string
+  driver_phone?: string
+  notes?: string
+  items: GRNItemCreate[]
+}
+
+export interface GRNStatistics {
+  total_grns: number
+  pending_inspection: number
+  under_inspection: number
+  approved: number
+  rejected: number
+  total_value: number
+  recent_grns: GRNListItem[]
+}

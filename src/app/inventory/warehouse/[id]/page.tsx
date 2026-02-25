@@ -131,7 +131,7 @@ export default function WarehouseInventoryPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showDeclineModal, setShowDeclineModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [activeTab, setActiveTab] = useState<'inventory' | 'receipts'>('inventory')
+  const [activeTab, setActiveTab] = useState<'inventory' | 'receipts' | 'grn_history'>('inventory')
   const [selectedReceipt, setSelectedReceipt] = useState<PendingReceipt | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'out-of-stock'>('all')
@@ -236,6 +236,22 @@ export default function WarehouseInventoryPage() {
     staleTime: 2 * 60 * 1000 // 2 minutes
   })
 
+  // Fetch GRN history for this warehouse
+  const { data: grnHistory = [], isLoading: grnsLoading } = useQuery({
+    queryKey: ['grns-by-warehouse', warehouseId],
+    queryFn: async () => {
+      try {
+        const response = await api.getGRNsByWarehouse(warehouseId, '-created_at')
+        console.log('GRNs for warehouse:', response)
+        return response.results || response || []
+      } catch (error) {
+        console.error('Error fetching GRNs:', error)
+        return []
+      }
+    },
+    enabled: !!warehouseId && activeTab === 'grn_history',
+    staleTime: 2 * 60 * 1000 // 2 minutes
+  })
 
   // Get all products and warehouse inventory
   const allProducts = productsData?.results || (Array.isArray(productsData) ? productsData : [])
@@ -446,6 +462,21 @@ export default function WarehouseInventoryPage() {
                   activeTab === 'receipts' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'
                 }`}>
                   {receiptsLoading ? '...' : pendingReceipts.length}
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('grn_history')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'grn_history'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                GRN History
+                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                  activeTab === 'grn_history' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {grnsLoading ? '...' : grnHistory.length}
                 </span>
               </button>
               <button
@@ -769,6 +800,103 @@ export default function WarehouseInventoryPage() {
           </div>
         )}
 
+        {/* GRN History Tab */}
+        {activeTab === 'grn_history' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Goods Receipt Notes (GRN) History</h3>
+                <p className="text-sm text-gray-600 mt-1">All batch deliveries received at this warehouse</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GRN Number</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PRO Number</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty (Received/Accepted/Rejected)</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Value</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {grnsLoading ? (
+                      <tr>
+                        <td colSpan={9} className="px-6 py-8 text-center">
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto text-orange-500 mb-2" />
+                          <p className="text-gray-600">Loading GRN history...</p>
+                        </td>
+                      </tr>
+                    ) : grnHistory.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                          No GRN history found for this warehouse.
+                        </td>
+                      </tr>
+                    ) : (
+                      grnHistory.map((grn: any, index: number) => (
+                        <tr key={grn.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{grn.grn_number}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{grn.pro_number}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{grn.supplier_name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(grn.received_date).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm">
+                              <div className="text-gray-900">Received: {grn.total_quantity_received?.toLocaleString() || 0}</div>
+                              <div className="text-green-600">Accepted: {grn.total_quantity_accepted?.toLocaleString() || 0}</div>
+                              <div className="text-red-600">Rejected: {grn.total_quantity_rejected?.toLocaleString() || 0}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ₦{grn.total_value?.toLocaleString() || 0}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              grn.qc_status === 'passed' ? 'bg-green-100 text-green-800' :
+                              grn.qc_status === 'failed' ? 'bg-red-100 text-red-800' :
+                              grn.qc_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                              grn.qc_status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {grn.qc_status === 'in_progress' ? 'In Progress' :
+                               grn.qc_status?.charAt(0).toUpperCase() + grn.qc_status?.slice(1) || 'Pending'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              grn.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              grn.status === 'approved' ? 'bg-blue-100 text-blue-800' :
+                              grn.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              grn.status === 'under_inspection' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {grn.status === 'under_inspection' ? 'Under Inspection' :
+                               grn.status?.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || 'Draft'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <button
+                              className="text-orange-600 hover:text-orange-800 font-medium"
+                              onClick={() => router.push(`/inventory/grn/${grn.id}`)}
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Success Modal */}
         {showSuccessModal && (
