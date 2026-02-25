@@ -87,7 +87,7 @@ export default function CreatePaymentVoucherPage() {
   const { data: selectedProData } = useQuery({
     queryKey: ['pro', proIdFromUrl],
     queryFn: async () => {
-      const response = await apiClient.getPro(proIdFromUrl!)
+      const response = await apiClient.getProById(proIdFromUrl!)
       return response
     },
     enabled: !!proIdFromUrl,
@@ -285,7 +285,7 @@ export default function CreatePaymentVoucherPage() {
                       name="sourceType"
                       value="memo"
                       checked={sourceType === 'memo'}
-                      onChange={(e) => {
+                      onChange={() => {
                         setSourceType('memo')
                         setFormData(prev => ({ ...prev, pro: null }))
                       }}
@@ -299,7 +299,7 @@ export default function CreatePaymentVoucherPage() {
                       name="sourceType"
                       value="pro"
                       checked={sourceType === 'pro'}
-                      onChange={(e) => {
+                      onChange={() => {
                         setSourceType('pro')
                         setFormData(prev => ({ ...prev, memo: null }))
                       }}
