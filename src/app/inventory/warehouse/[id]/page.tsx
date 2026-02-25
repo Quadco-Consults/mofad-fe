@@ -131,7 +131,7 @@ export default function WarehouseInventoryPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showDeclineModal, setShowDeclineModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [activeTab, setActiveTab] = useState<'inventory' | 'receipts' | 'grn_history'>('inventory')
+  const [activeTab, setActiveTab] = useState<'inventory' | 'receipts' | 'pending_issues' | 'grn_history'>('inventory')
   const [selectedReceipt, setSelectedReceipt] = useState<PendingReceipt | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'out-of-stock'>('all')
@@ -251,6 +251,28 @@ export default function WarehouseInventoryPage() {
     },
     enabled: !!warehouseId && activeTab === 'grn_history',
     staleTime: 2 * 60 * 1000 // 2 minutes
+  })
+
+  // Fetch PRFs ready for issue at this warehouse
+  const { data: pendingIssues = [], isLoading: issuesLoading } = useQuery({
+    queryKey: ['prfs-ready-for-issue', warehouseId],
+    queryFn: async () => {
+      try {
+        const response = await api.getPrfs({
+          status: 'ready_for_issue',
+          delivery_location: warehouseId,
+          page_size: 100
+        })
+        console.log('PRFs ready for issue at warehouse:', response)
+        return response.results || response || []
+      } catch (error) {
+        console.error('Error fetching PRFs ready for issue:', error)
+        return []
+      }
+    },
+    enabled: !!warehouseId && activeTab === 'pending_issues',
+    staleTime: 30 * 1000, // 30 seconds - refresh more frequently for active operations
+    refetchInterval: 30000 // Auto-refresh every 30 seconds
   })
 
   // Get all products and warehouse inventory
@@ -465,6 +487,21 @@ export default function WarehouseInventoryPage() {
                 </span>
               </button>
               <button
+                onClick={() => setActiveTab('pending_issues')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'pending_issues'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Pending Issues (PRF)
+                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                  activeTab === 'pending_issues' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {issuesLoading ? '...' : pendingIssues.length}
+                </span>
+              </button>
+              <button
                 onClick={() => setActiveTab('grn_history')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'grn_history'
@@ -481,10 +518,11 @@ export default function WarehouseInventoryPage() {
               </button>
               <button
                 onClick={() => router.push('/inventory/warehouse/goods-issue')}
-                className="py-4 px-4 ml-auto bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all flex items-center gap-2 font-medium shadow-md"
+                className="py-4 px-4 ml-auto bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all flex items-center gap-2 font-medium shadow-md text-xs"
+                title="View all warehouses goods issue dashboard"
               >
-                <Package className="w-4 h-4" />
-                Goods Issue Dashboard
+                <Package className="w-3 h-3" />
+                All Warehouses
               </button>
             </nav>
           </div>
@@ -886,6 +924,104 @@ export default function WarehouseInventoryPage() {
                               onClick={() => router.push(`/inventory/grn/${grn.id}`)}
                             >
                               View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pending Issues (PRF) Tab */}
+        {activeTab === 'pending_issues' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Pending Goods Issues (PRF)</h3>
+                  <p className="text-sm text-gray-600 mt-1">Orders ready to be issued from this warehouse</p>
+                </div>
+                <button
+                  onClick={() => router.push('/inventory/warehouse/goods-issue')}
+                  className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm font-medium"
+                >
+                  <Package className="w-4 h-4" />
+                  View All Warehouses
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PRF Number</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estimated Total</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {issuesLoading ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-8 text-center">
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto text-orange-500 mb-2" />
+                          <p className="text-gray-600">Loading pending issues...</p>
+                        </td>
+                      </tr>
+                    ) : pendingIssues.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                          No pending goods issues for this warehouse.
+                        </td>
+                      </tr>
+                    ) : (
+                      pendingIssues.map((prf: any, index: number) => (
+                        <tr key={prf.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{prf.prf_number}</div>
+                            <div className="text-sm text-gray-500">{prf.title || 'N/A'}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {prf.customer_name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {prf.total_items || 0} items
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              prf.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                              prf.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                              prf.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {prf.priority?.charAt(0).toUpperCase() + prf.priority?.slice(1) || 'Normal'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ₦{prf.estimated_total?.toLocaleString() || 0}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1">
+                              <CheckCircle className="w-4 h-4 text-green-500" />
+                              <span className="text-xs text-green-600 font-medium">Confirmed</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(prf.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <button
+                              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-emerald-700 font-medium"
+                              onClick={() => router.push(`/orders/prf/${prf.id}`)}
+                            >
+                              Issue Goods
                             </button>
                           </td>
                         </tr>
