@@ -134,7 +134,7 @@ export function PROPaymentSection({
           {pendingAmount > 0 && !showPaymentForm && (
             <div className="flex gap-2">
               <Button
-                onClick={() => router.push(`/orders/payment-vouchers/create?pro=${proId}`)}
+                onClick={() => router.push(`/admin/payment-vouchers/create?pro=${proId}`)}
                 size="sm"
                 variant="outline"
                 className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50"
