@@ -15,8 +15,10 @@ import {
   DollarSign,
   Calendar,
   FileText,
-  CheckCircle
+  CheckCircle,
+  Receipt
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface PROPaymentSectionProps {
   proId: number | string
@@ -48,6 +50,7 @@ export function PROPaymentSection({
 
   const { addToast } = useToast()
   const queryClient = useQueryClient()
+  const router = useRouter()
 
   // Fetch payments for this PRO
   const { data: paymentsData, isLoading: paymentsLoading } = useQuery({
@@ -129,14 +132,25 @@ export function PROPaymentSection({
             Payment History
           </CardTitle>
           {pendingAmount > 0 && !showPaymentForm && (
-            <Button
-              onClick={() => setShowPaymentForm(true)}
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Record Payment
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => router.push(`/orders/payment-vouchers/create?pro=${proId}`)}
+                size="sm"
+                variant="outline"
+                className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50"
+              >
+                <Receipt className="w-4 h-4" />
+                Create Payment Voucher
+              </Button>
+              <Button
+                onClick={() => setShowPaymentForm(true)}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Quick Payment
+              </Button>
+            </div>
           )}
         </div>
       </CardHeader>
