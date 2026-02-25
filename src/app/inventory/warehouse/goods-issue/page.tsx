@@ -83,9 +83,9 @@ export default function GoodsIssueDashboard() {
     refetchOnWindowFocus: false,
   })
 
-  const readyForIssuePRFs = readyForIssueResponse?.data?.results || []
-  const recentlyIssuedPRFs = recentlyIssuedResponse?.data?.results || []
-  const paymentPendingCount = paymentPendingResponse?.data?.count || 0
+  const readyForIssuePRFs = readyForIssueResponse?.results || []
+  const recentlyIssuedPRFs = recentlyIssuedResponse?.results || []
+  const paymentPendingCount = paymentPendingResponse?.count || 0
 
   // Filter PRFs
   const filteredPRFs = readyForIssuePRFs.filter(prf => {
