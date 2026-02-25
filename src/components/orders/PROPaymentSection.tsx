@@ -71,7 +71,7 @@ export function PROPaymentSection({
 
       addToast({
         title: 'Payment Recorded',
-        description: response.message || 'Payment has been recorded successfully',
+        message: response.message || 'Payment has been recorded successfully',
         type: 'success'
       })
 
@@ -91,7 +91,7 @@ export function PROPaymentSection({
     onError: (error: any) => {
       addToast({
         title: 'Payment Recording Failed',
-        description: error.message || 'Failed to record payment',
+        message: error.message || 'Failed to record payment',
         type: 'error'
       })
     }
@@ -103,7 +103,7 @@ export function PROPaymentSection({
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
       addToast({
         title: 'Invalid Amount',
-        description: 'Please enter a valid payment amount',
+        message: 'Please enter a valid payment amount',
         type: 'error'
       })
       return

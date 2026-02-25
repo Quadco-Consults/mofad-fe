@@ -82,7 +82,7 @@ export const useAuthStore = create<AuthState>()(
             if (typeof window !== 'undefined') {
               localStorage.setItem('auth_user', JSON.stringify(user))
               // Set auth cookie for middleware to recognize authenticated state
-              setCookie('auth_token', response.access_token || 'authenticated', 7)
+              setCookie('auth_token', response.tokens?.access_token || 'authenticated', 7)
             }
 
             set({
@@ -129,7 +129,7 @@ export const useAuthStore = create<AuthState>()(
             if (typeof window !== 'undefined') {
               localStorage.setItem('auth_user', JSON.stringify(user))
               // Set auth cookie for middleware to recognize authenticated state
-              setCookie('auth_token', response.access_token || 'authenticated', 7)
+              setCookie('auth_token', response.tokens?.access_token || 'authenticated', 7)
             }
 
             set({

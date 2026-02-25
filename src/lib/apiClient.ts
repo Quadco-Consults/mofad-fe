@@ -565,7 +565,10 @@ class ApiClient {
       }
     }
 
-    return response
+    return {
+      access_token: response.access,
+      refresh_token: response.refresh
+    }
   }
 
   // User methods
@@ -1003,7 +1006,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1093,7 +1096,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1179,7 +1182,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1196,7 +1199,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1213,7 +1216,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1235,7 +1238,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1285,7 +1288,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1348,7 +1351,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1460,7 +1463,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1501,7 +1504,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1523,7 +1526,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1535,8 +1538,8 @@ class ApiClient {
     return this.request(endpoint)
   }
 
-  // Customer analytics
-  async getCustomerAnalytics(id: number | string): Promise<any> {
+  // Customer analytics (for a specific customer)
+  async getCustomerAnalyticsById(id: number | string): Promise<any> {
     return this.request(`/customers/${id}/analytics/`)
   }
 
@@ -1564,7 +1567,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1582,7 +1585,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1646,7 +1649,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1767,7 +1770,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1847,7 +1850,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -1912,7 +1915,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -2010,7 +2013,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -2088,7 +2091,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -2242,7 +2245,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -2294,7 +2297,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -2340,30 +2343,6 @@ class ApiClient {
     await this.request(`/payment-types/${id}/`, {
       method: 'DELETE'
     })
-  }
-
-  // Audit Log
-  async getAuditLogs(params?: {
-    user?: number
-    action?: string
-    target_model?: string
-    page?: number
-    page_size?: number
-  }): Promise<any> {
-    let endpoint = '/audit-logs/'
-    if (params) {
-      const searchParams = new URLSearchParams()
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
-          searchParams.append(key, String(value))
-        }
-      })
-      const queryString = searchParams.toString()
-      if (queryString) {
-        endpoint += `?${queryString}`
-      }
-    }
-    return this.request(endpoint)
   }
 
   async getMyAuditLogs(): Promise<any[]> {
@@ -3332,19 +3311,7 @@ class ApiClient {
   }
 
   // ==================== Lubebay Services Methods ====================
-
-  async getServices(params?: {
-    page?: number
-    page_size?: number
-    search?: string
-    is_active?: boolean
-  }): Promise<any> {
-    return this.get('/services/', params)
-  }
-
-  async getServiceById(id: number | string): Promise<any> {
-    return this.request(`/services/${id}/`)
-  }
+  // getServices and getServiceById methods are defined earlier in the file
 
   // ==================== Lodgement Methods ====================
 
@@ -4360,7 +4327,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -4393,7 +4360,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -4567,7 +4534,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -4711,14 +4678,16 @@ class ApiClient {
       id: number
       user: number | null
       user_email: string
+      user_name: string
       action: string
+      action_display: string
       target_model: string
       target_id: string
       details: Record<string, any>
       ip_address: string | null
-      user_agent: string | null
+      user_agent: string
       success: boolean
-      error_message: string | null
+      error_message: string
       timestamp: string
     }>
   }> {
@@ -4726,7 +4695,7 @@ class ApiClient {
     if (params) {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== null && String(value) !== '') {
           searchParams.append(key, String(value))
         }
       })
@@ -4745,14 +4714,16 @@ class ApiClient {
     id: number
     user: number | null
     user_email: string
+    user_name: string
     action: string
+    action_display: string
     target_model: string
     target_id: string
     details: Record<string, any>
     ip_address: string | null
-    user_agent: string | null
+    user_agent: string
     success: boolean
-    error_message: string | null
+    error_message: string
     timestamp: string
   }> {
     return this.request(`/audit-logs/${id}/`)

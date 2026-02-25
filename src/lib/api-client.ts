@@ -1,25 +1,17 @@
-// Unified API client that automatically switches between real and mock API
-// Based on the NEXT_PUBLIC_USE_REAL_API environment variable
-
-import mockApi from './mockApi'
+// Unified API client - now only uses the real Django API
 import apiClient from './apiClient'
 
-// Use real Django API by default, fallback to mock if needed
-const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API !== 'false'
+// Export the API client
+export default apiClient
 
-// Export the appropriate client
-const api = USE_REAL_API ? apiClient : mockApi
-
-export default api
-
-// Also export individual clients if needed
-export { apiClient as realApi, mockApi }
+// Also export as realApi for backward compatibility
+export { apiClient as realApi }
 
 // Export configuration for debugging
-export const isUsingMockAPI = !USE_REAL_API
-export const API_MODE = USE_REAL_API ? 'REAL' : 'MOCK'
+export const isUsingMockAPI = false
+export const API_MODE = 'REAL'
 
 // Only log in development
 if (process.env.NODE_ENV === 'development') {
-  console.log(`🔧 Unified API Client - Mode: ${API_MODE} (NEXT_PUBLIC_USE_REAL_API=${process.env.NEXT_PUBLIC_USE_REAL_API})`)
+  console.log(`🔧 Unified API Client - Mode: ${API_MODE}`)
 }

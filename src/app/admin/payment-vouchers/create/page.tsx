@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -42,7 +42,7 @@ const formatCurrency = (amount: number | string) => {
   }).format(numAmount)
 }
 
-export default function CreatePaymentVoucherPage() {
+function CreatePaymentVoucherPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
@@ -545,5 +545,13 @@ export default function CreatePaymentVoucherPage() {
         </Card>
       </div>
     </AppLayout>
+  )
+}
+
+export default function CreatePaymentVoucherPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CreatePaymentVoucherPageContent />
+    </Suspense>
   )
 }
