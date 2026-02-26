@@ -355,9 +355,17 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 className="group flex items-center space-x-3 px-4 py-2.5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
               >
                 <div className="relative">
-                  <div className="w-9 h-9 bg-gradient-to-r from-green-700 to-green-800 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
-                    <User className="h-4 w-4 text-white" />
-                  </div>
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name || 'User'}
+                      className="w-9 h-9 rounded-xl object-cover shadow-lg group-hover:shadow-xl transition-shadow border-2 border-white/20"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 bg-gradient-to-r from-green-700 to-green-800 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                  )}
                   <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
                     <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
                   </div>
@@ -373,9 +381,17 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 <div className="absolute right-0 mt-3 w-64 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 z-50 overflow-hidden">
                   <div className="p-4 border-b border-white/20 bg-gradient-to-r from-slate-50 to-blue-50">
                     <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <User className="h-5 w-5 text-white" />
-                      </div>
+                      {user?.avatar ? (
+                        <img
+                          src={user.avatar}
+                          alt={user.name || 'User'}
+                          className="w-12 h-12 rounded-xl object-cover shadow-lg border-2 border-white/50"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                          <User className="h-5 w-5 text-white" />
+                        </div>
+                      )}
                       <div>
                         <p className="text-sm font-semibold text-slate-800">{user?.name || 'Admin User'}</p>
                         <p className="text-xs text-slate-500">{user?.email || 'admin@mofad.com'}</p>
