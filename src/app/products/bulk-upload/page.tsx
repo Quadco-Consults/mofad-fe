@@ -93,14 +93,13 @@ FILTER-AIR-001,Air Filter XYZ123,filter,castrol,,500.00,750.00,900.00`
   }
 
   return (
-    <AppLayout
-      title="Bulk Upload Product Prices"
-      breadcrumbs={[
-        { label: 'Products', href: '/products' },
-        { label: 'Bulk Upload Prices', href: '/products/bulk-upload' }
-      ]}
-    >
+    <AppLayout>
       <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-bold text-foreground">Bulk Upload Product Prices</h1>
+          <p className="text-muted-foreground">Upload a CSV file to update product prices in bulk</p>
+        </div>
         {/* Instructions Card */}
         <Card>
           <CardHeader>
