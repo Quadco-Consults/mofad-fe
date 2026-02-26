@@ -68,6 +68,11 @@ export default function ProfilePage() {
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Signature states
+  const [signatureImage, setSignatureImage] = useState<string | null>(null)
+  const [isUploadingSignature, setIsUploadingSignature] = useState(false)
+  const signatureInputRef = useRef<HTMLInputElement>(null)
+
   // Profile form
   const profileForm = useForm<ProfileFormData>({
     defaultValues: {
@@ -136,15 +141,90 @@ export default function ProfilePage() {
       }
       reader.readAsDataURL(file)
 
-      // TODO: Upload to server
-      await new Promise(resolve => setTimeout(resolve, 1500)) // Simulate upload delay
-      console.log('Image uploaded successfully')
+      // Upload to server
+      const formData = new FormData()
+      formData.append('avatar', file)
+
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
+      const token = localStorage.getItem('auth_token')
+
+      const response = await fetch(`${API_BASE_URL}/users/update-me/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to upload profile picture')
+      }
+
+      const data = await response.json()
+      console.log('Profile picture uploaded successfully:', data)
+      alert('Profile picture updated successfully!')
       setShowImageUploadModal(false)
     } catch (error) {
       console.error('Upload failed:', error)
-      alert('Failed to upload image. Please try again.')
+      alert('Failed to upload profile picture. Please try again.')
+      setProfileImage(null) // Reset preview on error
     } finally {
       setIsUploadingImage(false)
+    }
+  }
+
+  // Signature upload handler
+  const handleSignatureUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file')
+      return
+    }
+
+    if (file.size > 2 * 1024 * 1024) { // 2MB limit for signatures
+      alert('File size must be less than 2MB')
+      return
+    }
+
+    setIsUploadingSignature(true)
+
+    try {
+      // Create preview URL
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setSignatureImage(e.target.result as string)
+        }
+      }
+      reader.readAsDataURL(file)
+
+      // Upload to server
+      const formData = new FormData()
+      formData.append('signature', file)
+
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
+      const token = localStorage.getItem('auth_token')
+
+      const response = await fetch(`${API_BASE_URL}/users/update-me/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to upload signature')
+      }
+
+      const data = await response.json()
+      console.log('Signature uploaded successfully:', data)
+      alert('Digital signature updated successfully! It will now appear on your signed documents.')
+    } catch (error) {
+      console.error('Signature upload failed:', error)
+      alert('Failed to upload signature. Please try again.')
+      setSignatureImage(null) // Reset preview on error
+    } finally {
+      setIsUploadingSignature(false)
     }
   }
 
@@ -184,6 +264,25 @@ export default function ProfilePage() {
 
   const openFileDialog = () => {
     fileInputRef.current?.click()
+  }
+
+  // Signature handlers
+  const handleSignatureFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleSignatureUpload(file)
+    }
+  }
+
+  const removeSignature = () => {
+    setSignatureImage(null)
+    if (signatureInputRef.current) {
+      signatureInputRef.current.value = ''
+    }
+  }
+
+  const openSignatureDialog = () => {
+    signatureInputRef.current?.click()
   }
 
   // Mock user data
@@ -597,22 +696,56 @@ export default function ProfilePage() {
                   </label>
                   <div className="relative group">
                     <div className="w-full h-32 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl flex items-center justify-center overflow-hidden border-2 border-dashed border-indigo-300">
-                      <div className="text-center p-4">
-                        <Edit3 className="w-10 h-10 text-indigo-400 mx-auto mb-2" />
-                        <p className="text-sm text-indigo-600 font-medium">Upload Signature</p>
-                        <p className="text-xs text-indigo-400 mt-1">Appears on documents you sign</p>
-                      </div>
+                      {signatureImage ? (
+                        <img
+                          src={signatureImage}
+                          alt="Signature"
+                          className="max-w-full max-h-full object-contain p-2"
+                        />
+                      ) : (
+                        <div className="text-center p-4">
+                          <Edit3 className="w-10 h-10 text-indigo-400 mx-auto mb-2" />
+                          <p className="text-sm text-indigo-600 font-medium">Upload Signature</p>
+                          <p className="text-xs text-indigo-400 mt-1">PNG, JPG up to 2MB</p>
+                        </div>
+                      )}
                     </div>
                     <button
-                      onClick={() => alert('Signature upload coming soon!')}
-                      className="absolute inset-0 bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl flex items-center justify-center"
+                      onClick={openSignatureDialog}
+                      disabled={isUploadingSignature}
+                      className="absolute inset-0 bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl flex items-center justify-center disabled:cursor-not-allowed"
                     >
                       <div className="text-center text-white">
-                        <Upload className="w-7 h-7 mx-auto mb-2" />
-                        <span className="text-sm font-medium">Upload Signature</span>
+                        {isUploadingSignature ? (
+                          <>
+                            <RotateCw className="w-7 h-7 mx-auto mb-2 animate-spin" />
+                            <span className="text-sm font-medium">Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-7 h-7 mx-auto mb-2" />
+                            <span className="text-sm font-medium">{signatureImage ? 'Change' : 'Upload'} Signature</span>
+                          </>
+                        )}
                       </div>
                     </button>
                   </div>
+                  {signatureImage && !isUploadingSignature && (
+                    <button
+                      onClick={removeSignature}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors duration-200"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Remove Signature
+                    </button>
+                  )}
+                  <input
+                    ref={signatureInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSignatureFileSelect}
+                    className="hidden"
+                  />
                   <p className="text-xs text-gray-500 flex items-start gap-1">
                     <span className="text-amber-500">💡</span>
                     <span>Your signature will appear on PDFs when you approve or sign documents (like DocuSign)</span>
