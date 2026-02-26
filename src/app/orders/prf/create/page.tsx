@@ -836,7 +836,7 @@ export default function CreateCustomerOrderPage() {
                                 </label>
                                 <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
                                   <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-sm font-medium">
-                                    {(selectedProduct as any).retail_size || selectedProduct.package_sizes[0]}
+                                    {(selectedProduct as any).retail_size || selectedProduct.package_sizes?.[0]}
                                     {selectedProduct.unit_of_measure === 'liters' ? 'L' : selectedProduct.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
                                   </span>
                                 </div>
