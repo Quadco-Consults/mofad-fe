@@ -333,9 +333,31 @@ export default function ProductsPage() {
   const allProducts = extractResults(productsData)
 
   // Client-side tab filtering for lubricants tab (excludes filter category)
-  const products = productTypeTab === 'lubricants' && categoryFilter === 'all'
+  const filteredProducts = productTypeTab === 'lubricants' && categoryFilter === 'all'
     ? allProducts.filter((p: any) => !filterCategories.includes(p.category))
     : allProducts
+
+  // Expand products with multiple package sizes into separate rows
+  const products = filteredProducts.flatMap((product: any) => {
+    // If product has multiple package sizes, create one row per size
+    if (product.package_sizes && Array.isArray(product.package_sizes) && product.package_sizes.length > 0) {
+      return product.package_sizes.map((size: number, index: number) => ({
+        ...product,
+        // Create unique ID for each size variant
+        id: `${product.id}-${index}`,
+        original_id: product.id,
+        // Store single package size
+        package_size: size,
+        package_sizes: [size], // Keep as array with single value for compatibility
+      }))
+    }
+    // If no package sizes or single size, return product as is
+    return [{
+      ...product,
+      original_id: product.id,
+      package_size: product.retail_size || product.bulk_size || null
+    }]
+  })
 
   // Extract warehouses data
   const warehouses = Array.isArray(warehousesData) ? warehousesData : (warehousesData as any)?.results || []
@@ -575,10 +597,12 @@ export default function ProductsPage() {
   }
 
   const handleToggleStatus = (product: Product) => {
+    // Use original_id if available (for expanded package size rows), otherwise use id
+    const productId = (product as any).original_id || product.id
     if (product.is_active) {
-      deactivateMutation.mutate(product.id)
+      deactivateMutation.mutate(productId)
     } else {
-      activateMutation.mutate(product.id)
+      activateMutation.mutate(productId)
     }
   }
 
@@ -605,12 +629,16 @@ export default function ProductsPage() {
     }
     delete (backendData as any).direct_sales_price // Remove the frontend-only field
     delete (backendData as any).retail_sales_price // Remove the frontend-only field
-    updateMutation.mutate({ id: selectedProduct.id, data: backendData })
+    // Use original_id if available (for expanded package size rows), otherwise use id
+    const productId = (selectedProduct as any).original_id || selectedProduct.id
+    updateMutation.mutate({ id: productId, data: backendData })
   }
 
   const confirmDelete = () => {
     if (selectedProduct) {
-      deleteMutation.mutate(selectedProduct.id)
+      // Use original_id if available (for expanded package size rows), otherwise use id
+      const productId = (selectedProduct as any).original_id || selectedProduct.id
+      deleteMutation.mutate(productId)
     }
   }
 
@@ -983,13 +1011,9 @@ export default function ProductsPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="text-sm text-gray-700">
-                            {product.package_sizes && Array.isArray(product.package_sizes) && product.package_sizes.length > 0 ? (
-                              <span className="flex flex-wrap gap-1">
-                                {product.package_sizes.map((size: number, idx: number) => (
-                                  <span key={idx} className="inline-block px-2 py-0.5 bg-gray-100 rounded text-xs font-medium">
-                                    {size}{product.unit_of_measure === 'liters' ? 'L' : product.unit_of_measure === 'gallons' ? 'gal' : product.unit_of_measure === 'kilograms' ? 'kg' : 'pc'}
-                                  </span>
-                                ))}
+                            {product.package_size ? (
+                              <span className="inline-block px-2 py-0.5 bg-gray-100 rounded text-xs font-medium">
+                                {product.package_size}{product.unit_of_measure === 'liters' ? 'L' : product.unit_of_measure === 'gallons' ? 'gal' : product.unit_of_measure === 'kilograms' ? 'kg' : 'pc'}
                               </span>
                             ) : product.bulk_size || product.retail_size ? (
                               <span className="flex flex-wrap gap-1">
