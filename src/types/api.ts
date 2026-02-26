@@ -192,10 +192,12 @@ export interface Product {
 
 export interface ProductFormData {
   name: string
+  code?: string
   description?: string
   category: 'fuel' | 'lubricant' | 'additive' | 'service' | 'equipment' | 'other' | 'engine_oil' | 'hydraulic_oil' | 'gear_oil' | 'brake_fluid' | 'coolant' | 'grease' | 'filter'
   subcategory?: string
   brand?: string
+  package_size?: number
   unit_of_measure: 'liters' | 'gallons' | 'kilograms' | 'pieces' | 'meters' | 'hours'
   cost_price: number
   direct_sales_price: number

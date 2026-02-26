@@ -249,118 +249,37 @@ export default function MemoDetailPage() {
   }
 
   const handleDownloadPDF = async () => {
-    if (!printRef.current) return
-
     try {
-      // Create a new window for PDF generation
-      const printWindow = window.open('', '_blank', 'width=1200,height=800')
-      if (!printWindow) {
-        alert('Please allow popups to download the PDF')
-        return
+      // Call the backend API to generate PDF
+      const response = await fetch(`http://localhost:8000/api/v1/memos/${memoId}/generate-pdf/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to generate PDF')
       }
 
-      // Clone the content
-      const content = printRef.current.cloneNode(true) as HTMLElement
+      // Get the PDF blob
+      const blob = await response.blob()
 
-      // Write content to new window with proper styling
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Memo ${memo?.memo_number || 'Document'}</title>
-            <meta charset="UTF-8">
-            <style>
-              @page {
-                size: A4;
-                margin: 0.5in;
-              }
-              * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-              }
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                margin: 0;
-                padding: 0;
-                background: white;
-                color: black;
-              }
-              .min-h-screen {
-                min-height: 100vh;
-                page-break-after: always;
-              }
-              .min-h-screen:last-child {
-                page-break-after: auto;
-              }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                margin: 20px 0;
-              }
-              th, td {
-                padding: 12px;
-                text-align: left;
-                border: 1px solid #000;
-              }
-              th {
-                background: #000;
-                color: white;
-                font-weight: 700;
-              }
-              .text-right { text-align: right; }
-              .text-center { text-align: center; }
-              .font-bold { font-weight: 700; }
-              .uppercase { text-transform: uppercase; }
-              .border-2 { border-width: 2px; }
-              .border-black { border-color: #000; }
-              .bg-black { background-color: #000; color: white; }
-              .text-white { color: white; }
-              .p-4 { padding: 1rem; }
-              .p-6 { padding: 1.5rem; }
-              .p-8 { padding: 2rem; }
-              .p-12 { padding: 3rem; }
-              .mb-4 { margin-bottom: 1rem; }
-              .mb-6 { margin-bottom: 1.5rem; }
-              .mb-8 { margin-bottom: 2rem; }
-              .mt-4 { margin-top: 1rem; }
-              .mt-8 { margin-top: 2rem; }
-              .ml-6 { margin-left: 1.5rem; }
-              .grid { display: grid; }
-              .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-              .gap-4 { gap: 1rem; }
-              .flex { display: flex; }
-              .items-center { align-items: center; }
-              .justify-between { justify-content: space-between; }
-              .text-xs { font-size: 0.75rem; }
-              .text-sm { font-size: 0.875rem; }
-              .text-base { font-size: 1rem; }
-              .text-lg { font-size: 1.125rem; }
-              .text-xl { font-size: 1.25rem; }
-              .text-2xl { font-size: 1.5rem; }
-              .text-3xl { font-size: 1.875rem; }
-              img { max-width: 200px; height: auto; }
-            </style>
-          </head>
-          <body>
-            ${content.innerHTML}
-          </body>
-        </html>
-      `)
+      // Create a download link
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `MOFAD_${memo?.memo_number}_Documents.pdf`
+      document.body.appendChild(a)
+      a.click()
 
-      printWindow.document.close()
-
-      // Wait for content to load then trigger print
-      setTimeout(() => {
-        printWindow.print()
-        // Close the window after printing
-        setTimeout(() => {
-          printWindow.close()
-        }, 100)
-      }, 500)
+      // Cleanup
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
     } catch (error) {
       console.error('Error generating PDF:', error)
-      alert('Failed to generate PDF. Please try again.')
+      alert(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 

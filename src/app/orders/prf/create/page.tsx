@@ -146,7 +146,6 @@ export default function CreateCustomerOrderPage() {
   const [productSearchTerm, setProductSearchTerm] = useState('')
   const [customerSearchTerm, setCustomerSearchTerm] = useState('')
   const [selectedWarehouse, setSelectedWarehouse] = useState('')
-  const [selectedPackageSize, setSelectedPackageSize] = useState<number | null>(null)
 
   // Fetch customers with search
   const { data: customersData, isLoading: customersLoading } = useQuery({
@@ -315,6 +314,9 @@ export default function CreateCustomerOrderPage() {
     // Find selected warehouse name
     const selectedWarehouseObj = warehouses.find((w: Warehouse) => w.id.toString() === selectedWarehouse)
 
+    // Extract package size from product (each product now represents a single size)
+    const packageSize = product.retail_size || (product.package_sizes && product.package_sizes.length > 0 ? product.package_sizes[0] : undefined)
+
     const item: OrderItem = {
       id: Date.now().toString(),
       product_id: (selectedProduct.id || 0).toString(),
@@ -323,7 +325,7 @@ export default function CreateCustomerOrderPage() {
       quantity,
       unit_price: unitPrice,
       total,
-      package_size: selectedPackageSize || undefined,
+      package_size: packageSize,
       warehouse_id: selectedWarehouse || undefined,
       warehouse_name: selectedWarehouseObj?.name || undefined,
     }
@@ -336,7 +338,6 @@ export default function CreateCustomerOrderPage() {
     // Reset form
     setSelectedProduct(null)
     setQuantity(0)
-    setSelectedPackageSize(null)
     setSelectedWarehouse('')
   }
 
@@ -775,19 +776,14 @@ export default function CreateCustomerOrderPage() {
                                 </div>
                               </div>
 
-                              {/* Package Sizes */}
-                              {product.package_sizes && product.package_sizes.length > 0 && (
+                              {/* Package Size */}
+                              {((product as any).retail_size || (product.package_sizes && product.package_sizes.length > 0)) && (
                                 <div className="mb-2">
-                                  <p className="text-xs text-muted-foreground mb-1">Package Sizes:</p>
+                                  <p className="text-xs text-muted-foreground mb-1">Package Size:</p>
                                   <div className="flex flex-wrap gap-1">
-                                    {product.package_sizes.map((size, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium"
-                                      >
-                                        {size}{product.unit_of_measure === 'liters' ? 'L' : product.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
-                                      </span>
-                                    ))}
+                                    <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
+                                      {(product as any).retail_size || product.package_sizes[0]}{product.unit_of_measure === 'liters' ? 'L' : product.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
+                                    </span>
                                   </div>
                                 </div>
                               )}
@@ -832,24 +828,18 @@ export default function CreateCustomerOrderPage() {
                               />
                             </div>
 
-                            {/* Package Size Selector */}
-                            {selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0 && (
+                            {/* Package Size Display */}
+                            {((selectedProduct as any).retail_size || (selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0)) && (
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                   Package Size
                                 </label>
-                                <select
-                                  value={selectedPackageSize || ''}
-                                  onChange={(e) => setSelectedPackageSize(e.target.value ? Number(e.target.value) : null)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                >
-                                  <option value="">Select size</option>
-                                  {selectedProduct.package_sizes.map((size, idx) => (
-                                    <option key={idx} value={size}>
-                                      {size}{selectedProduct.unit_of_measure === 'liters' ? 'L' : selectedProduct.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
-                                    </option>
-                                  ))}
-                                </select>
+                                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+                                  <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-sm font-medium">
+                                    {(selectedProduct as any).retail_size || selectedProduct.package_sizes[0]}
+                                    {selectedProduct.unit_of_measure === 'liters' ? 'L' : selectedProduct.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
+                                  </span>
+                                </div>
                               </div>
                             )}
 

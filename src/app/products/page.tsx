@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -42,6 +43,7 @@ import {
   Calendar,
   User,
   Filter,
+  Upload,
 } from 'lucide-react'
 
 // Real API bin card transaction interface (matches backend response)
@@ -184,10 +186,12 @@ const getStatusBadge = (isActive: boolean) => {
 
 const initialFormData: ProductFormData = {
   name: '',
+  code: '',
   description: '',
   category: 'engine_oil',
   subcategory: '',
   brand: '',
+  package_size: undefined,
   unit_of_measure: 'liters',
   cost_price: 0,
   direct_sales_price: 0,
@@ -204,6 +208,7 @@ const initialFormData: ProductFormData = {
 }
 
 export default function ProductsPage() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
@@ -488,12 +493,16 @@ export default function ProductsPage() {
     const errors: Record<string, string> = {}
 
     if (!formData.name.trim()) errors.name = 'Product name is required'
+    if (!formData.code?.trim()) errors.code = 'Product code is required'
     if (!formData.category) errors.category = 'Category is required'
     if (!formData.unit_of_measure) errors.unit_of_measure = 'Unit of measure is required'
     if (formData.cost_price < 0) errors.cost_price = 'Cost price cannot be negative'
     if (formData.direct_sales_price < 0) errors.direct_sales_price = 'Direct Sales Price cannot be negative'
     if (formData.direct_sales_price < formData.cost_price) {
       errors.direct_sales_price = 'Direct Sales Price should be greater than cost price'
+    }
+    if (formData.package_size !== undefined && formData.package_size <= 0) {
+      errors.package_size = 'Package size must be greater than 0'
     }
 
     setFormErrors(errors)
@@ -608,14 +617,30 @@ export default function ProductsPage() {
 
   const handleSaveNew = () => {
     if (!validateForm()) return
+
+    // Generate unique code if package_size is provided
+    let productCode = formData.code || ''
+    if (formData.package_size && productCode) {
+      productCode = `${productCode}-${Math.round(formData.package_size)}L`
+    }
+
     // Map form data to backend field names
-    const backendData = {
+    const backendData: any = {
       ...formData,
+      code: productCode,
       bulk_selling_price: formData.direct_sales_price, // Map direct_sales_price to bulk_selling_price
       retail_selling_price: formData.retail_sales_price, // Map retail_sales_price to retail_selling_price
     }
-    delete (backendData as any).direct_sales_price // Remove the frontend-only field
-    delete (backendData as any).retail_sales_price // Remove the frontend-only field
+
+    // Set retail_size and package_sizes if package_size is provided
+    if (formData.package_size) {
+      backendData.retail_size = formData.package_size
+      backendData.package_sizes = [formData.package_size]
+    }
+
+    delete backendData.direct_sales_price // Remove the frontend-only field
+    delete backendData.package_size // Remove the frontend-only field (we use retail_size and package_sizes)
+
     createMutation.mutate(backendData)
   }
 
@@ -722,6 +747,10 @@ export default function ProductsPage() {
             <Button variant="outline">
               <Download className="w-4 h-4 mr-2" />
               Export
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/products/bulk-upload')}>
+              <Upload className="w-4 h-4 mr-2" />
+              Upload Prices
             </Button>
             <Button className="mofad-btn-primary" onClick={handleAdd}>
               <Plus className="w-4 h-4 mr-2" />
@@ -1169,6 +1198,34 @@ export default function ProductsPage() {
                       <option value="additive">Additives</option>
                       <option value="other">Other</option>
                     </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Product Code"
+                    name="code"
+                    required
+                    placeholder="e.g., CASTROL-GTX"
+                    value={formData.code || ''}
+                    onChange={(e) => setFormData({...formData, code: e.target.value})}
+                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Package Size (Liters)
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="e.g., 1, 4, 200 (optional for filters)"
+                      value={formData.package_size || ''}
+                      onChange={(e) => setFormData({...formData, package_size: e.target.valueAsNumber || undefined})}
+                      min="0"
+                      step="0.1"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Leave empty for filters. For oils with multiple sizes, create separate products.
+                    </p>
                   </div>
                 </div>
 

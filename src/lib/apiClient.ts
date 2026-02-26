@@ -2014,6 +2014,32 @@ class ApiClient {
     })
   }
 
+  async bulkUploadProductPrices(file: File): Promise<any> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch(`${API_BASE_URL}/products/bulk-upload-prices/`, {
+      method: 'POST',
+      headers: {
+        ...(this.authToken && { Authorization: `Bearer ${this.authToken}` })
+      },
+      body: formData
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw {
+        message: errorData.error || 'Failed to upload file',
+        errors: errorData,
+        status: response.status
+      }
+    }
+
+    const json = await response.json()
+    // Handle APIResponseViewSetMixin wrapping
+    return json.data || json
+  }
+
   // Service Management (Lubebay Services)
   async getServices(params?: {
     search?: string
