@@ -30,6 +30,8 @@ import {
   ClipboardList,
 } from 'lucide-react'
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
+
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
@@ -251,7 +253,7 @@ export default function MemoDetailPage() {
   const handleDownloadPDF = async () => {
     try {
       // Call the backend API to generate PDF
-      const response = await fetch(`http://localhost:8000/api/v1/memos/${memoId}/generate-pdf/`, {
+      const response = await fetch(`${API_BASE_URL}/memos/${memoId}/generate-pdf/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
