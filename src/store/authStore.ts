@@ -33,6 +33,7 @@ interface AuthState {
   verifyMfa: (totp: string) => Promise<void>
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
+  updateUser: (user: Partial<User>) => void
   clearError: () => void
   setHasHydrated: (hasHydrated: boolean) => void
 }
@@ -236,6 +237,18 @@ export const useAuthStore = create<AuthState>()(
             pendingEmail: null,
             forcePasswordReset: false,
           })
+        }
+      },
+
+      updateUser: (updatedUser: Partial<User>) => {
+        const currentUser = get().user
+        if (currentUser) {
+          const newUser = { ...currentUser, ...updatedUser }
+          // Update both Zustand store and localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('auth_user', JSON.stringify(newUser))
+          }
+          set({ user: newUser })
         }
       },
 

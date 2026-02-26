@@ -52,7 +52,7 @@ interface PasswordFormData {
 }
 
 export default function ProfilePage() {
-  const { user } = useAuthStore()
+  const { user, updateUser } = useAuthStore()
   const [isEditing, setIsEditing] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [showPasswords, setShowPasswords] = useState({
@@ -178,6 +178,12 @@ export default function ProfilePage() {
 
       const data = await response.json()
       console.log('Profile picture uploaded successfully:', data)
+
+      // Update auth store with new avatar URL
+      if (data.data?.avatar) {
+        updateUser({ avatar: data.data.avatar })
+      }
+
       alert('Profile picture updated successfully!')
       setShowImageUploadModal(false)
     } catch (error) {
@@ -234,6 +240,12 @@ export default function ProfilePage() {
 
       const data = await response.json()
       console.log('Signature uploaded successfully:', data)
+
+      // Update auth store with new signature URL
+      if (data.data?.signature) {
+        updateUser({ signature: data.data.signature })
+      }
+
       alert('Digital signature updated successfully! It will now appear on your signed documents.')
     } catch (error) {
       console.error('Signature upload failed:', error)
