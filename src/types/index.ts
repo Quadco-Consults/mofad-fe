@@ -7,6 +7,7 @@ export interface User {
   created_at: string
   updated_at: string
   avatar?: string
+  signature?: string
   permissions?: Permission[]
   roles?: Role[]
 }

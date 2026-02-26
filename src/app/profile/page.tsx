@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -72,6 +72,22 @@ export default function ProfilePage() {
   const [signatureImage, setSignatureImage] = useState<string | null>(null)
   const [isUploadingSignature, setIsUploadingSignature] = useState(false)
   const signatureInputRef = useRef<HTMLInputElement>(null)
+
+  // Load existing avatar and signature on mount
+  useEffect(() => {
+    if (user?.avatar) {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
+      // If avatar is a relative path, prepend the base URL
+      const avatarUrl = user.avatar.startsWith('http') ? user.avatar : `${API_BASE_URL.replace('/api/v1', '')}${user.avatar}`
+      setProfileImage(avatarUrl)
+    }
+    if (user?.signature) {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
+      // If signature is a relative path, prepend the base URL
+      const signatureUrl = user.signature.startsWith('http') ? user.signature : `${API_BASE_URL.replace('/api/v1', '')}${user.signature}`
+      setSignatureImage(signatureUrl)
+    }
+  }, [user])
 
   // Profile form
   const profileForm = useForm<ProfileFormData>({
