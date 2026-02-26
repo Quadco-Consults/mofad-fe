@@ -537,6 +537,90 @@ export default function ProfilePage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Profile Picture & Signature Uploads */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3 text-xl">
+                  <ImageIcon className="w-6 h-6 text-blue-600" />
+                  Profile Media
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Profile Picture Section */}
+                <div className="space-y-3">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Camera className="w-4 h-4" />
+                    Profile Picture
+                  </label>
+                  <div className="relative group">
+                    <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300">
+                      {profileImage ? (
+                        <img
+                          src={profileImage}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-center p-4">
+                          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500">Click to upload photo</p>
+                          <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowImageUploadModal(true)}
+                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl flex items-center justify-center"
+                    >
+                      <div className="text-center text-white">
+                        <Camera className="w-8 h-8 mx-auto mb-2" />
+                        <span className="text-sm font-medium">Change Photo</span>
+                      </div>
+                    </button>
+                  </div>
+                  {profileImage && (
+                    <button
+                      onClick={removeProfileImage}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors duration-200"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Remove Photo
+                    </button>
+                  )}
+                </div>
+
+                {/* Signature Section */}
+                <div className="space-y-3 pt-4 border-t border-gray-200">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Edit3 className="w-4 h-4" />
+                    Digital Signature
+                  </label>
+                  <div className="relative group">
+                    <div className="w-full h-32 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl flex items-center justify-center overflow-hidden border-2 border-dashed border-indigo-300">
+                      <div className="text-center p-4">
+                        <Edit3 className="w-10 h-10 text-indigo-400 mx-auto mb-2" />
+                        <p className="text-sm text-indigo-600 font-medium">Upload Signature</p>
+                        <p className="text-xs text-indigo-400 mt-1">Appears on documents you sign</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => alert('Signature upload coming soon!')}
+                      className="absolute inset-0 bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl flex items-center justify-center"
+                    >
+                      <div className="text-center text-white">
+                        <Upload className="w-7 h-7 mx-auto mb-2" />
+                        <span className="text-sm font-medium">Upload Signature</span>
+                      </div>
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 flex items-start gap-1">
+                    <span className="text-amber-500">💡</span>
+                    <span>Your signature will appear on PDFs when you approve or sign documents (like DocuSign)</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Account Stats */}
             <Card className="border-0 shadow-lg">
               <CardHeader className="pb-4">
