@@ -782,7 +782,7 @@ export default function CreateCustomerOrderPage() {
                                   <p className="text-xs text-muted-foreground mb-1">Package Size:</p>
                                   <div className="flex flex-wrap gap-1">
                                     <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
-                                      {(product as any).retail_size || product.package_sizes[0]}{product.unit_of_measure === 'liters' ? 'L' : product.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
+                                      {(product as any).retail_size || product.package_sizes?.[0]}{product.unit_of_measure === 'liters' ? 'L' : product.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
                                     </span>
                                   </div>
                                 </div>
