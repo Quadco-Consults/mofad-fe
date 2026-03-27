@@ -71,7 +71,7 @@ const navigation: NavItem[] = [
     href: '/dashboard',
     icon: LayoutDashboard,
     color: 'from-green-600 to-green-700',
-    roles: PRIVILEGED_ROLES,
+    // No role restriction - all authenticated users can see
   },
 ]
 
@@ -85,7 +85,7 @@ const navigationSections = [
         href: '/orders',
         icon: ShoppingCart,
         color: 'from-gray-500 to-gray-600',
-        roles: PRIVILEGED_ROLES,
+        // No role restriction - all authenticated users can see
         children: [
           { label: 'PRF - Purchase Requisition', href: '/orders/prf', icon: FileText },
           { label: 'View/Approve PRF', href: '/orders/prf/approve', icon: ClipboardCheck },
@@ -100,7 +100,7 @@ const navigationSections = [
         href: '/inventory/warehouse',
         icon: Warehouse,
         color: 'from-gray-500 to-gray-600',
-        roles: ['admin', 'manager', 'storekeeper'],
+        // No role restriction - all authenticated users can see
         children: [
           { label: 'Warehouse Overview', href: '/inventory/warehouse', icon: Warehouse },
           { label: 'Stock Transfers', href: '/inventory/transfers', icon: Truck },
@@ -111,14 +111,14 @@ const navigationSections = [
         href: '/products',
         icon: Box,
         color: 'from-gray-500 to-gray-600',
-        roles: PRIVILEGED_ROLES,
+        // No role restriction - all authenticated users can see
       },
       {
         label: 'Lubebay',
         href: '/channels/lubebays',
         icon: Car,
         color: 'from-gray-500 to-gray-600',
-        roles: PRIVILEGED_ROLES,
+        // No role restriction - all authenticated users can see
         children: [
           { label: 'Lubebays', href: '/channels/lubebays', icon: Car },
           { label: 'Lodgements', href: '/channels/lubebays/lodgements', icon: DollarSign },
@@ -130,7 +130,7 @@ const navigationSections = [
         href: '/channels/carwash',
         icon: Droplets,
         color: 'from-green-500 to-green-600',
-        roles: PRIVILEGED_ROLES,
+        // No role restriction - all authenticated users can see
         children: [
           { label: 'Car Washes', href: '/channels/carwash', icon: Droplets },
           { label: 'Expenses', href: '/channels/carwash/expenses', icon: Receipt },
@@ -141,21 +141,21 @@ const navigationSections = [
         href: '/customers',
         icon: Users,
         color: 'from-gray-500 to-gray-600',
-        roles: PRIVILEGED_ROLES,
+        // No role restriction - all authenticated users can see
       },
       {
         label: 'Suppliers',
         href: '/suppliers',
         icon: Building,
         color: 'from-gray-500 to-gray-600',
-        roles: PRIVILEGED_ROLES,
+        // No role restriction - all authenticated users can see
       },
       {
         label: 'Reports',
         href: '/reports',
         icon: TrendingUp,
         color: 'from-green-500 to-green-600',
-        roles: ['admin', 'manager', 'accountant'],
+        // No role restriction - all authenticated users can see
         children: [
           { label: 'Current Stock Report', href: '/reports/stock-report', icon: Package },
           { label: 'Financial Reports', href: '/reports/financial', icon: TrendingUp },
@@ -196,7 +196,7 @@ const navigationSections = [
         href: '/accounts/lodgements',
         icon: DollarSign,
         color: 'from-gray-500 to-gray-600',
-        roles: PRIVILEGED_ROLES,
+        // No role restriction - all authenticated users can see
       },
     ]
   },
@@ -279,7 +279,7 @@ const navigationSections = [
         href: '/admin/memo',
         icon: FileCheck,
         color: 'from-gray-500 to-gray-600',
-        roles: ADMIN_ROLES,
+        // No role restriction - all authenticated users can see
       },
     ]
   },
