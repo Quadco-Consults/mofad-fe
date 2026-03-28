@@ -117,8 +117,8 @@ const navigationSections = [
         // No role restriction - all authenticated users can see
         children: [
           { label: 'Lubebays', href: '/channels/lubebays', icon: Car },
-          { label: 'Lodgements', href: '/channels/lubebays/lodgements', icon: DollarSign },
-          { label: 'Expenses', href: '/channels/lubebays/expenses', icon: Receipt },
+          { label: 'All Lodgements', href: '/channels/lubebays/lodgements', icon: DollarSign },
+          { label: 'All Expenses', href: '/channels/lubebays/expenses', icon: Receipt },
         ],
       },
       {
