@@ -225,7 +225,7 @@ export default function LubebayDashboardPage() {
   const queryClient = useQueryClient()
   const lubebayId = params.id as string
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'filters' | 'services' | 'expenses' | 'lodgements'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'filters' | 'services' | 'expenses' | 'lodgements' | 'inventory'>('overview')
   const [showRecordSaleModal, setShowRecordSaleModal] = useState(false)
   const [saleType, setSaleType] = useState<'lubricant' | 'filter'>('lubricant')
   const [productSearchTerm, setProductSearchTerm] = useState('')
@@ -248,6 +248,10 @@ export default function LubebayDashboardPage() {
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ type: string; id: any; name: string } | null>(null)
+
+  // Bin card modal
+  const [showBinCardModal, setShowBinCardModal] = useState(false)
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<any>(null)
 
   // Lubricant sale form state (simplified - no customer details)
   const [saleForm, setSaleForm] = useState({
@@ -336,6 +340,40 @@ export default function LubebayDashboardPage() {
         return null
       }
     },
+  })
+
+  // Fetch warehouse inventory for this lubebay
+  const { data: inventoryData, isLoading: inventoryLoading } = useQuery({
+    queryKey: ['lubebay-inventory', lubebay?.warehouse],
+    queryFn: async () => {
+      try {
+        if (!lubebay?.warehouse) return { results: [] }
+        const response = await apiClient.get(`/warehouse-inventory/?warehouse=${lubebay.warehouse}`)
+        console.log('📦 Inventory data:', response)
+        return response
+      } catch (error) {
+        console.error('Error fetching inventory:', error)
+        return { results: [] }
+      }
+    },
+    enabled: !!lubebay?.warehouse
+  })
+
+  // Fetch stock transactions for bin card (only when modal is open)
+  const { data: binCardData, isLoading: binCardLoading } = useQuery({
+    queryKey: ['bin-card', lubebay?.warehouse, selectedInventoryItem?.product],
+    queryFn: async () => {
+      try {
+        if (!lubebay?.warehouse || !selectedInventoryItem?.product) return { results: [] }
+        const response = await apiClient.get(`/stock-transactions/?warehouse=${lubebay.warehouse}&product=${selectedInventoryItem.product}`)
+        console.log('📋 Bin card data:', response)
+        return response
+      } catch (error) {
+        console.error('Error fetching bin card:', error)
+        return { results: [] }
+      }
+    },
+    enabled: !!showBinCardModal && !!lubebay?.warehouse && !!selectedInventoryItem?.product
   })
 
   // Fetch service transactions
@@ -939,6 +977,16 @@ export default function LubebayDashboardPage() {
           >
             Lodgements
           </button>
+          <button
+            onClick={() => setActiveTab('inventory')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'inventory'
+                ? 'bg-white text-primary shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Inventory
+          </button>
         </div>
 
         {/* Tab Content */}
@@ -1088,20 +1136,8 @@ export default function LubebayDashboardPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={async () => {
-                                  try {
-                                    // Fetch full transaction details with items
-                                    const details = await apiClient.get(`/lubebay-service-transactions/${sale.id}/`)
-                                    console.log('Transaction details fetched:', details)
-                                    console.log('Items in transaction:', details.items)
-                                    setSelectedTransaction(details)
-                                    setShowTransactionDetailModal(true)
-                                  } catch (error) {
-                                    console.error('Error fetching transaction details:', error)
-                                    // Fallback to showing what we have
-                                    setSelectedTransaction(sale)
-                                    setShowTransactionDetailModal(true)
-                                  }
+                                onClick={() => {
+                                  router.push(`/channels/lubebays/transactions/${sale.id}`)
                                 }}
                                 title="View Details"
                               >
@@ -1235,20 +1271,8 @@ export default function LubebayDashboardPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      // Fetch full transaction details with items
-                                      const details = await apiClient.get(`/lubebay-service-transactions/${sale.id}/`)
-                                      console.log('Transaction details fetched:', details)
-                                      console.log('Items in transaction:', details.items)
-                                      setSelectedTransaction(details)
-                                      setShowTransactionDetailModal(true)
-                                    } catch (error) {
-                                      console.error('Error fetching transaction details:', error)
-                                      // Fallback to showing what we have
-                                      setSelectedTransaction(sale)
-                                      setShowTransactionDetailModal(true)
-                                    }
+                                  onClick={() => {
+                                    router.push(`/channels/lubebays/transactions/${sale.id}`)
                                   }}
                                   title="View Details"
                                 >
@@ -1405,18 +1429,8 @@ export default function LubebayDashboardPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={async () => {
-                                  try {
-                                    // Fetch full transaction details with items
-                                    const details = await apiClient.get(`/lubebay-service-transactions/${service.id}/`)
-                                    setSelectedTransaction(details)
-                                    setShowTransactionDetailModal(true)
-                                  } catch (error) {
-                                    console.error('Error fetching transaction details:', error)
-                                    // Fallback to showing what we have
-                                    setSelectedTransaction(service)
-                                    setShowTransactionDetailModal(true)
-                                  }
+                                onClick={() => {
+                                  router.push(`/channels/lubebays/transactions/${service.id}`)
                                 }}
                                 title="View Details"
                               >
@@ -1700,6 +1714,113 @@ export default function LubebayDashboardPage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {/* Inventory Tab */}
+        {activeTab === 'inventory' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Lubebay Inventory</h2>
+              <p className="text-sm text-muted-foreground">Stock of Lubricants & Filters</p>
+            </div>
+
+            {inventoryLoading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p className="mt-2 text-sm text-muted-foreground">Loading inventory...</p>
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left py-3 px-4 font-medium">Product Code</th>
+                          <th className="text-left py-3 px-4 font-medium">Product Name</th>
+                          <th className="text-left py-3 px-4 font-medium">Category</th>
+                          <th className="text-right py-3 px-4 font-medium">Quantity</th>
+                          <th className="text-left py-3 px-4 font-medium">Unit</th>
+                          <th className="text-center py-3 px-4 font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {inventoryData?.results && inventoryData.results.length > 0 ? (
+                          inventoryData.results.map((item: any) => (
+                            <tr
+                              key={item.id}
+                              className="hover:bg-gray-50 cursor-pointer"
+                              onClick={() => {
+                                setSelectedInventoryItem(item)
+                                setShowBinCardModal(true)
+                              }}
+                            >
+                              <td className="py-3 px-4">
+                                <span className="font-mono text-sm">{item.product_code || 'N/A'}</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="font-medium text-gray-900">{item.product_name}</div>
+                                {item.product_description && (
+                                  <div className="text-xs text-gray-500 mt-1">{item.product_description}</div>
+                                )}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  item.product_category?.toLowerCase().includes('lubricant')
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : item.product_category?.toLowerCase().includes('filter')
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {item.product_category || 'Other'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <span className={`font-bold ${
+                                  Number(item.quantity_on_hand) > 10
+                                    ? 'text-green-600'
+                                    : Number(item.quantity_on_hand) > 0
+                                    ? 'text-orange-600'
+                                    : 'text-red-600'
+                                }`}>
+                                  {Number(item.quantity_on_hand).toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="text-sm">{item.unit_of_measure || 'Units'}</span>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setSelectedInventoryItem(item)
+                                    setShowBinCardModal(true)
+                                  }}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  <span className="ml-1">Bin Card</span>
+                                </Button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={6} className="py-8 text-center text-gray-500">
+                              <Package className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                              <p>No inventory found for this lubebay</p>
+                              <p className="text-sm mt-1">Stock items will appear here once added to the warehouse</p>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
@@ -3168,6 +3289,130 @@ export default function LubebayDashboardPage() {
                   }}
                 >
                   Delete
+                </Button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Bin Card Modal */}
+        {showBinCardModal && selectedInventoryItem && typeof window !== 'undefined' && createPortal(
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-bold">Bin Card - {selectedInventoryItem.product_name}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Product Code: {selectedInventoryItem.product_code} | Current Stock: {Number(selectedInventoryItem.quantity_on_hand).toFixed(2)} {selectedInventoryItem.unit_of_measure}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowBinCardModal(false)
+                    setSelectedInventoryItem(null)
+                  }}
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              {binCardLoading ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Loading transaction history...</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="text-left py-3 px-4 font-medium">Date</th>
+                        <th className="text-left py-3 px-4 font-medium">Type</th>
+                        <th className="text-left py-3 px-4 font-medium">Reference</th>
+                        <th className="text-right py-3 px-4 font-medium">Qty In</th>
+                        <th className="text-right py-3 px-4 font-medium">Qty Out</th>
+                        <th className="text-right py-3 px-4 font-medium">Balance</th>
+                        <th className="text-left py-3 px-4 font-medium">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {binCardData?.results && binCardData.results.length > 0 ? (
+                        binCardData.results.map((txn: any, index: number) => {
+                          const isReceipt = txn.transaction_type === 'receipt' || txn.transaction_type === 'purchase'
+                          const isIssue = txn.transaction_type === 'issue' || txn.transaction_type === 'sale'
+
+                          return (
+                            <tr key={txn.id || index} className="hover:bg-gray-50">
+                              <td className="py-3 px-4">
+                                <div className="text-sm">{new Date(txn.transaction_date).toLocaleDateString()}</div>
+                                <div className="text-xs text-gray-500">{new Date(txn.transaction_date).toLocaleTimeString()}</div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  isReceipt
+                                    ? 'bg-green-100 text-green-800'
+                                    : isIssue
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {txn.transaction_type}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="text-sm font-medium">{txn.reference_number || '-'}</div>
+                                {txn.reference_type && (
+                                  <div className="text-xs text-gray-500">{txn.reference_type}</div>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                {isReceipt ? (
+                                  <span className="font-bold text-green-600">+{Number(txn.quantity).toFixed(2)}</span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                {isIssue ? (
+                                  <span className="font-bold text-red-600">-{Number(txn.quantity).toFixed(2)}</span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <span className="font-bold">{Number(txn.balance_after || 0).toFixed(2)}</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="text-sm text-gray-600">{txn.notes || '-'}</span>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-gray-500">
+                            <Receipt className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                            <p>No transaction history available</p>
+                            <p className="text-sm mt-1">Transactions will appear here once recorded</p>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="mt-6 flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowBinCardModal(false)
+                    setSelectedInventoryItem(null)
+                  }}
+                >
+                  Close
                 </Button>
               </div>
             </div>
