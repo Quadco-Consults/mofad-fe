@@ -22,14 +22,7 @@ export default function WarehouseProductDetailPage() {
     enabled: !!warehouseId
   })
 
-  // Fetch product details
-  const { data: productData, isLoading: productLoading } = useQuery({
-    queryKey: ['product', productId],
-    queryFn: () => api.getProductById(productId),
-    enabled: !!productId
-  })
-
-  // Fetch warehouse inventory for this product
+  // Fetch warehouse inventory for this product (includes product details from backend)
   const { data: inventoryResponse, isLoading: inventoryLoading } = useQuery({
     queryKey: ['warehouse-inventory', warehouseId, productId],
     queryFn: async () => {
@@ -39,7 +32,7 @@ export default function WarehouseProductDetailPage() {
       const inventoryItem = items.find((item: any) => item.product === productId)
 
       if (inventoryItem) {
-        // Transform to match expected structure
+        // Transform to match expected structure, including product details from serializer
         return {
           id: inventoryItem.id,
           current_stock: parseFloat(String(inventoryItem.quantity_on_hand || 0)),
@@ -50,12 +43,29 @@ export default function WarehouseProductDetailPage() {
           status: parseFloat(String(inventoryItem.quantity_on_hand || 0)) === 0 ? 'out-of-stock' :
                   parseFloat(String(inventoryItem.quantity_on_hand || 0)) <= parseFloat(String(inventoryItem.reorder_point || 0)) ? 'low-stock' :
                   'in-stock',
+          // Product details from the enhanced serializer
+          product: {
+            id: inventoryItem.product,
+            code: inventoryItem.product_code,
+            name: inventoryItem.product_name,
+            description: inventoryItem.product_description,
+            category: inventoryItem.product_category,
+            brand: inventoryItem.product_brand,
+            unit_of_measure: inventoryItem.product_unit_of_measure,
+            cost_price: parseFloat(String(inventoryItem.product_cost_price || 0)),
+            bulk_selling_price: parseFloat(String(inventoryItem.product_bulk_selling_price || 0)),
+            retail_selling_price: parseFloat(String(inventoryItem.product_retail_selling_price || 0)),
+          }
         }
       }
       return null
     },
     enabled: !!(warehouseId && productId)
   })
+
+  // Extract product data from inventory response
+  const productData = inventoryResponse?.product
+  const productLoading = inventoryLoading
 
   // Fetch stock transactions (bin card data)
   const { data: transactionsResponse, isLoading: transactionsLoading } = useQuery({
@@ -231,12 +241,12 @@ export default function WarehouseProductDetailPage() {
                         <p className="text-gray-900 font-semibold">₦{(productData?.cost_price || 0).toLocaleString()}</p>
                       </div>
                       <div>
-                        <p className="font-medium text-gray-600">Direct Sales Price</p>
-                        <p className="text-gray-900 font-semibold">₦{(productData?.direct_sales_price || 0).toLocaleString()}</p>
+                        <p className="font-medium text-gray-600">Bulk Selling Price</p>
+                        <p className="text-gray-900 font-semibold">₦{(productData?.bulk_selling_price || 0).toLocaleString()}</p>
                       </div>
                       <div>
-                        <p className="font-medium text-gray-600">Retail Sales Price</p>
-                        <p className="text-gray-900 font-semibold">₦{(productData?.retail_sales_price || 0).toLocaleString()}</p>
+                        <p className="font-medium text-gray-600">Retail Selling Price</p>
+                        <p className="text-gray-900 font-semibold">₦{(productData?.retail_selling_price || 0).toLocaleString()}</p>
                       </div>
                     </div>
                   </div>
