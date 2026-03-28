@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -151,6 +151,7 @@ export default function PROPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved'>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [deliveryFilter, setDeliveryFilter] = useState('')
@@ -159,6 +160,17 @@ export default function PROPage() {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [proToDelete, setProToDelete] = useState<PRO | null>(null)
   const pageSize = 20
+
+  // Auto-update status filter when tab changes
+  useEffect(() => {
+    if (activeTab === 'pending') {
+      setStatusFilter('pending_review,reviewed,pending_approval')
+    } else if (activeTab === 'approved') {
+      setStatusFilter('approved,sent,confirmed,partially_delivered,delivered')
+    } else {
+      setStatusFilter('')
+    }
+  }, [activeTab])
 
   // Fetch PROs with pagination and filters
   const { data: proData, isLoading } = useQuery({
@@ -271,70 +283,250 @@ export default function PROPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total PROs</p>
-                  <p className="text-2xl font-bold text-primary">{stats?.total || 0}</p>
-                </div>
-                <Package className="w-8 h-8 text-primary/60" />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Tab Navigation */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="flex border-b border-border">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 font-medium transition-colors ${
+                  activeTab === 'all'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <Package className="w-4 h-4" />
+                <span>All PROs</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  activeTab === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}>
+                  {stats?.total || 0}
+                </span>
+              </button>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Sent</p>
-                  <p className="text-2xl font-bold text-yellow-600">{stats?.sent || 0}</p>
-                </div>
-                <Send className="w-8 h-8 text-yellow-600/60" />
-              </div>
-            </CardContent>
-          </Card>
+              <button
+                onClick={() => setActiveTab('pending')}
+                className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 font-medium transition-colors ${
+                  activeTab === 'pending'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                <span>Pending Approval</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  activeTab === 'pending' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}>
+                  {(stats?.draft || 0)}
+                </span>
+              </button>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Confirmed</p>
-                  <p className="text-2xl font-bold text-blue-600">{stats?.confirmed || 0}</p>
-                </div>
-                <FileCheck className="w-8 h-8 text-blue-600/60" />
-              </div>
-            </CardContent>
-          </Card>
+              <button
+                onClick={() => setActiveTab('approved')}
+                className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 font-medium transition-colors ${
+                  activeTab === 'approved'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <PackageCheck className="w-4 h-4" />
+                <span>Approved</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  activeTab === 'approved' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}>
+                  {(stats?.sent || 0) + (stats?.confirmed || 0) + (stats?.partially_delivered || 0) + (stats?.delivered || 0)}
+                </span>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Delivered</p>
-                  <p className="text-2xl font-bold text-green-600">{stats?.delivered || 0}</p>
+        {/* Stats Cards - Dynamic based on active tab */}
+        {activeTab === 'all' && (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total PROs</p>
+                    <p className="text-2xl font-bold text-primary">{stats?.total || 0}</p>
+                  </div>
+                  <Package className="w-8 h-8 text-primary/60" />
                 </div>
-                <PackageCheck className="w-8 h-8 text-green-600/60" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending Value</p>
-                  <p className="text-2xl font-bold text-secondary">
-                    {formatCurrency(stats?.pending_value || 0)}
-                  </p>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Sent</p>
+                    <p className="text-2xl font-bold text-yellow-600">{stats?.sent || 0}</p>
+                  </div>
+                  <Send className="w-8 h-8 text-yellow-600/60" />
                 </div>
-                <AlertTriangle className="w-8 h-8 text-secondary/60" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Confirmed</p>
+                    <p className="text-2xl font-bold text-blue-600">{stats?.confirmed || 0}</p>
+                  </div>
+                  <FileCheck className="w-8 h-8 text-blue-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Delivered</p>
+                    <p className="text-2xl font-bold text-green-600">{stats?.delivered || 0}</p>
+                  </div>
+                  <PackageCheck className="w-8 h-8 text-green-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending Value</p>
+                    <p className="text-2xl font-bold text-secondary">
+                      {formatCurrency(stats?.pending_value || 0)}
+                    </p>
+                  </div>
+                  <AlertTriangle className="w-8 h-8 text-secondary/60" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'pending' && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Draft</p>
+                    <p className="text-2xl font-bold text-gray-600">{stats?.draft || 0}</p>
+                  </div>
+                  <Clock className="w-8 h-8 text-gray-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Value</p>
+                    <p className="text-2xl font-bold text-primary">
+                      {formatCurrency(stats?.total_value || 0)}
+                    </p>
+                  </div>
+                  <Package className="w-8 h-8 text-primary/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending Value</p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {formatCurrency(stats?.pending_value || 0)}
+                    </p>
+                  </div>
+                  <AlertTriangle className="w-8 h-8 text-orange-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Count</p>
+                    <p className="text-2xl font-bold text-secondary">{totalCount}</p>
+                  </div>
+                  <Package className="w-8 h-8 text-secondary/60" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'approved' && (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Sent</p>
+                    <p className="text-2xl font-bold text-yellow-600">{stats?.sent || 0}</p>
+                  </div>
+                  <Send className="w-8 h-8 text-yellow-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Confirmed</p>
+                    <p className="text-2xl font-bold text-blue-600">{stats?.confirmed || 0}</p>
+                  </div>
+                  <FileCheck className="w-8 h-8 text-blue-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Partial</p>
+                    <p className="text-2xl font-bold text-orange-600">{stats?.partially_delivered || 0}</p>
+                  </div>
+                  <Truck className="w-8 h-8 text-orange-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Delivered</p>
+                    <p className="text-2xl font-bold text-green-600">{stats?.delivered || 0}</p>
+                  </div>
+                  <PackageCheck className="w-8 h-8 text-green-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Count</p>
+                    <p className="text-2xl font-bold text-primary">{totalCount}</p>
+                  </div>
+                  <Package className="w-8 h-8 text-primary/60" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Filters and Search */}
         <Card>
@@ -440,7 +632,9 @@ export default function PROPage() {
                         />
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">PRO Number</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Title</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Created By</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Reviewed By</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Approved By</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Supplier</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Warehouse</th>
                       <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total Amount</th>
@@ -454,16 +648,10 @@ export default function PROPage() {
                   </thead>
                   <tbody>
                     {pros.map((pro) => {
-                      // Calculate received and pending values
-                      const items = pro.items || []
-                      const receivedValue = items.reduce((sum: number, item: any) => {
-                        const received = Number(item.received_quantity || item.quantity_delivered || 0)
-                        const unitPrice = Number(item.unit_price || 0)
-                        return sum + (received * unitPrice)
-                      }, 0)
-
+                      // Use received_value and pending_value from backend
                       const totalOrderValue = Number(pro.total_amount) || 0
-                      const pendingValue = totalOrderValue - receivedValue
+                      const receivedValue = Number(pro.received_value) || 0
+                      const pendingValue = Number(pro.pending_value) || 0
 
                       return (
                         <tr key={pro.id} className="border-b border-border hover:bg-muted/50">
@@ -482,10 +670,13 @@ export default function PROPage() {
                             </div>
                           </td>
                           <td className="py-3 px-4">
-                            <div>
-                              <p className="font-medium">{pro.title || '-'}</p>
-                              <p className="text-sm text-muted-foreground">{pro.items_count || 0} items</p>
-                            </div>
+                            <span className="text-sm">{pro.created_by_name || '-'}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-sm">{pro.reviewed_by_name || '-'}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-sm">{pro.approved_by_name || '-'}</span>
                           </td>
                           <td className="py-3 px-4">{pro.supplier || '-'}</td>
                           <td className="py-3 px-4">

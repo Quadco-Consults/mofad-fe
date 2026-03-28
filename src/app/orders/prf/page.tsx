@@ -225,6 +225,7 @@ export default function PRFPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved'>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
@@ -250,10 +251,21 @@ export default function PRFPage() {
   // Selection hook for bulk operations
   const selection = useSelection<PRF>()
 
-  // Reset page when filters change
+  // Reset page when filters or tab changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, statusFilter, priorityFilter])
+  }, [searchTerm, statusFilter, priorityFilter, activeTab])
+
+  // Update status filter when tab changes
+  useEffect(() => {
+    if (activeTab === 'pending') {
+      setStatusFilter('pending_review,pending_approval')
+    } else if (activeTab === 'approved') {
+      setStatusFilter('approved,partially_fulfilled,fulfilled')
+    } else {
+      setStatusFilter('all')
+    }
+  }, [activeTab])
 
   // Debounce customer search to avoid API call on every keystroke
   useEffect(() => {
@@ -1033,8 +1045,12 @@ export default function PRFPage() {
 
   // Stats calculation
   const totalPRFs = prfs.length
-  const pendingPRFs = prfs.filter((p: any) => p.status === 'pending_review' || p.status === 'pending_approval').length
+  const pendingReviewPRFs = prfs.filter((p: any) => p.status === 'pending_review').length
+  const pendingApprovalPRFs = prfs.filter((p: any) => p.status === 'pending_approval').length
+  const pendingPRFs = pendingReviewPRFs + pendingApprovalPRFs
   const approvedPRFs = prfs.filter((p: any) => p.status === 'approved').length
+  const partiallyFulfilledPRFs = prfs.filter((p: any) => p.status === 'partially_fulfilled').length
+  const fulfilledPRFs = prfs.filter((p: any) => p.status === 'fulfilled').length
   const totalValue = prfs.reduce((sum: number, p: any) => {
     const amount = parseFloat(p.estimated_total) || 0
     return sum + amount
@@ -1065,56 +1081,206 @@ export default function PRFPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total PRFs</p>
-                  <p className="text-2xl font-bold text-primary">{totalPRFs}</p>
+        {/* Tab Navigation */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="flex border-b border-border">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+                  activeTab === 'all'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  <span>All PRFs</span>
+                  <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                    {totalCount}
+                  </span>
                 </div>
-                <Clock className="w-8 h-8 text-primary/60" />
-              </div>
-            </CardContent>
-          </Card>
+              </button>
+              <button
+                onClick={() => setActiveTab('pending')}
+                className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+                  activeTab === 'pending'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>Pending Approval</span>
+                  <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-xs font-bold">
+                    {pendingPRFs}
+                  </span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('approved')}
+                className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+                  activeTab === 'approved'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Approved</span>
+                  <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-bold">
+                    {approvedPRFs + partiallyFulfilledPRFs + fulfilledPRFs}
+                  </span>
+                </div>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending Approval</p>
-                  <p className="text-2xl font-bold text-yellow-600">{pendingPRFs}</p>
+        {/* Stats Cards - Dynamic based on active tab */}
+        {activeTab === 'all' && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total PRFs</p>
+                    <p className="text-2xl font-bold text-primary">{totalPRFs}</p>
+                  </div>
+                  <Clock className="w-8 h-8 text-primary/60" />
                 </div>
-                <AlertTriangle className="w-8 h-8 text-yellow-600/60" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Approved</p>
-                  <p className="text-2xl font-bold text-green-600">{approvedPRFs}</p>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending Approval</p>
+                    <p className="text-2xl font-bold text-yellow-600">{pendingPRFs}</p>
+                  </div>
+                  <AlertTriangle className="w-8 h-8 text-yellow-600/60" />
                 </div>
-                <CheckCircle className="w-8 h-8 text-green-600/60" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Value</p>
-                  <p className="text-2xl font-bold text-secondary">{formatCurrency(totalValue)}</p>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Approved</p>
+                    <p className="text-2xl font-bold text-green-600">{approvedPRFs}</p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-600/60" />
                 </div>
-                <Download className="w-8 h-8 text-secondary/60" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Value</p>
+                    <p className="text-2xl font-bold text-secondary">{formatCurrency(totalValue)}</p>
+                  </div>
+                  <Download className="w-8 h-8 text-secondary/60" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'pending' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Pending</p>
+                    <p className="text-2xl font-bold text-foreground">{totalPRFs}</p>
+                  </div>
+                  <Clock className="w-8 h-8 text-yellow-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending Review</p>
+                    <p className="text-2xl font-bold text-foreground">{pendingReviewPRFs}</p>
+                  </div>
+                  <Clock className="w-8 h-8 text-blue-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending Approval</p>
+                    <p className="text-2xl font-bold text-foreground">{pendingApprovalPRFs}</p>
+                  </div>
+                  <AlertTriangle className="w-8 h-8 text-orange-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'approved' && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Approved</p>
+                    <p className="text-2xl font-bold text-foreground">{totalPRFs}</p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Approved</p>
+                    <p className="text-2xl font-bold text-foreground">{approvedPRFs}</p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Partially Fulfilled</p>
+                    <p className="text-2xl font-bold text-foreground">{partiallyFulfilledPRFs}</p>
+                  </div>
+                  <AlertTriangle className="w-8 h-8 text-orange-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Fulfilled</p>
+                    <p className="text-2xl font-bold text-foreground">{fulfilledPRFs}</p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-blue-600/60" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Filters and Search */}
         <Card>
@@ -1133,36 +1299,38 @@ export default function PRFPage() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <select
-                  className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="all">All Status</option>
-                  <option value="draft">Draft</option>
-                  <option value="pending_review">Pending Review</option>
-                  <option value="reviewed">Reviewed</option>
-                  <option value="pending_approval">Pending Approval</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="partially_fulfilled">Partially Fulfilled</option>
-                  <option value="fulfilled">Fulfilled</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
+              {activeTab === 'all' && (
+                <div className="flex gap-2">
+                  <select
+                    className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="all">All Status</option>
+                    <option value="draft">Draft</option>
+                    <option value="pending_review">Pending Review</option>
+                    <option value="reviewed">Reviewed</option>
+                    <option value="pending_approval">Pending Approval</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="partially_fulfilled">Partially Fulfilled</option>
+                    <option value="fulfilled">Fulfilled</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
 
-                <select
-                  className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                >
-                  <option value="all">All Priority</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </div>
+                  <select
+                    className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={priorityFilter}
+                    onChange={(e) => setPriorityFilter(e.target.value)}
+                  >
+                    <option value="all">All Priority</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

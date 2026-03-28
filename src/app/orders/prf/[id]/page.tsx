@@ -31,7 +31,9 @@ import {
   ThumbsDown,
   Send,
   X,
-  Loader2
+  Loader2,
+  Receipt,
+  Truck
 } from 'lucide-react'
 
 // Helper functions for localStorage management (same as in main PRF page)
@@ -506,6 +508,82 @@ export default function PRFViewPage() {
     }, 500)
   }
 
+  const handleDownloadInvoice = async () => {
+    if (!prfId) return
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/prfs/${prfId}/invoice/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to download invoice')
+      }
+
+      // Get the filename from the Content-Disposition header or use a default
+      const contentDisposition = response.headers.get('Content-Disposition')
+      const filename = contentDisposition
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : `Invoice_${prf?.invoice_number || prf?.prf_number}.pdf`
+
+      // Create a blob from the response and trigger download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      addToast({ type: 'success', title: 'Success', message: 'Invoice downloaded successfully' })
+    } catch (error: any) {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to download invoice' })
+    }
+  }
+
+  const handleDownloadWaybill = async () => {
+    if (!prfId) return
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/prfs/${prfId}/waybill/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to download waybill')
+      }
+
+      // Get the filename from the Content-Disposition header or use a default
+      const contentDisposition = response.headers.get('Content-Disposition')
+      const filename = contentDisposition
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : `Waybill_${prf?.waybill_number || prf?.prf_number}.pdf`
+
+      // Create a blob from the response and trigger download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      addToast({ type: 'success', title: 'Success', message: 'Waybill downloaded successfully' })
+    } catch (error: any) {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to download waybill' })
+    }
+  }
+
 
   if (isLoading) {
     return (
@@ -555,6 +633,30 @@ export default function PRFViewPage() {
               <Download className="w-4 h-4" />
               Download PDF
             </Button>
+
+            {/* Invoice and Waybill Download Buttons */}
+            {(prf.status === 'approved' || prf.status === 'ready_for_issue' || prf.goods_issued) && (
+              <>
+                <Button
+                  onClick={handleDownloadInvoice}
+                  variant="outline"
+                  className="flex items-center gap-2 border-green-500 text-green-700 hover:bg-green-50"
+                  title="Download Invoice"
+                >
+                  <Receipt className="w-4 h-4" />
+                  Invoice
+                </Button>
+                <Button
+                  onClick={handleDownloadWaybill}
+                  variant="outline"
+                  className="flex items-center gap-2 border-blue-500 text-blue-700 hover:bg-blue-50"
+                  title="Download Waybill"
+                >
+                  <Truck className="w-4 h-4" />
+                  Waybill
+                </Button>
+              </>
+            )}
 
             {/* Approval Workflow Buttons */}
             {prf.status === 'draft' && (

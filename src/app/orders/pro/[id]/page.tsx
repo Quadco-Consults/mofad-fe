@@ -38,7 +38,8 @@ import {
   ClipboardList,
   CheckCircle2,
   Ban,
-  Loader2
+  Loader2,
+  Receipt
 } from 'lucide-react'
 
 interface PROItem {
@@ -536,6 +537,78 @@ export default function PRODetailPage() {
     }, 500)
   }
 
+  const handleDownloadInvoice = async () => {
+    if (!proId) return
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/pros/${proId}/invoice/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to download invoice')
+      }
+
+      const contentDisposition = response.headers.get('Content-Disposition')
+      const filename = contentDisposition
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : `Invoice_${(pro as any)?.invoice_number || pro?.pro_number}.pdf`
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      addToast({ type: 'success', title: 'Success', message: 'Invoice downloaded successfully' })
+    } catch (error: any) {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to download invoice' })
+    }
+  }
+
+  const handleDownloadWaybill = async () => {
+    if (!proId) return
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/pros/${proId}/waybill/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to download waybill')
+      }
+
+      const contentDisposition = response.headers.get('Content-Disposition')
+      const filename = contentDisposition
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : `Waybill_${(pro as any)?.waybill_number || pro?.pro_number}.pdf`
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      addToast({ type: 'success', title: 'Success', message: 'Waybill downloaded successfully' })
+    } catch (error: any) {
+      addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to download waybill' })
+    }
+  }
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -634,6 +707,30 @@ export default function PRODetailPage() {
               <Download className="w-4 h-4" />
               Download PDF
             </Button>
+
+            {/* Invoice and Waybill Download Buttons */}
+            {(pro.status === 'approved' || pro.status === 'delivered') && (
+              <>
+                <Button
+                  onClick={handleDownloadInvoice}
+                  variant="outline"
+                  className="flex items-center gap-2 border-green-500 text-green-700 hover:bg-green-50"
+                  title="Download Invoice"
+                >
+                  <Receipt className="w-4 h-4" />
+                  Invoice
+                </Button>
+                <Button
+                  onClick={handleDownloadWaybill}
+                  variant="outline"
+                  className="flex items-center gap-2 border-blue-500 text-blue-700 hover:bg-blue-50"
+                  title="Download Waybill"
+                >
+                  <Truck className="w-4 h-4" />
+                  Waybill
+                </Button>
+              </>
+            )}
 
             {/* Workflow Actions */}
             {pro.status === 'draft' && (

@@ -88,11 +88,7 @@ const navigationSections = [
         // No role restriction - all authenticated users can see
         children: [
           { label: 'PRF - Purchase Requisition', href: '/orders/prf', icon: FileText },
-          { label: 'View/Approve PRF', href: '/orders/prf/approve', icon: ClipboardCheck },
-          { label: 'Approved PRF', href: '/orders/prf/approved', icon: FileCheck },
           { label: 'PRO - Purchase Request', href: '/orders/pro', icon: ShoppingCart },
-          { label: 'View/Approve PRO', href: '/orders/pro/approve', icon: ClipboardCheck },
-          { label: 'Approved PRO', href: '/orders/pro/approved', icon: FileCheck },
         ],
       },
       {
