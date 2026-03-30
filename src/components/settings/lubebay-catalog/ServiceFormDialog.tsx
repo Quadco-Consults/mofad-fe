@@ -17,10 +17,8 @@ import { Label } from '@/components/ui/Label'
 import { Textarea } from '@/components/ui/Textarea'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/Select'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { useToast } from '@/components/ui/Toast'
@@ -46,6 +44,7 @@ interface ServiceFormDialogProps {
   defaultCategory?: string
   dialogTitle?: string
   dialogDescription?: string
+  lockCategory?: boolean  // New prop to lock category field
 }
 
 interface ServiceFormData {
@@ -71,6 +70,23 @@ const CATEGORY_CHOICES = [
   { value: 'other', label: 'Other' },
 ]
 
+// Dynamic placeholders based on category
+const getPlaceholders = (category: string) => {
+  const placeholders = {
+    car_wash: { name: 'Basic Car Wash', code: 'BASIC-WASH' },
+    oil_change: { name: 'Oil Change Sedan', code: 'OIL-CHANGE-SEDAN' },
+    tire_service: { name: 'Tire Rotation', code: 'TIRE-ROTATION' },
+    filter: { name: 'Air Filter Replacement', code: 'AIR-FILTER' },
+    battery_service: { name: 'Battery Replacement', code: 'BATTERY-REPLACE' },
+    brake_service: { name: 'Brake Pad Replacement', code: 'BRAKE-PADS' },
+    diagnostic: { name: 'Engine Diagnostic', code: 'ENGINE-DIAG' },
+    ac_service: { name: 'AC Gas Refill', code: 'AC-REFILL' },
+    commission: { name: 'Sales Commission', code: 'SALES-COMM' },
+    other: { name: 'Service Name', code: 'SERVICE-CODE' },
+  }
+  return placeholders[category as keyof typeof placeholders] || placeholders.other
+}
+
 export default function ServiceFormDialog({
   open,
   onOpenChange,
@@ -79,6 +95,7 @@ export default function ServiceFormDialog({
   defaultCategory = 'oil_change',
   dialogTitle,
   dialogDescription,
+  lockCategory = false,
 }: ServiceFormDialogProps) {
   const isEditing = !!service
   const { addToast } = useToast()
@@ -165,9 +182,11 @@ export default function ServiceFormDialog({
     mutation.mutate(data)
   }
 
+  const placeholders = getPlaceholders(category)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing
@@ -181,118 +200,141 @@ export default function ServiceFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            {/* Service Name */}
-            <div className="space-y-2">
-              <Label htmlFor="name">
-                Service Name <span className="text-red-500">*</span>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Basic Information Section */}
+          <div className="space-y-4">
+            <div className="pb-2 border-b">
+              <h3 className="text-sm font-semibold text-gray-900">Basic Information</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Enter the service name and code</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Service Name */}
+              <div className="space-y-2">
+                <Label htmlFor="name">
+                  Service Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="name"
+                  {...register('name', { required: 'Service name is required' })}
+                  placeholder={`e.g., ${placeholders.name}`}
+                />
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name.message}</p>
+                )}
+              </div>
+
+              {/* Service Code */}
+              <div className="space-y-2">
+                <Label htmlFor="code">
+                  Service Code <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="code"
+                  {...register('code', { required: 'Service code is required' })}
+                  placeholder={`e.g., ${placeholders.code}`}
+                />
+                {errors.code && (
+                  <p className="text-sm text-red-500">{errors.code.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Category */}
+            {!lockCategory && (
+              <div className="space-y-2">
+                <Label htmlFor="category">
+                  Category <span className="text-red-500">*</span>
+                </Label>
+                <Select value={category} onValueChange={(value) => setValue('category', value)}>
+                  <SelectTrigger>
+                    {CATEGORY_CHOICES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectTrigger>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          {/* Pricing & Tax Section */}
+          <div className="space-y-4">
+            <div className="pb-2 border-b">
+              <h3 className="text-sm font-semibold text-gray-900">Pricing & Tax</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Set the base price and tax configuration</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Base Price */}
+              <div className="space-y-2">
+                <Label htmlFor="base_price">
+                  Base Price (₦) <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="base_price"
+                  type="number"
+                  step="0.01"
+                  {...register('base_price', {
+                    required: 'Base price is required',
+                    min: { value: 0, message: 'Price must be positive' },
+                  })}
+                  placeholder="0.00"
+                />
+                {errors.base_price && (
+                  <p className="text-sm text-red-500">{errors.base_price.message}</p>
+                )}
+              </div>
+
+              {/* Tax Rate */}
+              <div className="space-y-2">
+                <Label htmlFor="tax_rate">Tax Rate (%)</Label>
+                <Input
+                  id="tax_rate"
+                  type="number"
+                  step="0.01"
+                  {...register('tax_rate')}
+                  placeholder="7.5"
+                />
+              </div>
+            </div>
+
+            {/* Tax Inclusive Checkbox */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="tax_inclusive"
+                checked={taxInclusive}
+                onCheckedChange={(checked) =>
+                  setValue('tax_inclusive', checked as boolean)
+                }
+              />
+              <Label
+                htmlFor="tax_inclusive"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Price is tax inclusive
               </Label>
-              <Input
-                id="name"
-                {...register('name', { required: 'Service name is required' })}
-                placeholder="e.g., Oil Change Sedan"
-              />
-              {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message}</p>
-              )}
+            </div>
+          </div>
+
+          {/* Additional Details Section */}
+          <div className="space-y-4">
+            <div className="pb-2 border-b">
+              <h3 className="text-sm font-semibold text-gray-900">Additional Details</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Optional information about this service</p>
             </div>
 
-            {/* Service Code */}
+            {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="code">
-                Service Code <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="code"
-                {...register('code', { required: 'Service code is required' })}
-                placeholder="e.g., OIL-CHANGE-SEDAN"
-              />
-              {errors.code && (
-                <p className="text-sm text-red-500">{errors.code.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Category */}
-          <div className="space-y-2">
-            <Label htmlFor="category">
-              Category <span className="text-red-500">*</span>
-            </Label>
-            <Select value={category} onValueChange={(value) => setValue('category', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORY_CHOICES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {/* Base Price */}
-            <div className="space-y-2">
-              <Label htmlFor="base_price">
-                Base Price (₦) <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="base_price"
-                type="number"
-                step="0.01"
-                {...register('base_price', {
-                  required: 'Base price is required',
-                  min: { value: 0, message: 'Price must be positive' },
-                })}
-                placeholder="0.00"
-              />
-              {errors.base_price && (
-                <p className="text-sm text-red-500">{errors.base_price.message}</p>
-              )}
-            </div>
-
-            {/* Tax Rate */}
-            <div className="space-y-2">
-              <Label htmlFor="tax_rate">Tax Rate (%)</Label>
-              <Input
-                id="tax_rate"
-                type="number"
-                step="0.01"
-                {...register('tax_rate')}
-                placeholder="7.5"
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                {...register('description')}
+                placeholder="Optional service description"
+                rows={3}
               />
             </div>
-          </div>
-
-          {/* Tax Inclusive Checkbox */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="tax_inclusive"
-              checked={taxInclusive}
-              onChange={(checked) =>
-                setValue('tax_inclusive', checked as boolean)
-              }
-            />
-            <Label
-              htmlFor="tax_inclusive"
-              className="text-sm font-normal cursor-pointer"
-            >
-              Price is tax inclusive
-            </Label>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              {...register('description')}
-              placeholder="Optional service description"
-              rows={3}
-            />
           </div>
 
           <DialogFooter>

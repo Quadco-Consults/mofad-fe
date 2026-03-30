@@ -2,15 +2,14 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Plus, Search, Package } from 'lucide-react'
+import { Plus, Search, Package, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import Link from 'next/link'
 import { Input } from '@/components/ui/Input'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/Select'
 import {
   Table,
@@ -73,10 +72,48 @@ export default function ProductsTab() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Statistics Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white border rounded-lg p-4">
+          <div className="text-sm font-medium text-gray-600">Total Products</div>
+          <div className="text-2xl font-bold text-gray-900 mt-1">{totalCount}</div>
+        </div>
+        <div className="bg-white border rounded-lg p-4">
+          <div className="text-sm font-medium text-gray-600">Active Products</div>
+          <div className="text-2xl font-bold text-green-600 mt-1">
+            {products.filter((p: Product) => p.is_active).length}
+          </div>
+        </div>
+        <div className="bg-white border rounded-lg p-4">
+          <div className="text-sm font-medium text-gray-600">Categories</div>
+          <div className="text-2xl font-bold text-blue-600 mt-1">
+            {new Set(products.map((p: Product) => p.category)).size}
+          </div>
+        </div>
+      </div>
+
+      {/* Info Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+        <Package className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+        <div className="flex-1">
+          <h3 className="font-semibold text-blue-900">Lubebay Products</h3>
+          <p className="text-sm text-blue-700 mt-1">
+            Products sold at lubebays are managed from the main Products section. This view shows all
+            products available for sale at your lubebays.
+          </p>
+        </div>
+        <Link href="/inventory/products">
+          <Button variant="outline" size="sm" className="whitespace-nowrap flex-shrink-0">
+            Manage Products
+            <ExternalLink className="h-4 w-4 ml-2" />
+          </Button>
+        </Link>
+      </div>
+
       {/* Header with Actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4 flex-1">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 flex-wrap flex-1">
           {/* Search */}
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -89,52 +126,67 @@ export default function ProductsTab() {
           </div>
 
           {/* Category Filter */}
-          <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Categories</SelectItem>
-              <SelectItem value="lubricant">Lubricant</SelectItem>
-              <SelectItem value="filter">Filter</SelectItem>
-              <SelectItem value="battery">Battery</SelectItem>
-              <SelectItem value="tire">Tire</SelectItem>
-              <SelectItem value="accessory">Accessory</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Category:</span>
+            <Select value={categoryFilter || ''} onValueChange={handleFilterChange(setCategoryFilter)}>
+              <SelectTrigger className="w-40">
+                <SelectItem value="">All</SelectItem>
+                <SelectItem value="lubricant">Lubricant</SelectItem>
+                <SelectItem value="filter">Filter</SelectItem>
+                <SelectItem value="battery">Battery</SelectItem>
+                <SelectItem value="tire">Tire</SelectItem>
+                <SelectItem value="accessory">Accessory</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectTrigger>
+            </Select>
+          </div>
 
           {/* Status Filter */}
-          <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Status</SelectItem>
-              <SelectItem value="true">Active</SelectItem>
-              <SelectItem value="false">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Button disabled>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Product
-        </Button>
-      </div>
-
-      {/* Info Message */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-        <Package className="h-5 w-5 text-blue-600 mt-0.5" />
-        <div className="flex-1">
-          <h3 className="font-semibold text-blue-900">Lubebay Products</h3>
-          <p className="text-sm text-blue-700 mt-1">
-            Products sold at lubebays are managed from the main Products section. This view shows all
-            products that can be sold at your lubebays. To add or edit products, go to the Products
-            management page.
-          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Status:</span>
+            <Select value={statusFilter || ''} onValueChange={handleFilterChange(setStatusFilter)}>
+              <SelectTrigger className="w-32">
+                <SelectItem value="">All</SelectItem>
+                <SelectItem value="true">Active</SelectItem>
+                <SelectItem value="false">Inactive</SelectItem>
+              </SelectTrigger>
+            </Select>
+          </div>
         </div>
       </div>
+
+      {/* Active Filters Display */}
+      {(categoryFilter || statusFilter || searchTerm) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-gray-700">Active filters:</span>
+          {searchTerm && (
+            <Badge variant="secondary" className="cursor-pointer" onClick={() => setSearchTerm('')}>
+              Search: {searchTerm} ×
+            </Badge>
+          )}
+          {categoryFilter && (
+            <Badge variant="secondary" className="cursor-pointer" onClick={() => setCategoryFilter('')}>
+              {categoryFilter.charAt(0).toUpperCase() + categoryFilter.slice(1)} ×
+            </Badge>
+          )}
+          {statusFilter && (
+            <Badge variant="secondary" className="cursor-pointer" onClick={() => setStatusFilter('')}>
+              {statusFilter === 'true' ? 'Active' : 'Inactive'} ×
+            </Badge>
+          )}
+          <button
+            onClick={() => {
+              setSearchTerm('')
+              setCategoryFilter('')
+              setStatusFilter('')
+              setCurrentPage(1)
+            }}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
 
       {/* Products Table */}
       <div className="border rounded-lg">
@@ -157,8 +209,22 @@ export default function ProductsTab() {
               </TableRow>
             ) : products.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
-                  No products found
+                <TableCell colSpan={5} className="text-center py-12">
+                  <div className="flex flex-col items-center gap-2">
+                    <Package className="h-12 w-12 text-gray-300" />
+                    <p className="text-gray-500 font-medium">No products found</p>
+                    <p className="text-sm text-gray-400">
+                      {searchTerm || categoryFilter || statusFilter
+                        ? 'Try adjusting your filters to see more products'
+                        : 'No products available in the catalog yet'}
+                    </p>
+                    <Link href="/inventory/products">
+                      <Button className="mt-2">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Go to Products
+                      </Button>
+                    </Link>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (

@@ -7,10 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/Select'
 import {
   Table,
@@ -119,10 +117,35 @@ export default function CarWashServicesTab() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Statistics Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white border rounded-lg p-4">
+          <div className="text-sm font-medium text-gray-600">Total Services</div>
+          <div className="text-2xl font-bold text-gray-900 mt-1">{totalCount}</div>
+        </div>
+        <div className="bg-white border rounded-lg p-4">
+          <div className="text-sm font-medium text-gray-600">Active Services</div>
+          <div className="text-2xl font-bold text-green-600 mt-1">
+            {services.filter((s: Service) => s.is_active).length}
+          </div>
+        </div>
+        <div className="bg-white border rounded-lg p-4">
+          <div className="text-sm font-medium text-gray-600">Avg Price</div>
+          <div className="text-2xl font-bold text-blue-600 mt-1">
+            ₦{services.length > 0
+              ? (
+                  services.reduce((sum: number, s: Service) => sum + parseFloat(s.base_price), 0) /
+                  services.length
+                ).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+              : '0'}
+          </div>
+        </div>
+      </div>
+
       {/* Header with Actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4 flex-1">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 flex-wrap flex-1">
           {/* Search */}
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -135,32 +158,50 @@ export default function CarWashServicesTab() {
           </div>
 
           {/* Status Filter */}
-          <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Status</SelectItem>
-              <SelectItem value="true">Active</SelectItem>
-              <SelectItem value="false">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Status:</span>
+            <Select value={statusFilter || ''} onValueChange={handleFilterChange(setStatusFilter)}>
+              <SelectTrigger className="w-32">
+                <SelectItem value="">All</SelectItem>
+                <SelectItem value="true">Active</SelectItem>
+                <SelectItem value="false">Inactive</SelectItem>
+              </SelectTrigger>
+            </Select>
+          </div>
         </div>
 
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Button onClick={() => setIsCreateDialogOpen(true)} className="whitespace-nowrap">
           <Plus className="h-4 w-4 mr-2" />
           Add Car Wash Service
         </Button>
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900">Car Wash Services</h3>
-        <p className="text-sm text-blue-700 mt-1">
-          Manage car wash services offered at your lubebays. These services include basic washes,
-          premium detailing, and specialized cleaning packages.
-        </p>
-      </div>
+      {/* Active Filters Display */}
+      {(statusFilter || searchTerm) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-gray-700">Active filters:</span>
+          {searchTerm && (
+            <Badge variant="secondary" className="cursor-pointer" onClick={() => setSearchTerm('')}>
+              Search: {searchTerm} ×
+            </Badge>
+          )}
+          {statusFilter && (
+            <Badge variant="secondary" className="cursor-pointer" onClick={() => setStatusFilter('')}>
+              {statusFilter === 'true' ? 'Active' : 'Inactive'} ×
+            </Badge>
+          )}
+          <button
+            onClick={() => {
+              setSearchTerm('')
+              setStatusFilter('')
+              setCurrentPage(1)
+            }}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
 
       {/* Services Table */}
       <div className="border rounded-lg">
@@ -184,8 +225,22 @@ export default function CarWashServicesTab() {
               </TableRow>
             ) : services.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  No car wash services found
+                <TableCell colSpan={6} className="text-center py-12">
+                  <div className="flex flex-col items-center gap-2">
+                    <Plus className="h-12 w-12 text-gray-300" />
+                    <p className="text-gray-500 font-medium">No car wash services found</p>
+                    <p className="text-sm text-gray-400">
+                      {searchTerm || statusFilter
+                        ? 'Try adjusting your filters'
+                        : 'Get started by adding your first car wash service'}
+                    </p>
+                    {!searchTerm && !statusFilter && (
+                      <Button onClick={() => setIsCreateDialogOpen(true)} className="mt-2">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Car Wash Service
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
@@ -211,11 +266,12 @@ export default function CarWashServicesTab() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setEditingService(service)}
+                        title="Edit service"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -223,6 +279,7 @@ export default function CarWashServicesTab() {
                         variant="ghost"
                         size="sm"
                         onClick={() => setPricingService(service)}
+                        title="Manage pricing"
                       >
                         <DollarSign className="h-4 w-4" />
                       </Button>
@@ -235,6 +292,7 @@ export default function CarWashServicesTab() {
                             is_active: service.is_active,
                           })
                         }
+                        title={service.is_active ? 'Deactivate' : 'Activate'}
                       >
                         <Power
                           className={`h-4 w-4 ${
@@ -267,6 +325,7 @@ export default function CarWashServicesTab() {
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         defaultCategory="car_wash"
+        lockCategory={true}
         dialogTitle="Create New Car Wash Service"
         dialogDescription="Add a new car wash service to your lubebay catalog"
         onSuccess={() => {
