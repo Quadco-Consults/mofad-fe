@@ -509,7 +509,7 @@ export default function LubebayMonthlyDetailPage() {
 
   console.log('📝 Raw service transactions:', serviceTransactions_raw.length)
   console.log('🔍 First transaction sample:', serviceTransactions_raw[0])
-  console.log('🏷️ Transaction types found:', [...new Set(serviceTransactions_raw.map((t: any) => t.transaction_type))])
+  console.log('🏷️ Transaction types found:', Array.from(new Set(serviceTransactions_raw.map((t: any) => t.transaction_type))))
 
   // Split service transactions by type for proper display
   const allProductSales = serviceTransactions_raw.filter((t: any) => t.transaction_type === 'lubricant_sales')

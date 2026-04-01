@@ -48,13 +48,13 @@ export default function WarehouseProductDetailPage() {
             id: inventoryItem.product,
             code: inventoryItem.product_code,
             name: inventoryItem.product_name,
-            description: inventoryItem.product_description,
-            category: inventoryItem.product_category,
-            brand: inventoryItem.product_brand,
-            unit_of_measure: inventoryItem.product_unit_of_measure,
-            cost_price: parseFloat(String(inventoryItem.product_cost_price || 0)),
-            bulk_selling_price: parseFloat(String(inventoryItem.product_bulk_selling_price || 0)),
-            retail_selling_price: parseFloat(String(inventoryItem.product_retail_selling_price || 0)),
+            description: (inventoryItem as any).product_description || '',
+            category: (inventoryItem as any).product_category || '',
+            brand: (inventoryItem as any).product_brand || '',
+            unit_of_measure: (inventoryItem as any).product_unit_of_measure || '',
+            cost_price: parseFloat(String((inventoryItem as any).product_cost_price || 0)),
+            bulk_selling_price: parseFloat(String((inventoryItem as any).product_bulk_selling_price || 0)),
+            retail_selling_price: parseFloat(String((inventoryItem as any).product_retail_selling_price || 0)),
           }
         }
       }
@@ -226,7 +226,7 @@ export default function WarehouseProductDetailPage() {
                       <h4 className="font-semibold text-gray-900 mb-3">Stock Information</h4>
                       <div className="space-y-2 text-sm">
                         <p><span className="font-medium text-gray-600">Current Stock:</span> <span className="text-gray-900 font-semibold">{inventoryItem?.current_stock?.toLocaleString() || '0'} units</span></p>
-                        <p><span className="font-medium text-gray-600">Reorder Level:</span> <span className="text-gray-900">{inventoryItem?.reorder_level || productData?.reorder_point || productData?.minimum_stock_level || '0'} units</span></p>
+                        <p><span className="font-medium text-gray-600">Reorder Level:</span> <span className="text-gray-900">{inventoryItem?.reorder_level || '0'} units</span></p>
                         <p><span className="font-medium text-gray-600">Unit Cost:</span> <span className="text-gray-900 font-semibold">₦{(inventoryItem?.unit_cost || productData?.cost_price || 0).toLocaleString()}</span></p>
                         <p><span className="font-medium text-gray-600">Total Value:</span> <span className="text-gray-900 font-semibold">₦{(inventoryItem?.total_value || 0).toLocaleString()}</span></p>
                       </div>

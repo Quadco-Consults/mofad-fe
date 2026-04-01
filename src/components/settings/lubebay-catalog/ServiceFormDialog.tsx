@@ -305,7 +305,7 @@ export default function ServiceFormDialog({
               <Checkbox
                 id="tax_inclusive"
                 checked={taxInclusive}
-                onCheckedChange={(checked) =>
+                onChange={(checked) =>
                   setValue('tax_inclusive', checked as boolean)
                 }
               />

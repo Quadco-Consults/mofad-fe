@@ -650,8 +650,8 @@ export default function PROPage() {
                     {pros.map((pro) => {
                       // Use received_value and pending_value from backend
                       const totalOrderValue = Number(pro.total_amount) || 0
-                      const receivedValue = Number(pro.received_value) || 0
-                      const pendingValue = Number(pro.pending_value) || 0
+                      const receivedValue = Number((pro as any).received_value) || 0
+                      const pendingValue = Number((pro as any).pending_value) || 0
 
                       return (
                         <tr key={pro.id} className="border-b border-border hover:bg-muted/50">
