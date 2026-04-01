@@ -27,7 +27,10 @@ import {
   Pencil,
   Search,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -271,6 +274,16 @@ export default function LubebayMonthlyDetailPage() {
   // Bin card modal
   const [showBinCardModal, setShowBinCardModal] = useState(false)
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<any>(null)
+
+  // Stock upload modal
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<{
+    status: 'idle' | 'uploading' | 'success' | 'error'
+    created: number
+    updated: number
+    errors: string[]
+  }>({ status: 'idle', created: 0, updated: 0, errors: [] })
 
   // Lubricant sale form state (simplified - no customer details)
   const [saleForm, setSaleForm] = useState({
@@ -699,6 +712,85 @@ export default function LubebayMonthlyDetailPage() {
         ...prev,
         items: prev.items.filter((_, i) => i !== index)
       }))
+    }
+  }
+
+  // Stock upload handlers
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Validate file type
+      const validTypes = [
+        'text/csv',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ]
+      if (!validTypes.includes(file.type) && !file.name.match(/\.(csv|xlsx|xls)$/i)) {
+        alert('Please select a valid CSV or Excel file (.csv, .xlsx, .xls)')
+        return
+      }
+      setUploadFile(file)
+      setUploadProgress({ status: 'idle', created: 0, updated: 0, errors: [] })
+    }
+  }
+
+  const handleUploadStock = async () => {
+    if (!uploadFile) {
+      alert('Please select a file first')
+      return
+    }
+
+    setUploadProgress({ status: 'uploading', created: 0, updated: 0, errors: [] })
+
+    try {
+      const result = await apiClient.uploadWarehouseStock(uploadFile)
+      setUploadProgress({
+        status: 'success',
+        created: result.created,
+        updated: result.updated,
+        errors: result.errors
+      })
+
+      // Refresh inventory data
+      queryClient.invalidateQueries({ queryKey: ['lubebay-inventory', lubebay?.warehouse] })
+
+      // Close modal after a delay if successful and no errors
+      if (result.errors.length === 0) {
+        setTimeout(() => {
+          setShowUploadModal(false)
+          setUploadFile(null)
+          setUploadProgress({ status: 'idle', created: 0, updated: 0, errors: [] })
+        }, 2000)
+      }
+    } catch (error: any) {
+      setUploadProgress({
+        status: 'error',
+        created: 0,
+        updated: 0,
+        errors: [error.message || 'Failed to upload stock data']
+      })
+    }
+  }
+
+  const handleDownloadTemplate = async () => {
+    if (!lubebay?.warehouse) {
+      alert('No warehouse assigned to this lubebay')
+      return
+    }
+
+    try {
+      const blob = await apiClient.downloadStockTemplate(lubebay.warehouse)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `stock_template_warehouse_${lubebay.warehouse}.csv`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Error downloading template:', error)
+      alert('Failed to download template')
     }
   }
 
@@ -1788,8 +1880,28 @@ export default function LubebayMonthlyDetailPage() {
         {activeTab === 'inventory' && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Lubebay Inventory</h2>
-              <p className="text-sm text-muted-foreground">Stock of Lubricants & Filters</p>
+              <div>
+                <h2 className="text-xl font-semibold">Lubebay Inventory</h2>
+                <p className="text-sm text-muted-foreground">Stock of Lubricants & Filters</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadTemplate}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Template
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setShowUploadModal(true)}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Stock
+                </Button>
+              </div>
             </div>
 
             {inventoryLoading ? (
@@ -3481,6 +3593,151 @@ export default function LubebayMonthlyDetailPage() {
                 >
                   Close
                 </Button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Stock Upload Modal */}
+        {showUploadModal && typeof window !== 'undefined' && createPortal(
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">Upload Stock Count</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowUploadModal(false)
+                    setUploadFile(null)
+                    setUploadProgress({ status: 'idle', created: 0, updated: 0, errors: [] })
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Instructions */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-blue-900 mb-2">Instructions:</h4>
+                  <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                    <li>Download the template using the "Download Template" button</li>
+                    <li>Fill in the quantity and cost columns in Excel</li>
+                    <li>Save the file (Excel .xlsx or CSV format)</li>
+                    <li>Upload it here</li>
+                  </ol>
+                  <p className="text-xs text-blue-700 mt-2">
+                    <strong>Required columns:</strong> warehouse_id, product_code, quantity_on_hand, average_cost
+                  </p>
+                </div>
+
+                {/* File Upload */}
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  {uploadFile ? (
+                    <div className="space-y-2">
+                      <FileSpreadsheet className="w-12 h-12 mx-auto text-green-600" />
+                      <p className="font-medium text-gray-900">{uploadFile.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {(uploadFile.size / 1024).toFixed(2)} KB
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setUploadFile(null)}
+                      >
+                        Change File
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <Upload className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                      <label className="cursor-pointer">
+                        <span className="text-blue-600 hover:text-blue-700 font-medium">
+                          Click to select file
+                        </span>
+                        <input
+                          type="file"
+                          accept=".csv,.xlsx,.xls"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Supports CSV, Excel (.xlsx, .xls)
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload Progress */}
+                {uploadProgress.status !== 'idle' && (
+                  <div className={`rounded-lg p-4 ${
+                    uploadProgress.status === 'uploading' ? 'bg-blue-50 border border-blue-200' :
+                    uploadProgress.status === 'success' ? 'bg-green-50 border border-green-200' :
+                    'bg-red-50 border border-red-200'
+                  }`}>
+                    {uploadProgress.status === 'uploading' && (
+                      <div className="flex items-center space-x-3">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                        <p className="text-blue-900 font-medium">Uploading stock data...</p>
+                      </div>
+                    )}
+
+                    {uploadProgress.status === 'success' && (
+                      <div className="space-y-2">
+                        <p className="text-green-900 font-semibold">Upload Successful!</p>
+                        <div className="text-sm text-green-800">
+                          <p>Created: {uploadProgress.created} items</p>
+                          <p>Updated: {uploadProgress.updated} items</p>
+                        </div>
+                        {uploadProgress.errors.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-orange-900 font-medium">Warnings:</p>
+                            <ul className="text-xs text-orange-800 list-disc list-inside max-h-32 overflow-y-auto">
+                              {uploadProgress.errors.map((error, index) => (
+                                <li key={index}>{error}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {uploadProgress.status === 'error' && (
+                      <div className="space-y-2">
+                        <p className="text-red-900 font-semibold">Upload Failed</p>
+                        <ul className="text-sm text-red-800 list-disc list-inside max-h-32 overflow-y-auto">
+                          {uploadProgress.errors.map((error, index) => (
+                            <li key={index}>{error}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowUploadModal(false)
+                      setUploadFile(null)
+                      setUploadProgress({ status: 'idle', created: 0, updated: 0, errors: [] })
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="default"
+                    onClick={handleUploadStock}
+                    disabled={!uploadFile || uploadProgress.status === 'uploading'}
+                  >
+                    {uploadProgress.status === 'uploading' ? 'Uploading...' : 'Upload Stock'}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>,

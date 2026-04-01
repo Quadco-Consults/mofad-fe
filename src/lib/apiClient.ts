@@ -3028,6 +3028,39 @@ class ApiClient {
     return this.request(`/warehouses/${warehouseId}/inventory/${productId}/`)
   }
 
+  async uploadWarehouseStock(file: File): Promise<{
+    created: number
+    updated: number
+    errors: string[]
+  }> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return this.request('/warehouse-inventory/upload-stock/', {
+      method: 'POST',
+      body: formData,
+      headers: {} // Let browser set content-type for FormData
+    })
+  }
+
+  async downloadStockTemplate(warehouseId: number | string): Promise<Blob> {
+    const headers: Record<string, string> = {}
+    if (this.authToken) {
+      headers['Authorization'] = `Bearer ${this.authToken}`
+    }
+
+    const response = await fetch(`${this.baseURL}/warehouse-inventory/generate-template/?warehouse_id=${warehouseId}`, {
+      method: 'GET',
+      headers,
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to download template')
+    }
+
+    return response.blob()
+  }
+
   async getWarehouseBinCard(warehouseId: number | string, productId: number | string, params?: {
     start_date?: string
     end_date?: string
