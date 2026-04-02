@@ -529,40 +529,20 @@ export default function LubebayMonthlyDetailPage() {
     }
   })
 
-  // Available products for sale
-  const availableProducts = [
-    // Engine Oils
-    { name: 'Mobil 1 5W-30', brand: 'Mobil', category: 'Engine Oil', price: 15000 },
-    { name: 'Shell Helix HX7', brand: 'Shell', category: 'Engine Oil', price: 12500 },
-    { name: 'Castrol GTX', brand: 'Castrol', category: 'Engine Oil', price: 11000 },
-    { name: 'Total Quartz', brand: 'Total', category: 'Engine Oil', price: 13000 },
+  // Get inventory items for product sales (only items in stock at this lubebay)
+  const inventoryItems = inventoryData?.results || []
 
-    // Filters
-    { name: 'Oil Filter', brand: 'Mann', category: 'Filter', price: 3500 },
-    { name: 'Air Filter', brand: 'Bosch', category: 'Filter', price: 4000 },
-    { name: 'Fuel Filter', brand: 'Mann', category: 'Filter', price: 4500 },
-    { name: 'Cabin Filter', brand: 'Bosch', category: 'Filter', price: 3800 },
-
-    // Brake Parts
-    { name: 'Front Brake Pads', brand: 'Bosch', category: 'Brake Parts', price: 18000 },
-    { name: 'Rear Brake Pads', brand: 'Ferodo', category: 'Brake Parts', price: 15000 },
-    { name: 'Brake Disc (Front)', brand: 'Brembo', category: 'Brake Parts', price: 25000 },
-    { name: 'Brake Fluid DOT 4', brand: 'Mobil', category: 'Brake Parts', price: 5000 },
-
-    // Wipers & Electrical
-    { name: 'Windshield Wipers (Pair)', brand: 'Bosch', category: 'Wipers', price: 8000 },
-    { name: 'Headlight Bulb H4', brand: 'Philips', category: 'Electrical', price: 2500 },
-    { name: 'Car Battery 12V', brand: 'Exide', category: 'Electrical', price: 45000 },
-
-    // Tires & Suspension
-    { name: 'Car Tire 195/65R15', brand: 'Michelin', category: 'Tires', price: 35000 },
-    { name: 'Shock Absorber', brand: 'Monroe', category: 'Suspension', price: 22000 },
-
-    // Fluids
-    { name: 'Transmission Fluid', brand: 'Castrol', category: 'Fluids', price: 8000 },
-    { name: 'Power Steering Fluid', brand: 'Lucas', category: 'Fluids', price: 6000 },
-    { name: 'Coolant/Antifreeze', brand: 'Prestone', category: 'Fluids', price: 7000 }
-  ]
+  // Convert inventory items to product format for sales modal
+  const productsForSale = inventoryItems.map((item: any) => ({
+    id: item.product,
+    code: item.product_code,
+    name: item.product_name,
+    category: item.product_category,
+    selling_price: item.product_retail_selling_price || item.product_bulk_selling_price || 0,
+    quantity_on_hand: item.quantity_on_hand,
+    quantity_available: item.quantity_available,
+    unit_of_measure: item.unit_of_measure
+  }))
 
   // Calculate sale total
   const calculateSaleTotal = () => {
@@ -1926,7 +1906,7 @@ export default function LubebayMonthlyDetailPage() {
 
                     <div className="space-y-3">
                       {saleForm.items.map((item, index) => {
-                        const selectedProduct = products.find((p: any) => p.id === parseInt(item.service))
+                        const selectedProduct = productsForSale.find((p: any) => p.id === parseInt(item.service))
                         return (
                         <div key={index} className="p-4 border rounded-lg space-y-3">
                           <div className="flex justify-between items-center">
@@ -1947,7 +1927,7 @@ export default function LubebayMonthlyDetailPage() {
                               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                               <input
                                 type="text"
-                                placeholder="Search products by name, code, or brand..."
+                                placeholder="Search inventory by name or code..."
                                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                                 value={productSearchTerm}
                                 onChange={(e) => setProductSearchTerm(e.target.value)}
@@ -1958,7 +1938,7 @@ export default function LubebayMonthlyDetailPage() {
                               value={item.service}
                               onChange={(e) => {
                                 const productId = e.target.value
-                                const product = products.find((p: any) => p.id === parseInt(productId))
+                                const product = productsForSale.find((p: any) => p.id === parseInt(productId))
                                 setSaleForm(prev => ({
                                   ...prev,
                                   items: prev.items.map((it, i) =>
@@ -1968,8 +1948,8 @@ export default function LubebayMonthlyDetailPage() {
                               }}
                               size={8}
                             >
-                              <option value="">Select product</option>
-                              {products.filter((p: any) => {
+                              <option value="">Select product from inventory</option>
+                              {productsForSale.filter((p: any) => {
                                 // Filter by category based on sale type
                                 const isCorrectCategory = saleType === 'filter'
                                   ? (p.category === 'filter' || p.category === 'Filters')
@@ -1978,13 +1958,15 @@ export default function LubebayMonthlyDetailPage() {
                                 // Filter by search term
                                 const matchesSearch = !productSearchTerm ||
                                   (p.name || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-                                  (p.code || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-                                  (p.brand || '').toLowerCase().includes(productSearchTerm.toLowerCase())
+                                  (p.code || '').toLowerCase().includes(productSearchTerm.toLowerCase())
 
-                                return p.name && isCorrectCategory && matchesSearch
+                                // Only show items with available stock
+                                const hasStock = p.quantity_available > 0
+
+                                return p.name && isCorrectCategory && matchesSearch && hasStock
                               }).map((prod: any) => (
                                 <option key={prod.id} value={prod.id}>
-                                  {prod.name} {prod.brand ? `- ${prod.brand}` : ''} ({formatCurrency(prod.selling_price || 0)})
+                                  [{prod.code}] {prod.name} - Stock: {prod.quantity_available} {prod.unit_of_measure} ({formatCurrency(prod.selling_price || 0)})
                                 </option>
                               ))}
                             </select>
