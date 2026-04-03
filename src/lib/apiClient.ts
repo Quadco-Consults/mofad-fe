@@ -494,7 +494,7 @@ class ApiClient {
   }
 
   async getCurrentUser(): Promise<any> {
-    return this.get('/auth/me/')
+    return this.get('/auth/users/me/')
   }
 
   // Password reset methods
