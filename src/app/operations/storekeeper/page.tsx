@@ -105,7 +105,8 @@ const StorekeeperPage = () => {
   const { data: proData, isLoading: proLoading, error: proError } = useQuery({
     queryKey: ['pros-for-receive', selectedWarehouse, searchTerm, timeFilter],
     queryFn: () => apiClient.getPros({
-      status: 'confirmed', // PROs that are confirmed and waiting for goods receipt
+      status: 'approved,sent,confirmed,partially_delivered', // PROs that are ready for goods receipt
+      delivery_status: 'pending,partial', // Only show PROs with pending or partial deliveries
       delivery_location: selectedWarehouse || undefined,
       search: searchTerm || undefined,
       page_size: 100

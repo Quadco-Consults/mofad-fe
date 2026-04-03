@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import api from '@/lib/apiClient'
-import { Eye, CheckCircle, XCircle, Plus, Package, Warehouse, AlertTriangle, TrendingUp, TrendingDown, Loader2, AlertCircle as AlertCircleIcon, ArrowLeft, MapPin, Search, Filter, FileText, Calendar, User, ArrowUp, ArrowDown, Settings, Upload } from 'lucide-react'
+import { Eye, CheckCircle, XCircle, Plus, Package, Warehouse, AlertTriangle, TrendingUp, TrendingDown, Loader2, AlertCircle as AlertCircleIcon, ArrowLeft, MapPin, Search, Filter, FileText, Calendar, User, ArrowUp, ArrowDown, Settings, Upload, ChevronDown, ChevronRight } from 'lucide-react'
 
 interface InventoryItem {
   id: number
@@ -145,6 +145,7 @@ export default function WarehouseInventoryPage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadResults, setUploadResults] = useState<any>(null)
+  const [expandedGRNs, setExpandedGRNs] = useState<Set<number>>(new Set())
 
   // Fetch warehouse details
   const { data: warehouseData, isLoading: warehouseLoading, error: warehouseError } = useQuery({
@@ -868,58 +869,138 @@ export default function WarehouseInventoryPage() {
                         </td>
                       </tr>
                     ) : (
-                      grnHistory.map((grn: any, index: number) => (
-                        <tr key={grn.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{grn.grn_number}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{grn.pro_number}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{grn.supplier_name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(grn.received_date).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm">
-                              <div className="text-gray-900">Received: {grn.total_quantity_received?.toLocaleString() || 0}</div>
-                              <div className="text-green-600">Accepted: {grn.total_quantity_accepted?.toLocaleString() || 0}</div>
-                              <div className="text-red-600">Rejected: {grn.total_quantity_rejected?.toLocaleString() || 0}</div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ₦{grn.total_value?.toLocaleString() || 0}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              grn.qc_status === 'passed' ? 'bg-green-100 text-green-800' :
-                              grn.qc_status === 'failed' ? 'bg-red-100 text-red-800' :
-                              grn.qc_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                              grn.qc_status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {grn.qc_status === 'in_progress' ? 'In Progress' :
-                               grn.qc_status?.charAt(0).toUpperCase() + grn.qc_status?.slice(1) || 'Pending'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              grn.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              grn.status === 'approved' ? 'bg-blue-100 text-blue-800' :
-                              grn.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                              grn.status === 'under_inspection' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {grn.status === 'under_inspection' ? 'Under Inspection' :
-                               grn.status?.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || 'Draft'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <button
-                              className="text-orange-600 hover:text-orange-800 font-medium"
-                              onClick={() => router.push(`/inventory/grn/${grn.id}`)}
-                            >
-                              View Details
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                      grnHistory.map((grn: any, index: number) => {
+                        const isExpanded = expandedGRNs.has(grn.id)
+                        return (
+                          <Fragment key={grn.id}>
+                            <tr className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <button
+                                  onClick={() => {
+                                    const newExpanded = new Set(expandedGRNs)
+                                    if (isExpanded) {
+                                      newExpanded.delete(grn.id)
+                                    } else {
+                                      newExpanded.add(grn.id)
+                                    }
+                                    setExpandedGRNs(newExpanded)
+                                  }}
+                                  className="flex items-center gap-2 hover:text-orange-600"
+                                >
+                                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                  {grn.grn_number}
+                                </button>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{grn.pro_number}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{grn.supplier_name}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {new Date(grn.received_date).toLocaleDateString()}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="text-sm">
+                                  <div className="text-gray-900">Received: {grn.total_quantity_received?.toLocaleString() || 0}</div>
+                                  <div className="text-green-600">Accepted: {grn.total_quantity_accepted?.toLocaleString() || 0}</div>
+                                  <div className="text-red-600">Rejected: {grn.total_quantity_rejected?.toLocaleString() || 0}</div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                ₦{grn.total_value?.toLocaleString() || 0}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  grn.qc_status === 'passed' ? 'bg-green-100 text-green-800' :
+                                  grn.qc_status === 'failed' ? 'bg-red-100 text-red-800' :
+                                  grn.qc_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                                  grn.qc_status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {grn.qc_status === 'in_progress' ? 'In Progress' :
+                                   grn.qc_status?.charAt(0).toUpperCase() + grn.qc_status?.slice(1) || 'Pending'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  grn.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                  grn.status === 'approved' ? 'bg-blue-100 text-blue-800' :
+                                  grn.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                  grn.status === 'under_inspection' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {grn.status === 'under_inspection' ? 'Under Inspection' :
+                                   grn.status?.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || 'Draft'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <button
+                                  className="text-orange-600 hover:text-orange-800 font-medium"
+                                  onClick={() => router.push(`/inventory/grn/${grn.id}`)}
+                                >
+                                  View Details
+                                </button>
+                              </td>
+                            </tr>
+                            {isExpanded && grn.items && grn.items.length > 0 && (
+                              <tr className="bg-blue-50">
+                                <td colSpan={9} className="px-6 py-4">
+                                  <div className="ml-8">
+                                    <h5 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                      <Package className="w-4 h-4" />
+                                      Items Received ({grn.items.length})
+                                    </h5>
+                                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                      <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                          <tr>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty Received</th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty Accepted</th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty Rejected</th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total Value</th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch No</th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Expiry Date</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                          {grn.items.map((item: any, itemIndex: number) => (
+                                            <tr key={item.id || itemIndex} className="hover:bg-gray-50">
+                                              <td className="px-4 py-3 text-sm">
+                                                <div className="font-medium text-gray-900">{item.product_name || 'Unknown Product'}</div>
+                                                <div className="text-xs text-gray-500">{item.product_code || 'N/A'}</div>
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-right text-gray-900">
+                                                {item.quantity_received?.toLocaleString() || 0}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-right text-green-600 font-medium">
+                                                {item.quantity_accepted?.toLocaleString() || 0}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-right text-red-600 font-medium">
+                                                {item.quantity_rejected?.toLocaleString() || 0}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-right text-gray-900">
+                                                ₦{item.unit_price?.toLocaleString() || 0}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-right text-gray-900 font-medium">
+                                                ₦{((item.quantity_accepted || 0) * (item.unit_price || 0)).toLocaleString()}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-gray-700">
+                                                {item.batch_number || '-'}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-gray-700">
+                                                {item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : '-'}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        )
+                      })
                     )}
                   </tbody>
                 </table>
