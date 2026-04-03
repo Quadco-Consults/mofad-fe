@@ -1,8 +1,9 @@
 {
-  "version": "3.0.0",
-  "build": "2026-04-03-18:00",
+  "version": "3.1.0",
+  "build": "2026-04-03-18:10",
   "binCardFixed": true,
-  "correctPageUpdated": true,
+  "productPageBinCardFixed": true,
+  "allBinCardPagesFixed": true,
   "usingDedicatedEndpoint": true,
   "endpoint": "/api/v1/warehouses/{id}/bincard/{productId}/"
 }
