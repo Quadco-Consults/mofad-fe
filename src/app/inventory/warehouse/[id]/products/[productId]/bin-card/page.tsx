@@ -81,33 +81,38 @@ interface WarehouseData {
 const getTransactionIcon = (type: string) => {
   if (!type) return <FileText className="w-4 h-4 text-gray-600" />
 
-  switch (type.toLowerCase()) {
-    case 'receipt':
-      return <TrendingUp className="w-4 h-4 text-green-600" />
-    case 'issue':
-      return <TrendingDown className="w-4 h-4 text-red-600" />
-    case 'opening balance':
-      return <FileText className="w-4 h-4 text-blue-600" />
-    case 'current balance':
-      return <Package className="w-4 h-4 text-gray-600" />
-    default:
-      return <FileText className="w-4 h-4 text-gray-600" />
+  const lowerType = type.toLowerCase()
+  if (lowerType.includes('in') || lowerType.includes('receipt') || lowerType.includes('purchase')) {
+    return <TrendingUp className="w-4 h-4 text-green-600" />
+  } else if (lowerType.includes('out') || lowerType.includes('issue') || lowerType.includes('sale')) {
+    return <TrendingDown className="w-4 h-4 text-red-600" />
+  } else if (lowerType.includes('adjustment')) {
+    return <FileText className="w-4 h-4 text-blue-600" />
+  } else {
+    return <Package className="w-4 h-4 text-gray-600" />
   }
 }
 
 const getTransactionTypeBadge = (type: string) => {
   if (!type) type = 'Unknown'
 
-  const colors: Record<string, string> = {
-    'Receipt': 'bg-green-100 text-green-800 border-green-200',
-    'Issue': 'bg-red-100 text-red-800 border-red-200',
-    'Opening Balance': 'bg-blue-100 text-blue-800 border-blue-200',
-    'Current Balance': 'bg-gray-100 text-gray-800 border-gray-200'
+  const lowerType = type.toLowerCase()
+  let colorClass = 'bg-gray-100 text-gray-800 border-gray-200'
+  let displayText = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+
+  if (lowerType.includes('in') || lowerType.includes('receipt') || lowerType.includes('purchase')) {
+    colorClass = 'bg-green-100 text-green-800 border-green-200'
+  } else if (lowerType.includes('out') || lowerType.includes('issue') || lowerType.includes('sale')) {
+    colorClass = 'bg-red-100 text-red-800 border-red-200'
+  } else if (lowerType.includes('adjustment')) {
+    colorClass = 'bg-blue-100 text-blue-800 border-blue-200'
+  } else if (lowerType.includes('loss') || lowerType.includes('damage')) {
+    colorClass = 'bg-orange-100 text-orange-800 border-orange-200'
   }
 
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${colors[type] || 'bg-gray-100 text-gray-800 border-gray-200'}`}>
-      {type}
+    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${colorClass}`}>
+      {displayText}
     </span>
   )
 }
@@ -132,17 +137,38 @@ export default function ProductBinCardPage() {
     queryFn: () => apiClient.get(`/warehouses/${warehouseId}`),
   })
 
-  // Fetch bin card data
-  const { data: binCardData, isLoading, error } = useQuery({
+  // Fetch bin card data (stock transactions)
+  const { data: binCardResponse, isLoading, error } = useQuery({
     queryKey: ['product-bin-card', warehouseId, productId],
-    queryFn: () => apiClient.get(`/warehouses/${warehouseId}/products/${productId}/bin-card`),
+    queryFn: () => apiClient.get(`/stock-transactions/`, {
+      warehouse: warehouseId,
+      product: productId,
+      page_size: 1000,
+      ordering: 'created_at'
+    }),
   })
 
   const warehouses = warehousesList || []
   const warehouse = warehouses.find((w: WarehouseData) => w.id === parseInt(warehouseId))
   const inventory = inventoryList || []
   const product = inventory.find((p: WarehouseInventory) => p.id === parseInt(productId))
-  const transactions = binCardData || []
+
+  // Map stock transactions to bin card format
+  const rawTransactions = binCardResponse?.results || binCardResponse || []
+  const transactions = rawTransactions.map((txn: any) => ({
+    id: txn.id,
+    product_id: txn.product,
+    warehouse_id: txn.warehouse,
+    transaction_date: txn.transaction_date || txn.created_at,
+    transaction_type: txn.transaction_type,
+    description: txn.description || txn.reason || '',
+    reference: txn.reference_number || '',
+    received: txn.quantity_in || 0,
+    issued: txn.quantity_out || 0,
+    balance: txn.quantity_after || 0,
+    unit_cost: txn.unit_cost || 0,
+    created_by: txn.created_by_name || ''
+  }))
 
   // Filter transactions
   const filteredTransactions = transactions.filter((transaction: BinCardTransaction) => {
@@ -425,10 +451,12 @@ export default function ProductBinCardPage() {
               onChange={(e) => setTypeFilter(e.target.value)}
             >
               <option value="all">All Transactions</option>
-              <option value="Receipt">Receipts</option>
-              <option value="Issue">Issues</option>
-              <option value="Opening Balance">Opening Balance</option>
-              <option value="Current Balance">Current Balance</option>
+              <option value="transfer_in">Transfer In</option>
+              <option value="transfer_out">Transfer Out</option>
+              <option value="purchase">Purchase</option>
+              <option value="sale">Sale</option>
+              <option value="adjustment">Adjustment</option>
+              <option value="loss">Loss/Damage</option>
             </select>
 
             <Button variant="outline">
