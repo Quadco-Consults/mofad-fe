@@ -2,6 +2,11 @@
 const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
+    BUILD_ID: Date.now().toString(),
+  },
+  // Disable static optimization to prevent aggressive caching during development
+  generateBuildId: async () => {
+    return Date.now().toString()
   },
 
   // Image optimization configuration

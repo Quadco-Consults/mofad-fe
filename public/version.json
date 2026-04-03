@@ -1,5 +1,7 @@
 {
-  "version": "2.0.1",
-  "build": "2026-04-03-17:15",
-  "stockTransactionsFix": true
+  "version": "2.1.0",
+  "build": "2026-04-03-17:30",
+  "stockTransactionsFix": true,
+  "getMethodFixed": true,
+  "cacheBusting": true
 }

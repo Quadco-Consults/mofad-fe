@@ -343,7 +343,9 @@ class ApiClient {
 
   // Generic GET method with query parameters support
   async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<T> {
-    let url = endpoint
+    // Ensure endpoint starts with /
+    let url = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+
     if (params) {
       const queryParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
@@ -353,9 +355,11 @@ class ApiClient {
       })
       const queryString = queryParams.toString()
       if (queryString) {
-        url = `${endpoint}${endpoint.includes('?') ? '&' : '?'}${queryString}`
+        url = `${url}${url.includes('?') ? '&' : '?'}${queryString}`
       }
     }
+
+    console.log('[GET method] Endpoint:', endpoint, '→ URL:', url, '→ Full:', `${this.baseURL}${url}`)
     return this.request<T>(url)
   }
 
