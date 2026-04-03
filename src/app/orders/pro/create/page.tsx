@@ -166,7 +166,7 @@ function CreatePROPageContent() {
   const [quantity, setQuantity] = useState(0)
   const [productSearchTerm, setProductSearchTerm] = useState('')
   const [supplierSearchTerm, setSupplierSearchTerm] = useState('')
-  const [selectedPackageSize, setSelectedPackageSize] = useState<number | null>(null)
+  // Package size is part of the product itself, no selection needed
 
   // Fetch products for selection
   const { data: productsData, isLoading: productsLoading } = useQuery({
@@ -263,15 +263,6 @@ function CreatePROPageContent() {
       return
     }
 
-    // Validate package size selection if product has package sizes
-    if (selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0 && !selectedPackageSize) {
-      addToast({
-        title: 'Please select a package size',
-        type: 'error'
-      })
-      return
-    }
-
     // Check if product already exists
     if (formData.items.some(item => item.product_id === selectedProduct.id.toString())) {
       addToast({
@@ -287,6 +278,16 @@ function CreatePROPageContent() {
     // Use delivery_location (warehouse) from formData
     const selectedWarehouseObj = warehouses.find((w: Warehouse) => w.id.toString() === formData.delivery_location)
 
+    // Get package size from product (size is already part of the product)
+    let packageSize: number | null = null
+    if (selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0) {
+      packageSize = selectedProduct.package_sizes[0]
+    } else if (selectedProduct.retail_size && parseFloat(selectedProduct.retail_size) > 0) {
+      packageSize = parseFloat(selectedProduct.retail_size)
+    } else if (selectedProduct.bulk_size && parseFloat(selectedProduct.bulk_size) > 0) {
+      packageSize = parseFloat(selectedProduct.bulk_size)
+    }
+
     const item: PROItem = {
       id: Date.now().toString(),
       product_id: selectedProduct.id.toString(),
@@ -296,7 +297,7 @@ function CreatePROPageContent() {
       unit_price: unitPrice,
       total,
       unit: selectedProduct.unit_of_measure || 'Unit',
-      package_size: selectedPackageSize || undefined,
+      package_size: packageSize || undefined,
       warehouse_id: formData.delivery_location || undefined,
       warehouse_name: selectedWarehouseObj?.name || undefined,
       notes: ''
@@ -310,7 +311,6 @@ function CreatePROPageContent() {
     // Reset form
     setSelectedProduct(null)
     setQuantity(0)
-    setSelectedPackageSize(null)
   }
 
   const removeItem = (id: string) => {
@@ -854,29 +854,31 @@ function CreatePROPageContent() {
                               />
                             </div>
 
-                            {/* Package Size Selector */}
-                            {selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0 && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Package Size *
-                                </label>
-                                <select
-                                  value={selectedPackageSize || ''}
-                                  onChange={(e) => setSelectedPackageSize(e.target.value ? Number(e.target.value) : null)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                  required
-                                >
-                                  <option value="">Select package size</option>
-                                  {selectedProduct.package_sizes.map((size, idx) => (
-                                    <option key={idx} value={size}>
-                                      {size}{selectedProduct.unit_of_measure === 'liters' ? 'L' :
-                                            selectedProduct.unit_of_measure === 'gallons' ? 'gal' :
-                                            selectedProduct.unit_of_measure === 'kilograms' ? 'kg' : ''}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
+                            {/* Package Size Display - read-only (size is part of product) */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Package Size
+                              </label>
+                              <input
+                                type="text"
+                                value={(() => {
+                                  let size = null
+                                  if (selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0) {
+                                    size = selectedProduct.package_sizes[0]
+                                  } else if (selectedProduct.retail_size && parseFloat(selectedProduct.retail_size) > 0) {
+                                    size = parseFloat(selectedProduct.retail_size)
+                                  } else if (selectedProduct.bulk_size && parseFloat(selectedProduct.bulk_size) > 0) {
+                                    size = parseFloat(selectedProduct.bulk_size)
+                                  }
+                                  const unit = selectedProduct.unit_of_measure === 'liters' ? 'L' :
+                                               selectedProduct.unit_of_measure === 'gallons' ? 'gal' :
+                                               selectedProduct.unit_of_measure === 'kilograms' ? 'kg' : ''
+                                  return size ? `${size}${unit}` : '-'
+                                })()}
+                                disabled
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                              />
+                            </div>
 
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
