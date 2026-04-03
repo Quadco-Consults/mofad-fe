@@ -51,8 +51,6 @@ interface Product {
   brand?: string
   is_active?: boolean
   package_sizes?: number[]
-  bulk_size?: number
-  retail_size?: number
 }
 
 interface Warehouse {
@@ -278,8 +276,10 @@ function CreatePROPageContent() {
     // Use delivery_location (warehouse) from formData
     const selectedWarehouseObj = warehouses.find((w: Warehouse) => w.id.toString() === formData.delivery_location)
 
-    // Auto-use bulk_size from product
-    const packageSize = selectedProduct.bulk_size || selectedProduct.retail_size || null
+    // Use first available package size from product.package_sizes array
+    const packageSize = selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0
+      ? selectedProduct.package_sizes[0]
+      : null
 
     const item: PROItem = {
       id: Date.now().toString(),
@@ -847,18 +847,31 @@ function CreatePROPageContent() {
                               />
                             </div>
 
-                            {/* Package Size - Auto-populated from product */}
+                            {/* Package Size - Show available sizes */}
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Package Size
                               </label>
-                              <input
-                                type="text"
-                                value={`${selectedProduct.bulk_size || selectedProduct.retail_size || 'N/A'}${selectedProduct.unit_of_measure === 'liters' ? 'L' : selectedProduct.unit_of_measure === 'gallons' ? 'gal' : selectedProduct.unit_of_measure === 'kilograms' ? 'kg' : ''}`}
-                                disabled
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                              />
-                              <p className="mt-1 text-xs text-gray-500">Auto-populated from product details</p>
+                              {selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0 ? (
+                                <input
+                                  type="text"
+                                  value={`${selectedProduct.package_sizes[0]}${selectedProduct.unit_of_measure === 'liters' ? 'L' : selectedProduct.unit_of_measure === 'gallons' ? 'gal' : selectedProduct.unit_of_measure === 'kilograms' ? 'kg' : ''}`}
+                                  disabled
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                                />
+                              ) : (
+                                <input
+                                  type="text"
+                                  value="N/A"
+                                  disabled
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                                />
+                              )}
+                              <p className="mt-1 text-xs text-gray-500">
+                                {selectedProduct.package_sizes && selectedProduct.package_sizes.length > 1
+                                  ? `Available sizes: ${selectedProduct.package_sizes.map(s => `${s}${selectedProduct.unit_of_measure === 'liters' ? 'L' : selectedProduct.unit_of_measure === 'gallons' ? 'gal' : 'kg'}`).join(', ')}`
+                                  : 'Package size from product details'}
+                              </p>
                             </div>
 
                             <div>
