@@ -337,12 +337,22 @@ export default function CreateCustomerOrderPage() {
       scheme.name?.toLowerCase().includes('direct')
     )
 
-    if (directScheme && directScheme.price) {
+    // Try Direct scheme first, but only if price > 0
+    if (directScheme && directScheme.price > 0) {
       return parseFloat(directScheme.price)
     }
 
-    // Fallback to retail_selling_price, then bulk_selling_price, then cost_price
-    return parseFloat(product.retail_selling_price || product.bulk_selling_price || product.cost_price || '0')
+    // Try each price field, only use if > 0
+    const retailPrice = parseFloat(product.retail_selling_price || '0')
+    if (retailPrice > 0) return retailPrice
+
+    const bulkPrice = parseFloat(product.bulk_selling_price || '0')
+    if (bulkPrice > 0) return bulkPrice
+
+    const costPrice = parseFloat(product.cost_price || '0')
+    if (costPrice > 0) return costPrice
+
+    return 0
   }
 
   const addProductToOrder = () => {
