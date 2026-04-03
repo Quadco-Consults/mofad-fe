@@ -67,44 +67,32 @@ export default function WarehouseProductDetailPage() {
   const productData = inventoryResponse?.product
   const productLoading = inventoryLoading
 
-  // Fetch stock transactions (bin card data)
-  const { data: transactionsResponse, isLoading: transactionsLoading } = useQuery({
-    queryKey: ['stock-transactions', warehouseId, productId],
+  // Fetch stock transactions (bin card data) using dedicated endpoint
+  const { data: binCardData, isLoading: transactionsLoading } = useQuery({
+    queryKey: ['bin-card', warehouseId, productId],
     queryFn: async () => {
       try {
-        const response = await api.get('/v1/stock-transactions/', {
-          warehouse: warehouseId,
-          product: productId,
-          ordering: '-created_at',
-          page_size: 100
-        })
-        return response
+        console.log('[Product Page] Fetching bin card for warehouse:', warehouseId, 'product:', productId)
+        const result = await api.getProductBinCard(warehouseId, productId)
+        console.log('[Product Page] Bin card data received:', result)
+        return result
       } catch (error) {
-        console.error('Error fetching stock transactions:', error)
-        return { data: { results: [], paginator: { count: 0 } } }
+        console.error('Error fetching bin card:', error)
+        return { transactions: [] }
       }
     },
     enabled: !!(warehouseId && productId)
   })
 
-  // Extract transactions from response
-  const transactionsData = transactionsResponse?.data || transactionsResponse
-  const transactions = transactionsData?.results || []
-  const transactionCount = transactionsData?.paginator?.count || transactions.length
+  // Extract transactions from bin card response
+  const transactions = binCardData?.transactions || []
+  const transactionCount = transactions.length
 
-  // Calculate totals from transactions
-  const totals = transactions.reduce((acc: any, txn: any) => {
-    const qty = parseFloat(txn.quantity || 0)
-    const type = txn.transaction_type?.toUpperCase()
-
-    if (['RECEIVE', 'RETURN', 'ADJUSTMENT_IN', 'TRANSFER_IN', 'OPENING_BALANCE'].includes(type)) {
-      acc.received += qty
-    } else if (['ISSUE', 'TRANSFER_OUT', 'ADJUSTMENT_OUT', 'SALE'].includes(type)) {
-      acc.issued += qty
-    }
-
-    return acc
-  }, { received: 0, issued: 0 })
+  // Get totals from bin card data
+  const totals = {
+    received: binCardData?.total_receipts || 0,
+    issued: binCardData?.total_issues || 0
+  }
 
   const isLoading = warehouseLoading || productLoading || inventoryLoading
   const inventoryItem = inventoryResponse
@@ -313,58 +301,65 @@ export default function WarehouseProductDetailPage() {
                             <tbody className="bg-white divide-y divide-gray-200">
                               {transactions.length > 0 ? (
                                 transactions.map((txn: any, index: number) => {
-                                  const qty = parseFloat(txn.quantity || 0)
-                                  const type = txn.transaction_type?.toUpperCase()
-                                  const isReceive = ['RECEIVE', 'RETURN', 'ADJUSTMENT_IN', 'TRANSFER_IN', 'OPENING_BALANCE'].includes(type)
-                                  const isIssue = ['ISSUE', 'TRANSFER_OUT', 'ADJUSTMENT_OUT', 'SALE'].includes(type)
+                                  const type = txn.transaction_type?.toLowerCase() || ''
+                                  const quantityIn = parseFloat(txn.quantity_in || 0)
+                                  const quantityOut = parseFloat(txn.quantity_out || 0)
 
                                   const typeColors: Record<string, string> = {
-                                    'RECEIVE': 'bg-green-100 text-green-800',
-                                    'ISSUE': 'bg-red-100 text-red-800',
-                                    'TRANSFER_IN': 'bg-blue-100 text-blue-800',
-                                    'TRANSFER_OUT': 'bg-orange-100 text-orange-800',
-                                    'ADJUSTMENT_IN': 'bg-purple-100 text-purple-800',
-                                    'ADJUSTMENT_OUT': 'bg-pink-100 text-pink-800',
-                                    'OPENING_BALANCE': 'bg-gray-100 text-gray-800',
-                                    'RETURN': 'bg-teal-100 text-teal-800',
-                                    'SALE': 'bg-yellow-100 text-yellow-800',
+                                    'receipt': 'bg-green-100 text-green-800',
+                                    'issue': 'bg-red-100 text-red-800',
+                                    'transfer_in': 'bg-blue-100 text-blue-800',
+                                    'transfer_out': 'bg-orange-100 text-orange-800',
+                                    'adjustment': 'bg-purple-100 text-purple-800',
+                                    'loss': 'bg-gray-100 text-gray-800',
+                                    'return': 'bg-teal-100 text-teal-800',
+                                  }
+
+                                  const typeLabels: Record<string, string> = {
+                                    'receipt': 'Receipt',
+                                    'issue': 'Issue',
+                                    'transfer_in': 'Transfer In',
+                                    'transfer_out': 'Transfer Out',
+                                    'adjustment': 'Adjustment',
+                                    'loss': 'Loss',
+                                    'return': 'Return',
                                   }
 
                                   return (
                                     <tr key={txn.id || index} className="hover:bg-gray-50">
                                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                        {new Date(txn.created_at).toLocaleDateString('en-GB')}
+                                        {new Date(txn.transaction_date || txn.created_at).toLocaleDateString('en-GB')}
                                       </td>
                                       <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-blue-600">
-                                        {txn.reference_number || txn.transaction_number || 'N/A'}
+                                        {txn.reference_number || 'N/A'}
                                       </td>
                                       <td className="px-4 py-3 text-sm text-gray-600">
-                                        {txn.notes || txn.reason || type.replace(/_/g, ' ')}
+                                        {txn.description || txn.reason || txn.notes || typeLabels[type] || type}
                                       </td>
                                       <td className="px-4 py-3 whitespace-nowrap">
                                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${typeColors[type] || 'bg-gray-100 text-gray-800'}`}>
-                                          {type.replace(/_/g, ' ')}
+                                          {typeLabels[type] || type.replace(/_/g, ' ').toUpperCase()}
                                         </span>
                                       </td>
                                       <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
-                                        {isReceive ? (
-                                          <span className="font-semibold text-green-600">{qty.toLocaleString()}</span>
+                                        {quantityIn > 0 ? (
+                                          <span className="font-semibold text-green-600">+{quantityIn.toLocaleString()}</span>
                                         ) : (
                                           <span className="text-gray-400">-</span>
                                         )}
                                       </td>
                                       <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
-                                        {isIssue ? (
-                                          <span className="font-semibold text-red-600">{qty.toLocaleString()}</span>
+                                        {quantityOut > 0 ? (
+                                          <span className="font-semibold text-red-600">-{quantityOut.toLocaleString()}</span>
                                         ) : (
                                           <span className="text-gray-400">-</span>
                                         )}
                                       </td>
                                       <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                                        {parseFloat(txn.quantity_after || txn.stock_balance || 0).toLocaleString()}
+                                        {parseFloat(txn.balance_after || txn.quantity_after || txn.stock_balance || 0).toLocaleString()}
                                       </td>
                                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                                        {txn.created_by?.username || txn.created_by?.first_name || 'System'}
+                                        {txn.created_by_name || txn.created_by?.username || txn.created_by?.first_name || 'System'}
                                       </td>
                                     </tr>
                                   )
