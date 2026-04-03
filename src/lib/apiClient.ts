@@ -1,7 +1,9 @@
 // Django API client for MOFAD backend integration
+// Updated: 2026-04-03 16:50 - Fixed stock transactions endpoint
 import { LoginForm, User } from '../types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
+console.log('[API Client Init] Base URL:', API_BASE_URL)
 
 export interface ApiError {
   message: string
@@ -2853,8 +2855,11 @@ class ApiClient {
       })
     }
     const queryString = queryParams.toString()
-    const url = `/stock-transactions/${queryString ? `?${queryString}` : ''}`
-    return this.request(url)
+    const url = `stock-transactions/${queryString ? `?${queryString}` : ''}`
+    console.log('[DEBUG] getStockTransactions - baseURL:', this.baseURL)
+    console.log('[DEBUG] getStockTransactions - endpoint:', url)
+    console.log('[DEBUG] getStockTransactions - full URL will be:', `${this.baseURL}/${url}`)
+    return this.request(`/${url}`)
   }
 
   async createStockTransfer(data: {
