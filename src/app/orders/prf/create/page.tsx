@@ -179,7 +179,7 @@ export default function CreateCustomerOrderPage() {
     product_code: item.product_code,
     code: item.product_code,
     category: item.product_category,
-    unit_type: item.unit_of_measure,
+    unit_type: item.product_unit_of_measure,
     current_price: item.product_retail_selling_price || item.product_bulk_selling_price || 0,
     retail_selling_price: item.product_retail_selling_price,
     bulk_selling_price: item.product_bulk_selling_price,
@@ -196,7 +196,7 @@ export default function CreateCustomerOrderPage() {
     is_sellable: item.quantity_available > 0,
     retail_size: item.product_retail_size,
     bulk_size: item.product_bulk_size,
-    unit_of_measure: item.unit_of_measure,
+    unit_of_measure: item.product_unit_of_measure,
     brand: item.product_brand,
     price_schemes: item.product_price_schemes || [],
   }))
@@ -331,7 +331,13 @@ export default function CreateCustomerOrderPage() {
     const directScheme = priceSchemes.find((scheme: any) =>
       scheme.name?.toLowerCase().includes('direct')
     )
-    return directScheme ? parseFloat(directScheme.price || '0') : parseFloat(product.retail_selling_price || '0')
+
+    if (directScheme && directScheme.price) {
+      return parseFloat(directScheme.price)
+    }
+
+    // Fallback to retail_selling_price, then bulk_selling_price, then cost_price
+    return parseFloat(product.retail_selling_price || product.bulk_selling_price || product.cost_price || '0')
   }
 
   const addProductToOrder = () => {
