@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -217,9 +217,24 @@ export default function CreateCustomerOrderPage() {
 
   const warehouses = warehousesData?.results || (Array.isArray(warehousesData) ? warehousesData : [])
 
+  // Fetch current user for sales rep
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: () => apiClient.getCurrentUser(),
+  })
+
+  // Auto-populate sales rep when user data loads
+  useEffect(() => {
+    if (currentUser && !formData.sales_rep) {
+      const salesRepName = currentUser.full_name || currentUser.email || 'Unknown'
+      setFormData(prev => ({ ...prev, sales_rep: salesRepName }))
+    }
+  }, [currentUser])
+
   // Debug logging
   console.log('Warehouses data:', { warehousesData, warehouses, count: warehouses?.length })
   console.log('Users data:', { usersData, users, count: users?.length })
+  console.log('Current user:', currentUser)
 
   // No client-side filtering needed - API handles search
   const filteredCustomers = customers || []
@@ -784,10 +799,11 @@ export default function CreateCustomerOrderPage() {
                           <input
                             type="text"
                             value={formData.sales_rep}
-                            onChange={(e) => setFormData(prev => ({ ...prev, sales_rep: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            placeholder="Enter sales rep name"
+                            readOnly
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
+                            placeholder="Loading..."
                           />
+                          <p className="mt-1 text-xs text-gray-500">Auto-populated from logged-in user</p>
                         </div>
 
                         {/* Reviewer and Approver Selection */}
