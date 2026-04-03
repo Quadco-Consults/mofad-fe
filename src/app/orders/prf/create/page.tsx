@@ -241,7 +241,12 @@ export default function CreateCustomerOrderPage() {
     }
   ) || []
 
-  // Debug logging for products
+  // Debug logging for products and inventory
+  console.log('Inventory data debug:', {
+    inventoryData,
+    inventoryItems: inventoryItems?.length || 0,
+    sampleInventoryItem: inventoryItems?.[0]
+  })
   console.log('Products debug:', {
     totalProducts: mofadProducts?.length || 0,
     filteredCount: filteredProducts.length,
