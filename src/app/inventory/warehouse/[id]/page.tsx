@@ -131,7 +131,7 @@ export default function WarehouseInventoryPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showDeclineModal, setShowDeclineModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [activeTab, setActiveTab] = useState<'inventory' | 'receipts' | 'pending_issues' | 'grn_history'>('inventory')
+  const [activeTab, setActiveTab] = useState<'inventory' | 'receipts' | 'pending_issues' | 'grn_history' | 'inbound_transfers'>('inventory')
   const [selectedReceipt, setSelectedReceipt] = useState<PendingReceipt | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'out-of-stock'>('all')
@@ -146,6 +146,10 @@ export default function WarehouseInventoryPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadResults, setUploadResults] = useState<any>(null)
   const [expandedGRNs, setExpandedGRNs] = useState<Set<number>>(new Set())
+  const [showReceiveTransferModal, setShowReceiveTransferModal] = useState(false)
+  const [selectedTransfer, setSelectedTransfer] = useState<any>(null)
+  const [transferReceiveItems, setTransferReceiveItems] = useState<any[]>([])
+  const [isReceivingTransfer, setIsReceivingTransfer] = useState(false)
 
   // Fetch warehouse details
   const { data: warehouseData, isLoading: warehouseLoading, error: warehouseError } = useQuery({
@@ -252,6 +256,28 @@ export default function WarehouseInventoryPage() {
     },
     enabled: !!warehouseId && activeTab === 'grn_history',
     staleTime: 2 * 60 * 1000 // 2 minutes
+  })
+
+  // Fetch inbound stock transfers (transfers coming TO this warehouse)
+  const { data: inboundTransfers = [], isLoading: transfersLoading } = useQuery({
+    queryKey: ['inbound-transfers', warehouseId],
+    queryFn: async () => {
+      try {
+        const response = await api.getStockTransfers({
+          to_warehouse: warehouseId,
+          status: 'in_transit,partially_received',
+          page_size: 100
+        })
+        console.log('Inbound transfers:', response)
+        return response.results || response || []
+      } catch (error) {
+        console.error('Error fetching inbound transfers:', error)
+        return []
+      }
+    },
+    enabled: !!warehouseId && activeTab === 'inbound_transfers',
+    staleTime: 30 * 1000,
+    refetchInterval: 30000
   })
 
   // Fetch PRFs ready for issue at this warehouse
@@ -515,6 +541,21 @@ export default function WarehouseInventoryPage() {
                   activeTab === 'grn_history' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'
                 }`}>
                   {grnsLoading ? '...' : grnHistory.length}
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('inbound_transfers')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'inbound_transfers'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Inbound Transfers
+                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                  activeTab === 'inbound_transfers' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {transfersLoading ? '...' : inboundTransfers.length}
                 </span>
               </button>
             </nav>
@@ -1640,6 +1681,259 @@ export default function WarehouseInventoryPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Inbound Transfers Tab */}
+        {activeTab === 'inbound_transfers' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Inbound Stock Transfers</h3>
+                <p className="text-sm text-gray-600 mt-1">Products being transferred to this warehouse from other MOFAD locations</p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transfer #</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From Warehouse</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shipped Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {transfersLoading ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-8 text-center">
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto text-orange-500 mb-2" />
+                          <p className="text-gray-600">Loading inbound transfers...</p>
+                        </td>
+                      </tr>
+                    ) : inboundTransfers.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                          No inbound transfers found. All shipments have been received.
+                        </td>
+                      </tr>
+                    ) : (
+                      inboundTransfers.map((transfer: any, index: number) => (
+                        <tr key={transfer.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{transfer.transfer_number}</div>
+                            {transfer.tracking_number && (
+                              <div className="text-xs text-gray-500">Ref: {transfer.tracking_number}</div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {transfer.from_warehouse_name || `Warehouse #${transfer.from_warehouse}`}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {transfer.total_items || 0} items ({transfer.total_quantity || 0} units)
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {transfer.shipped_at ? new Date(transfer.shipped_at).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {transfer.expected_date ? new Date(transfer.expected_date).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              transfer.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
+                              transfer.status === 'partially_received' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {transfer.status === 'in_transit' ? 'In Transit' :
+                               transfer.status === 'partially_received' ? 'Partially Received' :
+                               transfer.status?.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
+                            <button
+                              onClick={() => {
+                                setSelectedTransfer(transfer)
+                                setTransferReceiveItems(transfer.items.map((item: any) => ({
+                                  product_id: item.product,
+                                  product_name: item.product_name,
+                                  quantity_shipped: item.quantity_shipped,
+                                  quantity_received: item.quantity_shipped, // Default to full quantity
+                                  quantity_damaged: 0,
+                                  damage_notes: ''
+                                })))
+                                setShowReceiveTransferModal(true)
+                              }}
+                              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-emerald-700 font-medium"
+                            >
+                              Receive Goods
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Receive Transfer Modal */}
+        {showReceiveTransferModal && selectedTransfer && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="px-6 py-4 border-b border-gray-200 sticky top-0 bg-white">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Receive Transfer: {selectedTransfer.transfer_number}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  From {selectedTransfer.from_warehouse_name} → {selectedTransfer.to_warehouse_name}
+                </p>
+              </div>
+
+              <div className="p-6">
+                <div className="mb-6">
+                  <h4 className="font-semibold text-gray-900 mb-3">Items to Receive</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Update quantities received and mark any damaged items
+                  </p>
+
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Shipped</th>
+                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Received</th>
+                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Damaged</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Damage Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {transferReceiveItems.map((item, index) => (
+                          <tr key={item.product_id}>
+                            <td className="px-4 py-3 text-sm text-gray-900">{item.product_name}</td>
+                            <td className="px-4 py-3 text-sm text-right text-gray-900">{item.quantity_shipped}</td>
+                            <td className="px-4 py-3">
+                              <input
+                                type="number"
+                                min="0"
+                                max={item.quantity_shipped}
+                                value={item.quantity_received}
+                                onChange={(e) => {
+                                  const newItems = [...transferReceiveItems]
+                                  newItems[index].quantity_received = Number(e.target.value)
+                                  setTransferReceiveItems(newItems)
+                                }}
+                                className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <input
+                                type="number"
+                                min="0"
+                                max={item.quantity_shipped}
+                                value={item.quantity_damaged}
+                                onChange={(e) => {
+                                  const newItems = [...transferReceiveItems]
+                                  newItems[index].quantity_damaged = Number(e.target.value)
+                                  setTransferReceiveItems(newItems)
+                                }}
+                                className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <input
+                                type="text"
+                                value={item.damage_notes}
+                                onChange={(e) => {
+                                  const newItems = [...transferReceiveItems]
+                                  newItems[index].damage_notes = e.target.value
+                                  setTransferReceiveItems(newItems)
+                                }}
+                                placeholder="Optional damage notes"
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                disabled={item.quantity_damaged === 0}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Receive Notes (Optional)
+                  </label>
+                  <textarea
+                    value={receiveNotes}
+                    onChange={(e) => setReceiveNotes(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    placeholder="Add any notes about this receipt..."
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      setShowReceiveTransferModal(false)
+                      setSelectedTransfer(null)
+                      setTransferReceiveItems([])
+                      setReceiveNotes('')
+                    }}
+                    disabled={isReceivingTransfer}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setIsReceivingTransfer(true)
+                      try {
+                        await api.receiveStockTransfer(selectedTransfer.id, {
+                          items: transferReceiveItems,
+                          notes: receiveNotes
+                        })
+
+                        // Refresh data
+                        queryClient.invalidateQueries({ queryKey: ['inbound-transfers', warehouseId] })
+                        queryClient.invalidateQueries({ queryKey: ['warehouse-inventory', warehouseId] })
+
+                        // Close modal
+                        setShowReceiveTransferModal(false)
+                        setSelectedTransfer(null)
+                        setTransferReceiveItems([])
+                        setReceiveNotes('')
+
+                        alert('Transfer received successfully!')
+                      } catch (error: any) {
+                        console.error('Error receiving transfer:', error)
+                        alert(`Error: ${error.response?.data?.message || error.message || 'Failed to receive transfer'}`)
+                      } finally {
+                        setIsReceivingTransfer(false)
+                      }
+                    }}
+                    disabled={isReceivingTransfer}
+                    className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-2 rounded-lg hover:from-green-600 hover:to-emerald-700 font-medium disabled:opacity-50"
+                  >
+                    {isReceivingTransfer ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Receiving...
+                      </span>
+                    ) : (
+                      'Confirm Receipt'
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
