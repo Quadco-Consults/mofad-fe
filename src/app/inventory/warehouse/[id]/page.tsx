@@ -265,10 +265,11 @@ export default function WarehouseInventoryPage() {
       try {
         const response = await api.getStockTransfers({
           to_warehouse: warehouseId,
-          status: 'in_transit,partially_received',
+          status: 'in_transit',
           page_size: 100
         })
-        console.log('Inbound transfers:', response)
+        console.log('Inbound transfers query params:', { to_warehouse: warehouseId, status: 'in_transit' })
+        console.log('Inbound transfers response:', response)
         return response.results || response || []
       } catch (error) {
         console.error('Error fetching inbound transfers:', error)
