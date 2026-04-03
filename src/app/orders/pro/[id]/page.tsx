@@ -541,7 +541,7 @@ export default function PRODetailPage() {
     if (!proId) return
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/pros/${proId}/invoice/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/pros/${proId}/invoice/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -577,7 +577,7 @@ export default function PRODetailPage() {
     if (!proId) return
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/pros/${proId}/waybill/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/pros/${proId}/waybill/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
