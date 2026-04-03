@@ -146,6 +146,7 @@ export default function CreateCustomerOrderPage() {
   const [productSearchTerm, setProductSearchTerm] = useState('')
   const [customerSearchTerm, setCustomerSearchTerm] = useState('')
   const [selectedWarehouse, setSelectedWarehouse] = useState('')
+  const [warehouseForOrder, setWarehouseForOrder] = useState('')
 
   // Fetch customers with search
   const { data: customersData, isLoading: customersLoading } = useQuery({
@@ -162,15 +163,43 @@ export default function CreateCustomerOrderPage() {
   // Debug logging
   console.log('Customer data:', { customersData, customers, count: customers?.length, searchTerm: customerSearchTerm })
 
-  // Fetch MOFAD products
-  const { data: mofadProductsData, isLoading: productsLoading } = useQuery({
-    queryKey: ['mofad-products'],
-    queryFn: () => apiClient.getProducts(),
-    enabled: !!selectedCustomer,
+  // Fetch warehouse inventory instead of global products
+  const { data: inventoryData, isLoading: productsLoading } = useQuery({
+    queryKey: ['warehouse-inventory', warehouseForOrder],
+    queryFn: () => apiClient.getWarehouseInventory(warehouseForOrder),
+    enabled: !!selectedCustomer && !!warehouseForOrder,
   })
 
-  // Extract products array from response
-  const mofadProducts = mofadProductsData?.results || (Array.isArray(mofadProductsData) ? mofadProductsData : [])
+  // Extract inventory items and map to product format
+  // The API returns { inventory: [...] } structure
+  const inventoryItems = inventoryData?.inventory || []
+  const mofadProducts = inventoryItems.map((item: any) => ({
+    id: item.product,
+    name: item.product_name,
+    product_code: item.product_code,
+    code: item.product_code,
+    category: item.product_category,
+    unit_type: item.unit_of_measure,
+    current_price: item.product_retail_selling_price || item.product_bulk_selling_price || 0,
+    retail_selling_price: item.product_retail_selling_price,
+    bulk_selling_price: item.product_bulk_selling_price,
+    cost_price: item.product_cost_price,
+    stock_level: item.quantity_on_hand,
+    quantity_available: item.quantity_available,
+    quantity_on_hand: item.quantity_on_hand,
+    reorder_level: 0,
+    supplier: '',
+    status: 'active',
+    profit_margin: 0,
+    created_at: '',
+    is_active: true,
+    is_sellable: item.quantity_available > 0,
+    retail_size: item.product_retail_size,
+    bulk_size: item.product_bulk_size,
+    unit_of_measure: item.unit_of_measure,
+    brand: item.product_brand,
+    price_schemes: item.product_price_schemes || [],
+  }))
 
   // Fetch users for reviewer and approver selection
   const { data: usersData } = useQuery({
@@ -194,7 +223,7 @@ export default function CreateCustomerOrderPage() {
   // Debug logging for search
   console.log('Search results:', { searchTerm: customerSearchTerm, resultCount: filteredCustomers.length })
 
-  // Filter products by search term and exclude filters - ONLY LUBRICANTS
+  // Filter products by search term, exclude filters, and only show items with available stock
   const filteredProducts = mofadProducts?.filter(
     (product: any) => {
       const matchesSearch = (product.name || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
@@ -203,7 +232,8 @@ export default function CreateCustomerOrderPage() {
                            (product.brand || '').toLowerCase().includes(productSearchTerm.toLowerCase())
       const isLubricant = product.category !== 'filter' && product.category !== 'Filters' // Exclude filters
       const isActive = product.is_active !== false && product.is_sellable !== false
-      return matchesSearch && isLubricant && isActive
+      const hasStock = product.quantity_available > 0 // Only show products with available stock
+      return matchesSearch && isLubricant && isActive && hasStock
     }
   ) || []
 
@@ -306,13 +336,19 @@ export default function CreateCustomerOrderPage() {
       return
     }
 
-    // Use Direct price from price schemes
+    // Check if quantity exceeds available stock
     const product = selectedProduct as any
+    if (quantity > product.quantity_available) {
+      alert(`Only ${product.quantity_available} ${product.unit_of_measure || 'units'} available in stock`)
+      return
+    }
+
+    // Use Direct price from price schemes
     const unitPrice = getDirectPrice(product)
     const total = quantity * unitPrice
 
-    // Find selected warehouse name
-    const selectedWarehouseObj = warehouses.find((w: Warehouse) => w.id.toString() === selectedWarehouse)
+    // Find warehouse name from warehouseForOrder
+    const selectedWarehouseObj = warehouses.find((w: Warehouse) => w.id.toString() === warehouseForOrder)
 
     // Extract package size from product (each product now represents a single size)
     const packageSize = product.retail_size || (product.package_sizes && product.package_sizes.length > 0 ? product.package_sizes[0] : undefined)
@@ -326,7 +362,7 @@ export default function CreateCustomerOrderPage() {
       unit_price: unitPrice,
       total,
       package_size: packageSize,
-      warehouse_id: selectedWarehouse || undefined,
+      warehouse_id: warehouseForOrder || undefined,
       warehouse_name: selectedWarehouseObj?.name || undefined,
     }
 
@@ -338,7 +374,6 @@ export default function CreateCustomerOrderPage() {
     // Reset form
     setSelectedProduct(null)
     setQuantity(0)
-    setSelectedWarehouse('')
   }
 
   const removeItem = (id: string) => {
@@ -617,6 +652,52 @@ export default function CreateCustomerOrderPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
+                        {/* Warehouse Selection - First and Required */}
+                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <Building className="w-4 h-4 inline mr-1" />
+                            Select Warehouse *
+                          </label>
+                          <select
+                            value={warehouseForOrder}
+                            onChange={(e) => {
+                              if (formData.items.length > 0) {
+                                const confirmChange = window.confirm(
+                                  'Changing the warehouse will clear your current order items. Continue?'
+                                )
+                                if (confirmChange) {
+                                  setWarehouseForOrder(e.target.value)
+                                  setFormData(prev => ({ ...prev, items: [] }))
+                                  setSelectedProduct(null)
+                                }
+                              } else {
+                                setWarehouseForOrder(e.target.value)
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            required
+                          >
+                            <option value="">Choose a warehouse to see available products</option>
+                            {warehouses.map((warehouse: Warehouse) => (
+                              <option key={warehouse.id} value={warehouse.id}>
+                                {warehouse.name} {warehouse.location ? `- ${warehouse.location}` : ''}
+                              </option>
+                            ))}
+                          </select>
+                          {!warehouseForOrder && (
+                            <p className="text-xs text-blue-700 mt-2">
+                              <Info className="w-3 h-3 inline mr-1" />
+                              Select a warehouse first to view products available in its inventory
+                            </p>
+                          )}
+                          {warehouseForOrder && formData.items.length > 0 && (
+                            <p className="text-xs text-yellow-700 mt-2">
+                              <AlertTriangle className="w-3 h-3 inline mr-1" />
+                              Changing warehouse will clear current items
+                            </p>
+                          )}
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -732,27 +813,48 @@ export default function CreateCustomerOrderPage() {
                   {/* Product Catalog */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg font-semibold">Add Products</CardTitle>
+                      <CardTitle className="text-lg font-semibold">Add Products from Inventory</CardTitle>
+                      {warehouseForOrder && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          Showing products available in {warehouses.find((w: Warehouse) => w.id.toString() === warehouseForOrder)?.name}
+                        </p>
+                      )}
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="relative">
-                        <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Search lubricants by name or code..."
-                          value={productSearchTerm}
-                          onChange={(e) => setProductSearchTerm(e.target.value)}
-                          className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
-                        />
-                      </div>
+                      {!warehouseForOrder ? (
+                        <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                          <Building className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                          <p className="text-sm text-gray-600 font-medium mb-1">No Warehouse Selected</p>
+                          <p className="text-xs text-gray-500">Please select a warehouse above to view available products</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="relative">
+                            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="text"
+                              placeholder="Search inventory by name or code..."
+                              value={productSearchTerm}
+                              onChange={(e) => setProductSearchTerm(e.target.value)}
+                              className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
+                            />
+                          </div>
 
-                      {productsLoading ? (
+                          {productsLoading ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {[...Array(6)].map((_, i) => (
                             <div key={i} className="animate-pulse">
                               <div className="h-24 bg-muted rounded-lg"></div>
                             </div>
                           ))}
+                        </div>
+                      ) : filteredProducts.length === 0 ? (
+                        <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                          <Package className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                          <p className="text-sm text-gray-600 font-medium mb-1">No Products Available</p>
+                          <p className="text-xs text-gray-500">
+                            {productSearchTerm ? 'No products match your search. Try different keywords.' : 'No products with available stock in this warehouse.'}
+                          </p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
@@ -803,6 +905,16 @@ export default function CreateCustomerOrderPage() {
                                     <span className="font-medium">{(product as any).brand}</span>
                                   </div>
                                 )}
+                                {/* Stock Level */}
+                                <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                                  <span className="text-muted-foreground">Stock:</span>
+                                  <span className={`font-semibold ${
+                                    (product as any).quantity_available > 10 ? 'text-green-600' :
+                                    (product as any).quantity_available > 0 ? 'text-yellow-600' : 'text-red-600'
+                                  }`}>
+                                    {(product as any).quantity_available || 0} {product.unit_of_measure || 'units'}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -843,23 +955,19 @@ export default function CreateCustomerOrderPage() {
                               </div>
                             )}
 
-                            {/* Warehouse Selector */}
+                            {/* Stock Available Display */}
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Warehouse
+                                Available Stock
                               </label>
-                              <select
-                                value={selectedWarehouse}
-                                onChange={(e) => setSelectedWarehouse(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                              >
-                                <option value="">Select warehouse</option>
-                                {warehouses.map((warehouse: Warehouse) => (
-                                  <option key={warehouse.id} value={warehouse.id}>
-                                    {warehouse.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+                                <span className={`font-semibold ${
+                                  (selectedProduct as any).quantity_available > 10 ? 'text-green-600' :
+                                  (selectedProduct as any).quantity_available > 0 ? 'text-yellow-600' : 'text-red-600'
+                                }`}>
+                                  {(selectedProduct as any).quantity_available || 0} {selectedProduct.unit_of_measure || 'units'}
+                                </span>
+                              </div>
                             </div>
 
                             <div>
@@ -897,6 +1005,8 @@ export default function CreateCustomerOrderPage() {
                             </div>
                           </div>
                         </div>
+                      )}
+                        </>
                       )}
                     </CardContent>
                   </Card>
