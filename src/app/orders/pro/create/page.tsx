@@ -51,6 +51,8 @@ interface Product {
   brand?: string
   is_active?: boolean
   package_sizes?: number[]
+  bulk_size?: string | null
+  retail_size?: string | null
 }
 
 interface Warehouse {
@@ -276,10 +278,15 @@ function CreatePROPageContent() {
     // Use delivery_location (warehouse) from formData
     const selectedWarehouseObj = warehouses.find((w: Warehouse) => w.id.toString() === formData.delivery_location)
 
-    // Use first available package size from product.package_sizes array
-    const packageSize = selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0
-      ? selectedProduct.package_sizes[0]
-      : null
+    // Use bulk_size first (for supplier orders), then retail_size, then first package_size
+    let packageSize: number | null = null
+    if (selectedProduct.bulk_size && parseFloat(selectedProduct.bulk_size) > 0) {
+      packageSize = parseFloat(selectedProduct.bulk_size)
+    } else if (selectedProduct.retail_size && parseFloat(selectedProduct.retail_size) > 0) {
+      packageSize = parseFloat(selectedProduct.retail_size)
+    } else if (selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0) {
+      packageSize = selectedProduct.package_sizes[0]
+    }
 
     const item: PROItem = {
       id: Date.now().toString(),
@@ -847,31 +854,31 @@ function CreatePROPageContent() {
                               />
                             </div>
 
-                            {/* Package Size - Show available sizes */}
+                            {/* Package Size - Auto-populated */}
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Package Size
                               </label>
-                              {selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0 ? (
-                                <input
-                                  type="text"
-                                  value={`${selectedProduct.package_sizes[0]}${selectedProduct.unit_of_measure === 'liters' ? 'L' : selectedProduct.unit_of_measure === 'gallons' ? 'gal' : selectedProduct.unit_of_measure === 'kilograms' ? 'kg' : ''}`}
-                                  disabled
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                                />
-                              ) : (
-                                <input
-                                  type="text"
-                                  value="N/A"
-                                  disabled
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                                />
-                              )}
-                              <p className="mt-1 text-xs text-gray-500">
-                                {selectedProduct.package_sizes && selectedProduct.package_sizes.length > 1
-                                  ? `Available sizes: ${selectedProduct.package_sizes.map(s => `${s}${selectedProduct.unit_of_measure === 'liters' ? 'L' : selectedProduct.unit_of_measure === 'gallons' ? 'gal' : 'kg'}`).join(', ')}`
-                                  : 'Package size from product details'}
-                              </p>
+                              <input
+                                type="text"
+                                value={(() => {
+                                  const unitSuffix = selectedProduct.unit_of_measure === 'liters' ? 'L' :
+                                                    selectedProduct.unit_of_measure === 'gallons' ? 'gal' :
+                                                    selectedProduct.unit_of_measure === 'kilograms' ? 'kg' : ''
+
+                                  if (selectedProduct.bulk_size && parseFloat(selectedProduct.bulk_size) > 0) {
+                                    return `${selectedProduct.bulk_size}${unitSuffix}`
+                                  } else if (selectedProduct.retail_size && parseFloat(selectedProduct.retail_size) > 0) {
+                                    return `${selectedProduct.retail_size}${unitSuffix}`
+                                  } else if (selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0) {
+                                    return `${selectedProduct.package_sizes[0]}${unitSuffix}`
+                                  }
+                                  return 'N/A'
+                                })()}
+                                disabled
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                              />
+                              <p className="mt-1 text-xs text-gray-500">Auto-populated from product details</p>
                             </div>
 
                             <div>
