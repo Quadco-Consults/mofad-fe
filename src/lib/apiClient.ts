@@ -2834,6 +2834,29 @@ class ApiClient {
     return this.request(`/stock-transfers/${id}/`)
   }
 
+  // Stock Transaction Management (for bin cards, transaction history)
+  async getStockTransactions(params?: {
+    warehouse?: number
+    product?: number
+    transaction_type?: string
+    search?: string
+    page?: number
+    page_size?: number
+    ordering?: string
+  }): Promise<any> {
+    const queryParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value))
+        }
+      })
+    }
+    const queryString = queryParams.toString()
+    const url = `/stock-transactions/${queryString ? `?${queryString}` : ''}`
+    return this.request(url)
+  }
+
   async createStockTransfer(data: {
     from_warehouse: number
     to_warehouse: number

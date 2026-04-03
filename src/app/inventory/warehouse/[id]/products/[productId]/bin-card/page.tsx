@@ -140,12 +140,21 @@ export default function ProductBinCardPage() {
   // Fetch bin card data (stock transactions)
   const { data: binCardResponse, isLoading, error } = useQuery({
     queryKey: ['product-bin-card', warehouseId, productId],
-    queryFn: () => apiClient.get(`/stock-transactions/`, {
-      warehouse: warehouseId,
-      product: productId,
-      page_size: 1000,
-      ordering: 'created_at'
-    }),
+    queryFn: async () => {
+      try {
+        const response = await apiClient.getStockTransactions({
+          warehouse: parseInt(warehouseId),
+          product: parseInt(productId),
+          page_size: 1000,
+          ordering: 'created_at'
+        })
+        console.log('Stock transactions response:', response)
+        return response
+      } catch (err) {
+        console.error('Error fetching stock transactions:', err)
+        throw err
+      }
+    },
   })
 
   const warehouses = warehousesList || []
