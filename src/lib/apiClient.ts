@@ -340,6 +340,24 @@ class ApiClient {
     }
   }
 
+  // Generic GET method with query parameters support
+  async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<T> {
+    let url = endpoint
+    if (params) {
+      const queryParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value))
+        }
+      })
+      const queryString = queryParams.toString()
+      if (queryString) {
+        url = `${endpoint}${endpoint.includes('?') ? '&' : '?'}${queryString}`
+      }
+    }
+    return this.request<T>(url)
+  }
+
   // Authentication methods - using MOFAD backend endpoints
   // Note: auth module uses trailing_slash=False, so no trailing slashes on those endpoints
   async login(credentials: LoginForm): Promise<AuthenticatedUser> {
