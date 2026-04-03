@@ -218,18 +218,28 @@ export default function CreateCustomerOrderPage() {
   const warehouses = warehousesData?.results || (Array.isArray(warehousesData) ? warehousesData : [])
 
   // Fetch current user for sales rep
-  const { data: currentUser } = useQuery({
+  const { data: currentUser, isLoading: isLoadingUser, error: userError } = useQuery({
     queryKey: ['current-user'],
     queryFn: () => apiClient.getCurrentUser(),
   })
 
   // Auto-populate sales rep when user data loads
   useEffect(() => {
-    if (currentUser && !formData.sales_rep) {
-      const salesRepName = currentUser.full_name || currentUser.email || 'Unknown'
+    console.log('Current user data:', currentUser)
+    console.log('Current user error:', userError)
+
+    if (currentUser) {
+      // Try different response structures
+      const user = currentUser.data || currentUser
+      const salesRepName = user.full_name || user.email || 'Unknown User'
+      console.log('Setting sales rep to:', salesRepName)
       setFormData(prev => ({ ...prev, sales_rep: salesRepName }))
+    } else if (userError) {
+      console.error('Error loading user:', userError)
+      // If there's an error, set a default value
+      setFormData(prev => ({ ...prev, sales_rep: 'User Not Found' }))
     }
-  }, [currentUser])
+  }, [currentUser, userError])
 
   // Debug logging
   console.log('Warehouses data:', { warehousesData, warehouses, count: warehouses?.length })
@@ -798,12 +808,14 @@ export default function CreateCustomerOrderPage() {
                           </label>
                           <input
                             type="text"
-                            value={formData.sales_rep}
+                            value={formData.sales_rep || (isLoadingUser ? 'Loading...' : 'Not available')}
                             readOnly
                             className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
-                            placeholder="Loading..."
+                            placeholder={isLoadingUser ? "Loading user..." : "Sales representative"}
                           />
-                          <p className="mt-1 text-xs text-gray-500">Auto-populated from logged-in user</p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {isLoadingUser ? 'Loading user information...' : 'Auto-populated from logged-in user'}
+                          </p>
                         </div>
 
                         {/* Reviewer and Approver Selection */}
