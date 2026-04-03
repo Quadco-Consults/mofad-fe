@@ -78,7 +78,17 @@ export default function WarehouseProductDetailPage() {
         return result
       } catch (error) {
         console.error('Error fetching bin card:', error)
-        return { transactions: [] }
+        return {
+          warehouse_id: warehouseId,
+          warehouse_name: '',
+          product_id: productId,
+          product_name: '',
+          current_quantity: 0,
+          total_receipts: 0,
+          total_issues: 0,
+          transaction_count: 0,
+          transactions: []
+        }
       }
     },
     enabled: !!(warehouseId && productId)
