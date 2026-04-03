@@ -1,8 +1,10 @@
 /** @type {import('next').NextConfig} */
+// Force rebuild: 2026-04-03-18:00:00 - Bin Card Critical Fix
 const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
     BUILD_ID: Date.now().toString(),
+    FORCE_REBUILD: '2026-04-03-18:00:00',
   },
   // Disable static optimization to prevent aggressive caching during development
   generateBuildId: async () => {
