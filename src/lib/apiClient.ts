@@ -1,9 +1,10 @@
 // Django API client for MOFAD backend integration
-// Updated: 2026-04-03 16:50 - Fixed stock transactions endpoint
+// BUILD: 2026-04-03-17:00 - Force rebuild to fix stock transactions
 import { LoginForm, User } from '../types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
-console.log('[API Client Init] Base URL:', API_BASE_URL)
+console.log('[API Client v2.0] Base URL:', API_BASE_URL)
+console.log('[API Client v2.0] Build timestamp: 2026-04-03-17:00')
 
 export interface ApiError {
   message: string
