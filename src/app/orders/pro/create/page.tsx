@@ -164,8 +164,7 @@ function CreatePROPageContent() {
   const [quantity, setQuantity] = useState(0)
   const [productSearchTerm, setProductSearchTerm] = useState('')
   const [supplierSearchTerm, setSupplierSearchTerm] = useState('')
-  const [selectedWarehouse, setSelectedWarehouse] = useState('')
-  const [selectedPackageSize, setSelectedPackageSize] = useState<number | null>(null)
+  // Package size and warehouse are now auto-populated from product and delivery_location
 
   // Fetch products for selection
   const { data: productsData, isLoading: productsLoading } = useQuery({
@@ -274,8 +273,11 @@ function CreatePROPageContent() {
     const unitPrice = parseFloat(selectedProduct.cost_price || '0')
     const total = quantity * unitPrice
 
-    // Find selected warehouse name
-    const selectedWarehouseObj = warehouses.find((w: Warehouse) => w.id.toString() === selectedWarehouse)
+    // Use delivery_location (warehouse) from formData
+    const selectedWarehouseObj = warehouses.find((w: Warehouse) => w.id.toString() === formData.delivery_location)
+
+    // Auto-use bulk_size from product
+    const packageSize = selectedProduct.bulk_size || selectedProduct.retail_size || null
 
     const item: PROItem = {
       id: Date.now().toString(),
@@ -286,8 +288,8 @@ function CreatePROPageContent() {
       unit_price: unitPrice,
       total,
       unit: selectedProduct.unit_of_measure || 'Unit',
-      package_size: selectedPackageSize || undefined,
-      warehouse_id: selectedWarehouse || undefined,
+      package_size: packageSize,
+      warehouse_id: formData.delivery_location || undefined,
       warehouse_name: selectedWarehouseObj?.name || undefined,
       notes: ''
     }
@@ -300,8 +302,6 @@ function CreatePROPageContent() {
     // Reset form
     setSelectedProduct(null)
     setQuantity(0)
-    setSelectedPackageSize(null)
-    setSelectedWarehouse('')
   }
 
   const removeItem = (id: string) => {
@@ -845,44 +845,18 @@ function CreatePROPageContent() {
                               />
                             </div>
 
-                            {/* Package Size Selector */}
-                            {selectedProduct.package_sizes && selectedProduct.package_sizes.length > 0 && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Package Size
-                                </label>
-                                <select
-                                  value={selectedPackageSize || ''}
-                                  onChange={(e) => setSelectedPackageSize(e.target.value ? Number(e.target.value) : null)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                >
-                                  <option value="">Select size</option>
-                                  {selectedProduct.package_sizes.map((size, idx) => (
-                                    <option key={idx} value={size}>
-                                      {size}{selectedProduct.unit_of_measure === 'liters' ? 'L' : selectedProduct.unit_of_measure === 'gallons' ? 'gal' : 'kg'}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
-
-                            {/* Warehouse Selector */}
+                            {/* Package Size - Auto-populated from product */}
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Warehouse
+                                Package Size
                               </label>
-                              <select
-                                value={selectedWarehouse}
-                                onChange={(e) => setSelectedWarehouse(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                              >
-                                <option value="">Select warehouse</option>
-                                {warehouses.map((warehouse: Warehouse) => (
-                                  <option key={warehouse.id} value={warehouse.id}>
-                                    {warehouse.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <input
+                                type="text"
+                                value={`${selectedProduct.bulk_size || selectedProduct.retail_size || 'N/A'}${selectedProduct.unit_of_measure === 'liters' ? 'L' : selectedProduct.unit_of_measure === 'gallons' ? 'gal' : selectedProduct.unit_of_measure === 'kilograms' ? 'kg' : ''}`}
+                                disabled
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                              />
+                              <p className="mt-1 text-xs text-gray-500">Auto-populated from product details</p>
                             </div>
 
                             <div>
