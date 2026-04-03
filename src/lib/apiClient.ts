@@ -2865,20 +2865,9 @@ class ApiClient {
     page_size?: number
     ordering?: string
   }): Promise<any> {
-    const queryParams = new URLSearchParams()
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, String(value))
-        }
-      })
-    }
-    const queryString = queryParams.toString()
-    const url = `stock-transactions/${queryString ? `?${queryString}` : ''}`
-    console.log('[DEBUG] getStockTransactions - baseURL:', this.baseURL)
-    console.log('[DEBUG] getStockTransactions - endpoint:', url)
-    console.log('[DEBUG] getStockTransactions - full URL will be:', `${this.baseURL}/${url}`)
-    return this.request(`/${url}`)
+    console.log('[getStockTransactions v3] Called with params:', params)
+    console.log('[getStockTransactions v3] baseURL:', this.baseURL)
+    return this.get('stock-transactions', params)
   }
 
   async createStockTransfer(data: {
