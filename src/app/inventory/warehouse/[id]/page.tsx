@@ -1896,12 +1896,33 @@ export default function WarehouseInventoryPage() {
                   </button>
                   <button
                     onClick={async () => {
+                      // Validate before sending
+                      const invalidItems = transferReceiveItems.filter(item => {
+                        const received = Number(item.quantity_received) || 0
+                        const damaged = Number(item.quantity_damaged) || 0
+                        return received < 0 || damaged < 0 || damaged > received
+                      })
+
+                      if (invalidItems.length > 0) {
+                        alert('Invalid quantities: Damaged quantity cannot exceed received quantity')
+                        return
+                      }
+
                       setIsReceivingTransfer(true)
                       try {
-                        await api.receiveStockTransfer(selectedTransfer.id, {
-                          items: transferReceiveItems,
+                        const receivePayload = {
+                          items: transferReceiveItems.map(item => ({
+                            product_id: item.product_id,
+                            quantity_received: Number(item.quantity_received) || 0,
+                            quantity_damaged: Number(item.quantity_damaged) || 0,
+                            damage_notes: item.damage_notes || ''
+                          })),
                           notes: receiveNotes
-                        })
+                        }
+
+                        console.log('Receiving transfer with payload:', receivePayload)
+
+                        await api.receiveStockTransfer(selectedTransfer.id, receivePayload)
 
                         // Refresh data
                         queryClient.invalidateQueries({ queryKey: ['inbound-transfers', warehouseId] })
