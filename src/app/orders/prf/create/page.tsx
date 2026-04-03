@@ -204,7 +204,7 @@ export default function CreateCustomerOrderPage() {
   // Fetch users for reviewer and approver selection
   const { data: usersData } = useQuery({
     queryKey: ['users-for-prf'],
-    queryFn: () => apiClient.getUsers({ is_active: true }),
+    queryFn: () => apiClient.getUsers({ is_active: true, page_size: 1000 }),
   })
 
   const users = usersData?.results || (Array.isArray(usersData) ? usersData : [])
@@ -212,10 +212,14 @@ export default function CreateCustomerOrderPage() {
   // Fetch warehouses
   const { data: warehousesData } = useQuery({
     queryKey: ['warehouses'],
-    queryFn: () => apiClient.get('/warehouses/'),
+    queryFn: () => apiClient.get('/warehouses/', { page_size: 100 }),
   })
 
   const warehouses = warehousesData?.results || (Array.isArray(warehousesData) ? warehousesData : [])
+
+  // Debug logging
+  console.log('Warehouses data:', { warehousesData, warehouses, count: warehouses?.length })
+  console.log('Users data:', { usersData, users, count: users?.length })
 
   // No client-side filtering needed - API handles search
   const filteredCustomers = customers || []
@@ -678,12 +682,21 @@ export default function CreateCustomerOrderPage() {
                             required
                           >
                             <option value="">Choose a warehouse to see available products</option>
+                            {warehouses.length === 0 && (
+                              <option value="" disabled>No warehouses available</option>
+                            )}
                             {warehouses.map((warehouse: Warehouse) => (
                               <option key={warehouse.id} value={warehouse.id}>
                                 {warehouse.name} {warehouse.location ? `- ${warehouse.location}` : ''}
                               </option>
                             ))}
                           </select>
+                          {warehouses.length === 0 && (
+                            <p className="text-xs text-red-600 mt-2">
+                              <AlertTriangle className="w-3 h-3 inline mr-1" />
+                              No warehouses found. Please contact administrator.
+                            </p>
+                          )}
                           {!warehouseForOrder && (
                             <p className="text-xs text-blue-700 mt-2">
                               <Info className="w-3 h-3 inline mr-1" />
