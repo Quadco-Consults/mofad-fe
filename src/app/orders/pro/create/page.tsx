@@ -51,6 +51,8 @@ interface Product {
   brand?: string
   is_active?: boolean
   package_sizes?: number[]
+  bulk_size?: number
+  retail_size?: number
 }
 
 interface Warehouse {
