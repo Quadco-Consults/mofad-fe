@@ -1,581 +1,357 @@
 'use client'
 
-import { useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { AppLayout } from '@/components/layout/AppLayout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import apiClient from '@/lib/apiClient'
-import { formatCurrency, formatDateTime } from '@/lib/utils'
-import {
-  ArrowLeft,
-  Download,
-  Printer,
-  Package,
-  TrendingUp,
-  TrendingDown,
-  Plus,
-  Minus,
-  FileText,
-  Calendar,
-  User,
-  Hash,
-  Warehouse,
-  MapPin,
-  AlertCircle,
-  Search,
-  Filter,
-} from 'lucide-react'
+import { Package, TrendingUp, TrendingDown, FileText, ArrowLeft, Filter, Calendar } from 'lucide-react'
+import Link from 'next/link'
+import { useState } from 'react'
 
-interface BinCardTransaction {
-  id: number
-  product_id: number
-  warehouse_id: number
-  transaction_date: string
-  transaction_type: string
-  description: string
-  reference: string
-  received: number
-  issued: number
-  balance: number
-  unit_cost: number
-  created_by: string
-}
-
-interface WarehouseInventory {
-  id: number
-  warehouse_id: number
-  product_name: string
-  product_code: string
-  category: string
-  current_stock: number
-  unit_type: string
-  cost_value: number
-  retail_value: number
-  reorder_level: number
-  max_level: number
-  location: string
-  last_updated: string
-  stock_status: 'healthy' | 'low' | 'critical' | 'overstock'
-  days_of_supply: number
-}
-
-interface WarehouseData {
-  id: number
-  name: string
-  location: string
-  type: string
-  capacity: number
-  current_utilization: number
-  manager: string
-  phone: string
-  email: string
-  status: string
-  total_products: number
-  last_updated: string
-  address: string
-  established: string
-}
-
-const getTransactionIcon = (type: string) => {
-  if (!type) return <FileText className="w-4 h-4 text-gray-600" />
-
-  const lowerType = type.toLowerCase()
-  if (lowerType.includes('in') || lowerType.includes('receipt') || lowerType.includes('purchase')) {
-    return <TrendingUp className="w-4 h-4 text-green-600" />
-  } else if (lowerType.includes('out') || lowerType.includes('issue') || lowerType.includes('sale')) {
-    return <TrendingDown className="w-4 h-4 text-red-600" />
-  } else if (lowerType.includes('adjustment')) {
-    return <FileText className="w-4 h-4 text-blue-600" />
-  } else {
-    return <Package className="w-4 h-4 text-gray-600" />
-  }
-}
-
-const getTransactionTypeBadge = (type: string) => {
-  if (!type) type = 'Unknown'
-
-  const lowerType = type.toLowerCase()
-  let colorClass = 'bg-gray-100 text-gray-800 border-gray-200'
-  let displayText = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-
-  if (lowerType.includes('in') || lowerType.includes('receipt') || lowerType.includes('purchase')) {
-    colorClass = 'bg-green-100 text-green-800 border-green-200'
-  } else if (lowerType.includes('out') || lowerType.includes('issue') || lowerType.includes('sale')) {
-    colorClass = 'bg-red-100 text-red-800 border-red-200'
-  } else if (lowerType.includes('adjustment')) {
-    colorClass = 'bg-blue-100 text-blue-800 border-blue-200'
-  } else if (lowerType.includes('loss') || lowerType.includes('damage')) {
-    colorClass = 'bg-orange-100 text-orange-800 border-orange-200'
-  }
-
-  return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${colorClass}`}>
-      {displayText}
-    </span>
-  )
-}
-
-export default function ProductBinCardPage() {
+export default function BinCardPage() {
   const params = useParams()
-  const router = useRouter()
-  const warehouseId = params?.id as string
-  const productId = params?.productId as string
-  const [searchTerm, setSearchTerm] = useState('')
+  const warehouseId = params.id as string
+  const productId = params.productId as string
+
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
 
-  // Fetch warehouse data
-  const { data: warehousesList } = useQuery({
-    queryKey: ['warehouses-list'],
-    queryFn: () => apiClient.get('/warehouses'),
-  })
-
-  // Fetch warehouse inventory to get product details
-  const { data: inventoryList } = useQuery({
-    queryKey: ['warehouse-inventory', warehouseId],
-    queryFn: () => apiClient.get(`/warehouses/${warehouseId}`),
-  })
-
-  // Fetch bin card data (stock transactions)
-  const { data: binCardResponse, isLoading, error } = useQuery({
-    queryKey: ['product-bin-card', warehouseId, productId],
+  // Fetch bin card data using the dedicated endpoint
+  const { data: binCardData, isLoading, error, refetch } = useQuery({
+    queryKey: ['bin-card', warehouseId, productId, startDate, endDate],
     queryFn: async () => {
-      try {
-        const response = await apiClient.getStockTransactions({
-          warehouse: parseInt(warehouseId),
-          product: parseInt(productId),
-          page_size: 1000,
-          ordering: 'created_at'
-        })
-        console.log('Stock transactions response:', response)
-        return response
-      } catch (err) {
-        console.error('Error fetching stock transactions:', err)
-        throw err
-      }
+      console.log('[BinCard] Fetching data for warehouse:', warehouseId, 'product:', productId)
+      const params: any = {}
+      if (startDate) params.start_date = startDate
+      if (endDate) params.end_date = endDate
+
+      const result = await apiClient.getProductBinCard(warehouseId, productId, params)
+      console.log('[BinCard] Received data:', result)
+      return result
     },
+    enabled: !!warehouseId && !!productId,
   })
 
-  const warehouses = warehousesList || []
-  const warehouse = warehouses.find((w: WarehouseData) => w.id === parseInt(warehouseId))
-  const inventory = inventoryList || []
-  const product = inventory.find((p: WarehouseInventory) => p.id === parseInt(productId))
+  // Filter transactions by type
+  const filteredTransactions = binCardData?.transactions?.filter((txn: any) => {
+    if (typeFilter === 'all') return true
+    return txn.transaction_type === typeFilter
+  }) || []
 
-  // Map stock transactions to bin card format
-  const rawTransactions = binCardResponse?.results || binCardResponse || []
-  const transactions = rawTransactions.map((txn: any) => ({
-    id: txn.id,
-    product_id: txn.product,
-    warehouse_id: txn.warehouse,
-    transaction_date: txn.transaction_date || txn.created_at,
-    transaction_type: txn.transaction_type,
-    description: txn.description || txn.reason || '',
-    reference: txn.reference_number || '',
-    received: txn.quantity_in || 0,
-    issued: txn.quantity_out || 0,
-    balance: txn.quantity_after || 0,
-    unit_cost: txn.unit_cost || 0,
-    created_by: txn.created_by_name || ''
-  }))
+  const getTransactionTypeBadge = (type: string) => {
+    const typeMap: Record<string, { color: string; label: string }> = {
+      'receipt': { color: 'bg-green-100 text-green-800 border-green-200', label: 'Receipt' },
+      'issue': { color: 'bg-red-100 text-red-800 border-red-200', label: 'Issue' },
+      'transfer_in': { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Transfer In' },
+      'transfer_out': { color: 'bg-orange-100 text-orange-800 border-orange-200', label: 'Transfer Out' },
+      'adjustment': { color: 'bg-purple-100 text-purple-800 border-purple-200', label: 'Adjustment' },
+      'loss': { color: 'bg-gray-100 text-gray-800 border-gray-200', label: 'Loss' },
+      'return': { color: 'bg-cyan-100 text-cyan-800 border-cyan-200', label: 'Return' },
+    }
 
-  // Filter transactions
-  const filteredTransactions = transactions.filter((transaction: BinCardTransaction) => {
-    if (!transaction) return false
-
-    const matchesSearch = (transaction.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (transaction.reference || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (transaction.created_by || '').toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesType = typeFilter === 'all' || transaction.transaction_type === typeFilter
-
-    return matchesSearch && matchesType
-  })
-
-  if (error) {
+    const config = typeMap[type] || { color: 'bg-gray-100 text-gray-800 border-gray-200', label: type }
     return (
-      <AppLayout>
-        <div className="p-6">
-          <div className="text-center py-12">
-            <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-            <p className="text-red-500">Error loading bin card data. Please try again.</p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => router.push(`/inventory/warehouse/${warehouseId}`)}
-            >
-              Back to Warehouse
-            </Button>
-          </div>
-        </div>
-      </AppLayout>
+      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${config.color}`}>
+        {config.label}
+      </span>
     )
+  }
+
+  const getTransactionIcon = (type: string) => {
+    if (type.includes('in') || type === 'receipt' || type === 'return') {
+      return <TrendingUp className="w-4 h-4 text-green-600" />
+    } else if (type.includes('out') || type === 'issue' || type === 'loss') {
+      return <TrendingDown className="w-4 h-4 text-red-600" />
+    }
+    return <FileText className="w-4 h-4 text-gray-600" />
+  }
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A'
+    const date = new Date(dateString)
+    return new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date)
   }
 
   if (isLoading) {
     return (
-      <AppLayout>
-        <div className="p-6">
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            <p className="mt-2 text-gray-500">Loading bin card data...</p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Package className="w-12 h-12 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Loading bin card...</p>
         </div>
-      </AppLayout>
+      </div>
     )
   }
 
-  if (!product || !warehouse) {
+  if (error) {
     return (
-      <AppLayout>
-        <div className="p-6">
-          <div className="text-center py-12">
-            <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Product or warehouse not found.</p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => router.push('/inventory/warehouse')}
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+            <h3 className="text-red-800 font-semibold mb-2">Error Loading Bin Card</h3>
+            <p className="text-red-600 text-sm mb-4">{(error as any)?.message || 'Failed to load data'}</p>
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
             >
-              Back to Warehouses
-            </Button>
+              Retry
+            </button>
           </div>
         </div>
-      </AppLayout>
+      </div>
     )
   }
-
-  // Calculate summary stats
-  const totalReceived = filteredTransactions.reduce((sum: number, t: BinCardTransaction) => sum + (t?.received || 0), 0)
-  const totalIssued = filteredTransactions.reduce((sum: number, t: BinCardTransaction) => sum + (t?.issued || 0), 0)
-  const currentBalance = product?.current_stock || 0
-  const totalValue = currentBalance * (filteredTransactions[filteredTransactions.length - 1]?.unit_cost || 0)
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => router.push(`/inventory/warehouse/${warehouseId}`)}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Warehouse
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Product Bin Card
-              </h1>
-              <p className="text-gray-600">
-                Stock movement history for {product.product_name}
-              </p>
+        <div className="mb-6">
+          <Link
+            href={`/inventory/warehouse/${warehouseId}`}
+            className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Warehouse
+          </Link>
+
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Bin Card - Product Movement</h1>
+                <p className="text-gray-600">Track all inventory transactions for this product in {binCardData?.warehouse_name || 'warehouse'}</p>
+              </div>
+              <Package className="w-12 h-12 text-blue-600" />
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline">
-              <Printer className="w-4 h-4 mr-2" />
-              Print
-            </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
+
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">Product</p>
+                <p className="text-lg font-semibold text-gray-900">{binCardData?.product_name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Warehouse</p>
+                <p className="text-lg font-semibold text-gray-900">{binCardData?.warehouse_name || 'N/A'}</p>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Product & Warehouse Info */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Product Information */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Package className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Product Information</h3>
-                    <p className="text-sm text-gray-600">Item details and specifications</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Product Name:</span>
-                    <span className="text-sm font-medium text-gray-900">{product.product_name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Product Code:</span>
-                    <span className="text-sm font-medium text-gray-900">{product.product_code}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Category:</span>
-                    <span className="text-sm font-medium text-gray-900">{product.category}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Unit Type:</span>
-                    <span className="text-sm font-medium text-gray-900">{product.unit_type}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Storage Location:</span>
-                    <span className="text-sm font-medium text-gray-900 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {product.location}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Warehouse Information */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <Warehouse className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Warehouse Information</h3>
-                    <p className="text-sm text-gray-600">Facility details and management</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Warehouse:</span>
-                    <span className="text-sm font-medium text-gray-900">{warehouse.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Location:</span>
-                    <span className="text-sm font-medium text-gray-900">{warehouse.location}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Manager:</span>
-                    <span className="text-sm font-medium text-gray-900">{warehouse.manager}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Type:</span>
-                    <span className="text-sm font-medium text-gray-900">{warehouse.type}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Generated:</span>
-                    <span className="text-sm font-medium text-gray-900 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {formatDateTime(new Date().toISOString()).split(',')[0]}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Plus className="h-6 w-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Total Received</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {totalReceived.toLocaleString()} {product?.unit_type || 'units'}
-                  </p>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Current Stock</p>
+                <p className="text-2xl font-bold text-gray-900">{binCardData?.current_quantity || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">units</p>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <Minus className="h-6 w-6 text-red-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Total Issued</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {totalIssued.toLocaleString()} {product?.unit_type || 'units'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Package className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Current Balance</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {currentBalance.toLocaleString()} {product?.unit_type || 'units'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Current Value</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {formatCurrency(totalValue)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="flex items-center gap-4">
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search transactions..."
-                className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+              <Package className="w-8 h-8 text-blue-600" />
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <select
-              className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-            >
-              <option value="all">All Transactions</option>
-              <option value="transfer_in">Transfer In</option>
-              <option value="transfer_out">Transfer Out</option>
-              <option value="purchase">Purchase</option>
-              <option value="sale">Sale</option>
-              <option value="adjustment">Adjustment</option>
-              <option value="loss">Loss/Damage</option>
-            </select>
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Received</p>
+                <p className="text-2xl font-bold text-green-600">{binCardData?.total_receipts || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">units</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-green-600" />
+            </div>
+          </div>
 
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              More Filters
-            </Button>
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Issued</p>
+                <p className="text-2xl font-bold text-red-600">{binCardData?.total_issues || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">units</p>
+              </div>
+              <TrendingDown className="w-8 h-8 text-red-600" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Transactions</p>
+                <p className="text-2xl font-bold text-gray-900">{binCardData?.transaction_count || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">total</p>
+              </div>
+              <FileText className="w-8 h-8 text-gray-600" />
+            </div>
           </div>
         </div>
 
-        {/* Bin Card Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Stock Movement History
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {filteredTransactions.length === 0 ? (
-              <div className="p-12 text-center">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No transactions found</h3>
-                <p className="text-gray-500">
-                  {searchTerm || typeFilter !== 'all'
-                    ? 'Try adjusting your search or filters'
-                    : 'No transaction history available for this product'
-                  }
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Date</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Description</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Reference</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-900">Received</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-900">Issued</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-900">Balance</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-900">Unit Cost</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-900">Created By</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filteredTransactions.map((transaction: BinCardTransaction) => (
-                      <tr key={transaction.id} className="hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-3 h-3 text-gray-400" />
-                            <span className="text-sm text-gray-900">
-                              {transaction?.transaction_date ? formatDateTime(transaction.transaction_date) : 'N/A'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            {getTransactionIcon(transaction?.transaction_type || '')}
-                            {getTransactionTypeBadge(transaction?.transaction_type || '')}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-sm text-gray-900">{transaction?.description || 'N/A'}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-1">
-                            <Hash className="w-3 h-3 text-gray-400" />
-                            <span className="text-sm text-gray-900 font-mono">{transaction?.reference || 'N/A'}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className={`text-sm font-medium ${
-                            (transaction?.received || 0) > 0 ? 'text-green-600' : 'text-gray-400'
-                          }`}>
-                            {(transaction?.received || 0) > 0 ? `+${(transaction.received || 0).toLocaleString()}` : '-'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className={`text-sm font-medium ${
-                            (transaction?.issued || 0) > 0 ? 'text-red-600' : 'text-gray-400'
-                          }`}>
-                            {(transaction?.issued || 0) > 0 ? `-${(transaction.issued || 0).toLocaleString()}` : '-'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className="text-sm font-bold text-gray-900">
-                            {(transaction?.balance || 0).toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className="text-sm text-gray-900">
-                            {formatCurrency(transaction?.unit_cost || 0)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-1">
-                            <User className="w-3 h-3 text-gray-400" />
-                            <span className="text-sm text-gray-900">{transaction?.created_by || 'N/A'}</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+        {/* Filters */}
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-6 border border-gray-200">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Calendar className="w-4 h-4 inline mr-1" />
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Calendar className="w-4 h-4 inline mr-1" />
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Filter className="w-4 h-4 inline mr-1" />
+                Transaction Type
+              </label>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Transactions</option>
+                <option value="receipt">Receipt</option>
+                <option value="issue">Issue</option>
+                <option value="transfer_in">Transfer In</option>
+                <option value="transfer_out">Transfer Out</option>
+                <option value="adjustment">Adjustment</option>
+                <option value="loss">Loss/Damage</option>
+                <option value="return">Return</option>
+              </select>
+            </div>
+
+            {(startDate || endDate) && (
+              <button
+                onClick={() => {
+                  setStartDate('')
+                  setEndDate('')
+                }}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+              >
+                Clear Dates
+              </button>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
+        {/* Transactions Table */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Reference
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Received
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Issued
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Balance
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Performed By
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                      <FileText className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                      <p className="font-medium">No transactions found</p>
+                      <p className="text-sm mt-1">
+                        {typeFilter !== 'all'
+                          ? 'Try changing the filter or date range'
+                          : 'Transactions will appear here once goods are received or issued'}
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTransactions.map((txn: any) => (
+                    <tr key={txn.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatDate(txn.transaction_date)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-mono">
+                        {txn.reference_number || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {getTransactionIcon(txn.transaction_type)}
+                          {getTransactionTypeBadge(txn.transaction_type)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                        {txn.description || txn.reason || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        <span className="text-green-600 font-medium">
+                          {txn.quantity_in > 0 ? `+${txn.quantity_in}` : ''}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        <span className="text-red-600 font-medium">
+                          {txn.quantity_out > 0 ? `-${txn.quantity_out}` : ''}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                        {txn.balance_after || txn.quantity_after || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {txn.created_by_name || 'System'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Debug Info */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 p-4 bg-gray-100 rounded text-xs font-mono">
+            <p><strong>Debug:</strong></p>
+            <p>Warehouse ID: {warehouseId}</p>
+            <p>Product ID: {productId}</p>
+            <p>Transactions: {binCardData?.transactions?.length || 0}</p>
+            <p>Filtered: {filteredTransactions.length}</p>
+          </div>
+        )}
       </div>
-    </AppLayout>
+    </div>
   )
 }

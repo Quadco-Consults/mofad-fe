@@ -2859,19 +2859,25 @@ class ApiClient {
     return this.request(`/stock-transfers/${id}/`)
   }
 
-  // Stock Transaction Management (for bin cards, transaction history)
-  async getStockTransactions(params?: {
-    warehouse?: number
-    product?: number
-    transaction_type?: string
-    search?: string
-    page?: number
-    page_size?: number
-    ordering?: string
-  }): Promise<any> {
-    console.log('[getStockTransactions v3] Called with params:', params)
-    console.log('[getStockTransactions v3] baseURL:', this.baseURL)
-    return this.get('stock-transactions', params)
+  // Bin Card - Get product transaction history in a warehouse
+  async getProductBinCard(warehouseId: number | string, productId: number | string, params?: {
+    start_date?: string
+    end_date?: string
+  }): Promise<{
+    warehouse_id: number
+    warehouse_name: string
+    product_id: number
+    product_name: string
+    current_quantity: number
+    total_receipts: number
+    total_issues: number
+    transaction_count: number
+    transactions: Array<any>
+  }> {
+    const queryString = params ? '?' + new URLSearchParams(
+      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null) as [string, string][]
+    ).toString() : ''
+    return this.request(`/warehouses/${warehouseId}/bincard/${productId}/${queryString}`)
   }
 
   async createStockTransfer(data: {
