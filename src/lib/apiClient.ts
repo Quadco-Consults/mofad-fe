@@ -2496,24 +2496,7 @@ class ApiClient {
     return this.bulkDelete('/accounts', ids)
   }
 
-  // Generic CRUD methods
-  async get<T = any>(url: string, params?: any): Promise<T> {
-    let endpoint = url
-    if (params) {
-      const searchParams = new URLSearchParams()
-      Object.entries(params).forEach(([key, value]) => {
-        // Filter out undefined, null, empty strings, and 'undefined' string
-        if (value !== undefined && value !== null && value !== '' && value !== 'undefined') {
-          searchParams.append(key, String(value))
-        }
-      })
-      const queryString = searchParams.toString()
-      if (queryString) {
-        endpoint += `?${queryString}`
-      }
-    }
-    return this.request<T>(endpoint)
-  }
+  // Generic CRUD methods (get method is defined earlier in the class)
 
   async post<T = any>(url: string, data?: any): Promise<T> {
     return this.request<T>(url, {
