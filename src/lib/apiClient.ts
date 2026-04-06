@@ -5102,6 +5102,436 @@ class ApiClient {
   }> {
     return this.request('/payment-vouchers/statistics/')
   }
+
+  // =================== LUBEBAY MANAGEMENT ===================
+
+  /**
+   * Get all lubebays
+   */
+  async getLubebays(params?: { search?: string; is_active?: boolean; state?: number }): Promise<any[]> {
+    let endpoint = '/lubebays/'
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && String(value) !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        endpoint += `?${queryString}`
+      }
+    }
+    return this.request(endpoint)
+  }
+
+  /**
+   * Get single lubebay details
+   */
+  async getLubebay(id: number | string): Promise<any> {
+    return this.request(`/lubebays/${id}/`)
+  }
+
+  /**
+   * Create new lubebay
+   */
+  async createLubebay(data: {
+    name: string
+    address?: string
+    state?: number
+    location?: number
+    phone?: string
+    email?: string
+    manager?: number
+    warehouse?: number
+  }): Promise<any> {
+    return this.request('/lubebays/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Update lubebay
+   */
+  async updateLubebay(id: number | string, data: any): Promise<any> {
+    return this.request(`/lubebays/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Delete lubebay
+   */
+  async deleteLubebay(id: number | string): Promise<void> {
+    await this.request(`/lubebays/${id}/`, {
+      method: 'DELETE'
+    })
+  }
+
+  /**
+   * Activate lubebay
+   */
+  async activateLubebay(id: number | string): Promise<any> {
+    return this.request(`/lubebays/${id}/activate/`, {
+      method: 'POST'
+    })
+  }
+
+  /**
+   * Deactivate lubebay
+   */
+  async deactivateLubebay(id: number | string): Promise<any> {
+    return this.request(`/lubebays/${id}/deactivate/`, {
+      method: 'POST'
+    })
+  }
+
+  /**
+   * Get lubebay financial summary
+   */
+  async getLubebaySummary(id: number | string): Promise<any> {
+    return this.request(`/lubebays/${id}/summary/`)
+  }
+
+  /**
+   * Get lubebay transactions
+   */
+  async getLubebayTransactions(id: number | string): Promise<any> {
+    return this.request(`/lubebays/${id}/transactions/`)
+  }
+
+  /**
+   * Get lubebay service transactions
+   */
+  async getLubebayServiceTransactions(id: number | string): Promise<any> {
+    return this.request(`/lubebays/${id}/service-transactions/`)
+  }
+
+  /**
+   * Get lubebay expenses
+   */
+  async getLubebayExpenses(id: number | string, params?: { status?: string }): Promise<any> {
+    let endpoint = `/lubebays/${id}/expenses/`
+    if (params?.status) {
+      endpoint += `?status=${params.status}`
+    }
+    return this.request(endpoint)
+  }
+
+  /**
+   * Get lubebay monthly summary
+   */
+  async getLubebayMonthlySummary(id: number | string, year?: number, month?: number): Promise<any> {
+    let endpoint = `/lubebays/${id}/monthly-summary/`
+    const params: string[] = []
+    if (year) params.push(`year=${year}`)
+    if (month) params.push(`month=${month}`)
+    if (params.length > 0) {
+      endpoint += `?${params.join('&')}`
+    }
+    return this.request(endpoint)
+  }
+
+  // =================== LUBEBAY SERVICE TRANSACTIONS ===================
+
+  /**
+   * Get all service transactions
+   */
+  async getLubebayServiceTransactionsList(params?: {
+    lubebay?: number
+    approval_status?: string
+    transaction_type?: string
+    search?: string
+  }): Promise<any> {
+    let endpoint = '/lubebay-service-transactions/'
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && String(value) !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        endpoint += `?${queryString}`
+      }
+    }
+    return this.request(endpoint)
+  }
+
+  /**
+   * Get single service transaction
+   */
+  async getLubebayServiceTransaction(id: number | string): Promise<any> {
+    return this.request(`/lubebay-service-transactions/${id}/`)
+  }
+
+  /**
+   * Create service transaction
+   */
+  async createLubebayServiceTransaction(data: {
+    lubebay: number
+    transaction_type: 'services' | 'lubricant_sales'
+    payment_method: string
+    items: Array<{
+      service?: number
+      product?: number
+      quantity: number
+      unit_price: number
+    }>
+    comment?: string
+    bank_reference?: string
+  }): Promise<any> {
+    return this.request('/lubebay-service-transactions/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Confirm service transaction
+   */
+  async confirmLubebayServiceTransaction(id: number | string, notes?: string): Promise<any> {
+    return this.request(`/lubebay-service-transactions/${id}/confirm/`, {
+      method: 'POST',
+      body: JSON.stringify({ notes: notes || '' })
+    })
+  }
+
+  /**
+   * Reject service transaction
+   */
+  async rejectLubebayServiceTransaction(id: number | string, reason: string): Promise<any> {
+    return this.request(`/lubebay-service-transactions/${id}/reject/`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    })
+  }
+
+  // =================== LUBEBAY EXPENSES ===================
+
+  /**
+   * Get all lubebay expenses
+   */
+  async getLubebayExpensesList(params?: {
+    lubebay?: number
+    approval_status?: string
+    expense_type?: number
+    search?: string
+  }): Promise<any> {
+    let endpoint = '/lubebay-expenses/'
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && String(value) !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        endpoint += `?${queryString}`
+      }
+    }
+    return this.request(endpoint)
+  }
+
+  /**
+   * Get single lubebay expense
+   */
+  async getLubebayExpense(id: number | string): Promise<any> {
+    return this.request(`/lubebay-expenses/${id}/`)
+  }
+
+  /**
+   * Create lubebay expense
+   */
+  async createLubebayExpense(data: {
+    lubebay: number
+    name: string
+    expense_type?: number
+    amount: number
+    expense_date: string
+    notes?: string
+  }): Promise<any> {
+    return this.request('/lubebay-expenses/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Update lubebay expense
+   */
+  async updateLubebayExpense(id: number | string, data: any): Promise<any> {
+    return this.request(`/lubebay-expenses/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Delete lubebay expense
+   */
+  async deleteLubebayExpense(id: number | string): Promise<void> {
+    await this.request(`/lubebay-expenses/${id}/`, {
+      method: 'DELETE'
+    })
+  }
+
+  /**
+   * Approve lubebay expense
+   */
+  async approveLubebayExpense(id: number | string, notes?: string): Promise<any> {
+    return this.request(`/lubebay-expenses/${id}/approve/`, {
+      method: 'POST',
+      body: JSON.stringify({ notes: notes || '' })
+    })
+  }
+
+  /**
+   * Reject lubebay expense
+   */
+  async rejectLubebayExpense(id: number | string, reason: string): Promise<any> {
+    return this.request(`/lubebay-expenses/${id}/reject/`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    })
+  }
+
+  /**
+   * Get lubebay expense types
+   */
+  async getLubebayExpenseTypes(): Promise<any[]> {
+    return this.request('/lubebay-expense-types/')
+  }
+
+  // =================== LUBEBAY MONTHLY INVENTORY ===================
+
+  /**
+   * Get all monthly inventory snapshots for a lubebay
+   */
+  async getLubebayMonthlyInventorySnapshots(lubebayId: number | string, params?: {
+    year?: number
+    month?: number
+    status?: string
+  }): Promise<any> {
+    let endpoint = `/lubebay-monthly-inventory-snapshots/`
+    const searchParams = new URLSearchParams({ lubebay: String(lubebayId) })
+
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value))
+        }
+      })
+    }
+
+    return this.request(`${endpoint}?${searchParams.toString()}`)
+  }
+
+  /**
+   * Get single monthly inventory snapshot
+   */
+  async getLubebayMonthlyInventorySnapshot(id: number | string): Promise<any> {
+    return this.request(`/lubebay-monthly-inventory-snapshots/${id}/`)
+  }
+
+  /**
+   * Initiate month-end closing (creates new snapshot)
+   */
+  async initiateLubebayMonthlyClosing(data: {
+    lubebay: number
+    year: number
+    month: number
+  }): Promise<any> {
+    return this.request('/lubebay-monthly-inventory-snapshots/initiate-closing/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Update physical counts for multiple items
+   */
+  async updateLubebayPhysicalCounts(snapshotId: number | string, data: {
+    updates: Array<{
+      item_id: number
+      physical_count_quantity: number
+    }>
+  }): Promise<any> {
+    return this.request(`/lubebay-monthly-inventory-snapshots/${snapshotId}/update-physical-counts/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Create adjustment for variance
+   */
+  async createLubebayInventoryAdjustment(
+    snapshotId: number | string,
+    itemId: number | string,
+    data: {
+      adjustment_quantity: number
+      reason: string
+      notes?: string
+    }
+  ): Promise<any> {
+    return this.request(`/lubebay-monthly-inventory-snapshots/${snapshotId}/items/${itemId}/create-adjustment/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Verify balance status
+   */
+  async verifyLubebayInventoryBalance(snapshotId: number | string): Promise<{
+    is_balanced: boolean
+    total_items: number
+    balanced_items: number
+    unbalanced_items: number
+    unbalanced_item_ids: number[]
+  }> {
+    return this.request(`/lubebay-monthly-inventory-snapshots/${snapshotId}/verify-balance/`)
+  }
+
+  /**
+   * Close period (lock snapshot)
+   */
+  async closeLubebayInventoryPeriod(snapshotId: number | string, data: {
+    notes?: string
+  }): Promise<any> {
+    return this.request(`/lubebay-monthly-inventory-snapshots/${snapshotId}/close-period/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Reopen closed period
+   */
+  async reopenLubebayInventoryPeriod(snapshotId: number | string, data: {
+    reason: string
+    notes?: string
+    authorization_code?: string
+  }): Promise<any> {
+    return this.request(`/lubebay-monthly-inventory-snapshots/${snapshotId}/reopen-period/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  /**
+   * Delete draft snapshot
+   */
+  async deleteLubebayInventorySnapshot(id: number | string): Promise<void> {
+    await this.request(`/lubebay-monthly-inventory-snapshots/${id}/`, {
+      method: 'DELETE'
+    })
+  }
 }
 
 const apiClient = new ApiClient()

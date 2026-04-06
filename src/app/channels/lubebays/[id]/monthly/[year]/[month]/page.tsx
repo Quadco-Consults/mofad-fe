@@ -226,7 +226,7 @@ export default function LubebayMonthlyDetailPage() {
         const response = await apiClient.get('/services/')
         return response.results || response
       } catch (error) {
-        console.error('Error fetching services:', error)
+        // Silently handle error - services dropdown will be empty if API fails
         return []
       }
     }
@@ -291,20 +291,34 @@ export default function LubebayMonthlyDetailPage() {
     enabled: !!showBinCardModal && !!lubebay?.warehouse && !!selectedInventoryItem?.product
   })
 
+  // Fetch monthly inventory snapshot for this month/year
+  const { data: monthlySnapshot, isLoading: snapshotLoading, refetch: refetchSnapshot } = useQuery({
+    queryKey: ['monthly-inventory-snapshot', lubebayId, year, month],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.getLubebayMonthlyInventorySnapshots(lubebayId, {
+          year,
+          month
+        })
+        console.log('📊 Monthly snapshot:', response)
+        return response?.results?.[0] || null
+      } catch (error) {
+        console.error('Error fetching monthly snapshot:', error)
+        return null
+      }
+    }
+  })
+
   // Fetch service transactions
   const { data: serviceTransactionsData, isLoading: serviceTransactionsLoading } = useQuery({
     queryKey: ['lubebay-service-transactions', lubebayId, year, month],
     queryFn: async () => {
       try {
         const url = `/lubebay-service-transactions/?lubebay=${lubebayId}&created_datetime__gte=${startDate}&created_datetime__lte=${endDate}`
-        console.log('🔍 Fetching service transactions:', url)
-        console.log('📅 Date range:', { startDate, endDate, year, month })
         const response = await apiClient.get(url)
-        console.log('✅ Service transactions response:', response)
-        console.log('📊 Number of transactions:', response?.results?.length || response?.length || 0)
         return response
       } catch (error) {
-        console.error('❌ Error fetching service transactions:', error)
+        // Silently handle error - transactions will be empty if API fails
         return null
       }
     },
@@ -1863,6 +1877,104 @@ export default function LubebayMonthlyDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Monthly Inventory Closing Section */}
+            <div className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold">Month-End Inventory Closing</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Reconcile physical counts and close inventory for {new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {snapshotLoading ? (
+                    <div className="text-center py-8">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <p className="mt-2 text-sm text-muted-foreground">Loading closing status...</p>
+                    </div>
+                  ) : monthlySnapshot ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="text-sm text-gray-600">Snapshot Number</p>
+                            <p className="font-mono text-sm font-medium">{monthlySnapshot.snapshot_number}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Status</p>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              monthlySnapshot.status === 'closed' ? 'bg-indigo-100 text-indigo-700' :
+                              monthlySnapshot.status === 'balanced' ? 'bg-green-100 text-green-700' :
+                              monthlySnapshot.status === 'reconciling' ? 'bg-yellow-100 text-yellow-700' :
+                              monthlySnapshot.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {monthlySnapshot.status === 'closed' ? 'Closed' :
+                               monthlySnapshot.status === 'balanced' ? 'Balanced' :
+                               monthlySnapshot.status === 'reconciling' ? 'Reconciling' :
+                               monthlySnapshot.status === 'in_progress' ? 'In Progress' :
+                               'Draft'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Products</p>
+                            <p className="font-semibold">{monthlySnapshot.total_products_count}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Closing Value</p>
+                            <p className="font-semibold text-indigo-600">{formatCurrency(monthlySnapshot.total_closing_value || 0)}</p>
+                          </div>
+                          {monthlySnapshot.is_balanced && (
+                            <div className="flex items-center gap-1.5 text-xs text-green-600 bg-green-50 rounded px-2 py-1.5">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              <span>Balanced</span>
+                            </div>
+                          )}
+                        </div>
+                        <Link
+                          href={`/lubebays/${lubebayId}/monthly-inventory/${monthlySnapshot.id}`}
+                          className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                        >
+                          View Closing Details
+                          <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </Link>
+                      </div>
+                      {monthlySnapshot.notes && (
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <p className="text-sm text-gray-700">{monthlySnapshot.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="mx-auto w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
+                        <Package className="w-6 h-6 text-gray-400" />
+                      </div>
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">No Month-End Closing</h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Month-end closing has not been initiated for this period
+                      </p>
+                      <Link
+                        href={`/lubebays/${lubebayId}/monthly-inventory`}
+                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Initiate Month-End Closing
+                      </Link>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         )}
 
