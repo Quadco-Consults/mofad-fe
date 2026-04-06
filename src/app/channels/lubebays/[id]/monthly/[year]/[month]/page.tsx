@@ -123,7 +123,7 @@ export default function LubebayMonthlyDetailPage() {
   // Calculate date range for the selected month
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`
   const lastDay = new Date(year, month, 0).getDate()
-  const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')} 23:59:59`
+  const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
   // Format month label for display
   const monthLabel = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' })
@@ -1939,7 +1939,7 @@ export default function LubebayMonthlyDetailPage() {
                           )}
                         </div>
                         <Link
-                          href={`/lubebays/${lubebayId}/monthly-inventory/${monthlySnapshot.id}`}
+                          href={`/channels/lubebays/${lubebayId}/inventory-closing/${monthlySnapshot.id}`}
                           className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
                         >
                           View Closing Details
@@ -1964,7 +1964,7 @@ export default function LubebayMonthlyDetailPage() {
                         Month-end closing has not been initiated for this period
                       </p>
                       <Link
-                        href={`/lubebays/${lubebayId}/monthly-inventory`}
+                        href={`/channels/lubebays/${lubebayId}/inventory-closing`}
                         className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
                       >
                         <Plus className="w-4 h-4 mr-2" />

@@ -48,8 +48,16 @@ export default function LubebayMonthlyInventoryPage() {
 
   // Initiate closing mutation
   const initiateMutation = useMutation({
-    mutationFn: (data: { year: number; month: number }) =>
-      apiClient.initiateLubebayMonthlyClosing({ lubebay: Number(lubebayId), ...data }),
+    mutationFn: (data: { year: number; month: number }) => {
+      if (!lubebay?.warehouse) {
+        throw new Error('Lubebay must have a warehouse to initiate monthly closing')
+      }
+      return apiClient.initiateLubebayMonthlyClosing({
+        lubebay: Number(lubebayId),
+        warehouse: lubebay.warehouse,
+        ...data
+      })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lubebay-monthly-inventory'] })
       setShowInitiateModal(false)
@@ -96,7 +104,7 @@ export default function LubebayMonthlyInventoryPage() {
       <div className="mb-6">
         <div className="flex items-center mb-2">
           <button
-            onClick={() => router.push(`/lubebays/${lubebayId}`)}
+            onClick={() => router.push(`/channels/lubebays/${lubebayId}`)}
             className="mr-3 text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -181,7 +189,7 @@ export default function LubebayMonthlyInventoryPage() {
           {snapshots?.results?.map((snapshot: any) => (
             <Link
               key={snapshot.id}
-              href={`/lubebays/${lubebayId}/monthly-inventory/${snapshot.id}`}
+              href={`/channels/lubebays/${lubebayId}/inventory-closing/${snapshot.id}`}
               className="block bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow p-5"
             >
               {/* Header */}

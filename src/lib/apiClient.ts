@@ -5443,12 +5443,26 @@ class ApiClient {
    */
   async initiateLubebayMonthlyClosing(data: {
     lubebay: number
+    warehouse: number
     year: number
     month: number
+    notes?: string
   }): Promise<any> {
+    // Calculate period start and end dates
+    const periodStart = new Date(data.year, data.month - 1, 1)
+    const periodEnd = new Date(data.year, data.month, 0) // Last day of month
+
     return this.request('/lubebay-monthly-inventory-snapshots/initiate-closing/', {
       method: 'POST',
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        lubebay: data.lubebay,
+        warehouse: data.warehouse,
+        year: data.year,
+        month: data.month,
+        period_start: periodStart.toISOString().split('T')[0], // Format: YYYY-MM-DD
+        period_end: periodEnd.toISOString().split('T')[0], // Format: YYYY-MM-DD
+        notes: data.notes || ''
+      })
     })
   }
 
