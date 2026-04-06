@@ -1249,23 +1249,6 @@ class ApiClient {
     return this.request(endpoint)
   }
 
-  async getLubebays(params?: { search?: string; is_active?: boolean; page?: number; page_size?: number }): Promise<any[]> {
-    let endpoint = '/lubebays/'
-    if (params) {
-      const searchParams = new URLSearchParams()
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && String(value) !== '') {
-          searchParams.append(key, String(value))
-        }
-      })
-      const queryString = searchParams.toString()
-      if (queryString) {
-        endpoint += `?${queryString}`
-      }
-    }
-    return this.request(endpoint)
-  }
-
   // ========================================
   // PHASE 1: FOUNDATION MODULE API METHODS
   // ========================================
@@ -5108,7 +5091,7 @@ class ApiClient {
   /**
    * Get all lubebays
    */
-  async getLubebays(params?: { search?: string; is_active?: boolean; state?: number }): Promise<any[]> {
+  async getLubebays(params?: { search?: string; is_active?: boolean; state?: number; page?: number; page_size?: number }): Promise<any[]> {
     let endpoint = '/lubebays/'
     if (params) {
       const searchParams = new URLSearchParams()
@@ -5398,13 +5381,6 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ reason })
     })
-  }
-
-  /**
-   * Get lubebay expense types
-   */
-  async getLubebayExpenseTypes(): Promise<any[]> {
-    return this.request('/lubebay-expense-types/')
   }
 
   // =================== LUBEBAY MONTHLY INVENTORY ===================
