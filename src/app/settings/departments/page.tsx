@@ -24,14 +24,12 @@ interface Department {
 interface NewDepartmentForm {
   name: string
   description: string
-  manager_email: string
   is_active: boolean
 }
 
 const initialNewDepartmentForm: NewDepartmentForm = {
   name: '',
   description: '',
-  manager_email: '',
   is_active: true,
 }
 
@@ -71,129 +69,28 @@ function DepartmentsPage() {
   // Selection for bulk actions
   const selection = useSelection<Department>()
 
-  // Mock departments data (since this endpoint may not exist in the backend yet)
-  const mockDepartments: Department[] = [
-    {
-      id: 1,
-      name: 'Sales & Marketing',
-      description: 'Responsible for sales activities and marketing campaigns',
-      manager_name: 'John Smith',
-      manager_email: 'john.smith@mofad.com',
-      employee_count: 12,
-      is_active: true,
-      created_at: '2024-01-15T00:00:00Z',
-    },
-    {
-      id: 2,
-      name: 'Finance & Accounts',
-      description: 'Manages financial operations and accounting',
-      manager_name: 'Sarah Johnson',
-      manager_email: 'sarah.johnson@mofad.com',
-      employee_count: 8,
-      is_active: true,
-      created_at: '2024-01-15T00:00:00Z',
-    },
-    {
-      id: 3,
-      name: 'Operations',
-      description: 'Handles day-to-day operational activities',
-      manager_name: 'Mike Wilson',
-      manager_email: 'mike.wilson@mofad.com',
-      employee_count: 25,
-      is_active: true,
-      created_at: '2024-01-15T00:00:00Z',
-    },
-    {
-      id: 4,
-      name: 'Human Resources',
-      description: 'Employee management and HR policies',
-      manager_name: 'Emily Davis',
-      manager_email: 'emily.davis@mofad.com',
-      employee_count: 6,
-      is_active: true,
-      created_at: '2024-01-15T00:00:00Z',
-    },
-    {
-      id: 5,
-      name: 'Information Technology',
-      description: 'IT infrastructure and software development',
-      manager_name: 'David Brown',
-      manager_email: 'david.brown@mofad.com',
-      employee_count: 10,
-      is_active: true,
-      created_at: '2024-01-15T00:00:00Z',
-    },
-    {
-      id: 6,
-      name: 'Administration',
-      description: 'Administrative support and office management',
-      manager_name: 'Lisa Anderson',
-      manager_email: 'lisa.anderson@mofad.com',
-      employee_count: 4,
-      is_active: true,
-      created_at: '2024-01-15T00:00:00Z',
-    },
-    {
-      id: 7,
-      name: 'Management',
-      description: 'Executive and senior management',
-      manager_name: 'Robert Taylor',
-      manager_email: 'robert.taylor@mofad.com',
-      employee_count: 5,
-      is_active: true,
-      created_at: '2024-01-15T00:00:00Z',
-    },
-    {
-      id: 8,
-      name: 'Warehouse',
-      description: 'Inventory management and warehouse operations',
-      manager_name: 'James Miller',
-      manager_email: 'james.miller@mofad.com',
-      employee_count: 18,
-      is_active: true,
-      created_at: '2024-01-15T00:00:00Z',
-    },
-  ]
-
   // Fetch departments
   const fetchDepartments = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      // For now, use mock data since departments endpoint may not exist
-      // TODO: Replace with actual API call when backend supports departments
+      const response = await api.getDepartments({
+        search: searchTerm || undefined,
+        is_active: statusFilter === 'all' ? undefined : statusFilter === 'active',
+        page: currentPage,
+        page_size: pageSize,
+      })
 
-      let filteredDepartments = [...mockDepartments]
+      const departmentsData = Array.isArray(response) ? response : response.results || []
 
-      // Apply search filter
-      if (searchTerm) {
-        filteredDepartments = filteredDepartments.filter(dept =>
-          dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          dept.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          dept.manager_name?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      }
+      setDepartments(departmentsData)
+      setTotalCount(response.count || departmentsData.length)
+      setHasNext(!!response.next)
+      setHasPrevious(!!response.previous)
 
-      // Apply status filter
-      if (statusFilter !== 'all') {
-        filteredDepartments = filteredDepartments.filter(dept =>
-          statusFilter === 'active' ? dept.is_active : !dept.is_active
-        )
-      }
-
-      // Apply pagination
-      const startIndex = (currentPage - 1) * pageSize
-      const endIndex = startIndex + pageSize
-      const paginatedDepartments = filteredDepartments.slice(startIndex, endIndex)
-
-      setDepartments(paginatedDepartments)
-      setTotalCount(filteredDepartments.length)
-      setHasNext(endIndex < filteredDepartments.length)
-      setHasPrevious(startIndex > 0)
-
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch departments:', err)
-      setError('Failed to load departments. Please try again.')
+      setError(err.message || 'Failed to load departments. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -215,11 +112,11 @@ function DepartmentsPage() {
     setSubmitting(true)
     setError(null)
     try {
-      // TODO: Replace with actual API call when backend supports departments
-      // await api.createDepartment(newDepartmentForm)
-
-      // For now, simulate success
-      console.log('Creating department:', newDepartmentForm)
+      await api.createDepartment({
+        name: newDepartmentForm.name,
+        description: newDepartmentForm.description || undefined,
+        is_active: newDepartmentForm.is_active,
+      })
 
       setShowCreateModal(false)
       setNewDepartmentForm(initialNewDepartmentForm)
@@ -240,11 +137,10 @@ function DepartmentsPage() {
     setSubmitting(true)
     setError(null)
     try {
-      // TODO: Replace with actual API call when backend supports departments
-      // await api.updateDepartment(selectedDepartment.id, editDepartmentForm)
-
-      // For now, simulate success
-      console.log('Updating department:', selectedDepartment.id, editDepartmentForm)
+      await api.updateDepartment(selectedDepartment.id, {
+        name: editDepartmentForm.name,
+        description: editDepartmentForm.description || undefined,
+      })
 
       setShowEditModal(false)
       setSelectedDepartment(null)
@@ -264,11 +160,7 @@ function DepartmentsPage() {
 
     setSubmitting(true)
     try {
-      // TODO: Replace with actual API call when backend supports departments
-      // await api.deleteDepartment(departmentToDelete.id)
-
-      // For now, simulate success
-      console.log('Deleting department:', departmentToDelete.id)
+      await api.deleteDepartment(departmentToDelete.id)
 
       setShowDeleteDialog(false)
       setDepartmentToDelete(null)
@@ -285,11 +177,11 @@ function DepartmentsPage() {
   const handleToggleDepartmentStatus = async (department: Department, activate: boolean) => {
     setSubmitting(true)
     try {
-      // TODO: Replace with actual API call when backend supports departments
-      // await api.updateDepartment(department.id, { is_active: activate })
-
-      // For now, simulate success
-      console.log(`${activate ? 'Activating' : 'Deactivating'} department:`, department.id)
+      if (activate) {
+        await api.activateDepartment(department.id)
+      } else {
+        await api.deactivateDepartment(department.id)
+      }
 
       if (activate) {
         setShowActivateDialog(false)
@@ -692,19 +584,6 @@ function DepartmentsPage() {
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                       placeholder="Brief description of the department's responsibilities"
                       rows={3}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Manager Email
-                    </label>
-                    <input
-                      type="email"
-                      value={newDepartmentForm.manager_email}
-                      onChange={(e) => setNewDepartmentForm(prev => ({ ...prev, manager_email: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                      placeholder="manager@mofad.com"
                     />
                   </div>
 

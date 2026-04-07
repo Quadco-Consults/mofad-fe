@@ -1177,6 +1177,93 @@ class ApiClient {
     })
   }
 
+  // Department Management methods
+  async getDepartments(params?: {
+    search?: string
+    is_active?: boolean
+    page?: number
+    page_size?: number
+  }): Promise<{
+    count: number
+    next: string | null
+    previous: string | null
+    results: any[]
+  }> {
+    let endpoint = '/auth/departments/'
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && String(value) !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        endpoint += `?${queryString}`
+      }
+    }
+    return this.request(endpoint)
+  }
+
+  async getDepartmentById(id: number | string): Promise<any> {
+    return this.request(`/auth/departments/${id}/`)
+  }
+
+  async createDepartment(departmentData: {
+    name: string
+    description?: string
+    head?: number
+    is_active?: boolean
+  }): Promise<any> {
+    return this.request('/auth/departments/', {
+      method: 'POST',
+      body: JSON.stringify(departmentData)
+    })
+  }
+
+  async updateDepartment(id: number | string, departmentData: {
+    name?: string
+    description?: string
+    head?: number
+    is_active?: boolean
+  }): Promise<any> {
+    return this.request(`/auth/departments/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(departmentData)
+    })
+  }
+
+  async deleteDepartment(id: number | string): Promise<void> {
+    await this.request(`/auth/departments/${id}/`, {
+      method: 'DELETE'
+    })
+  }
+
+  async activateDepartment(id: number | string): Promise<any> {
+    return this.request(`/auth/departments/${id}/activate/`, {
+      method: 'POST'
+    })
+  }
+
+  async deactivateDepartment(id: number | string): Promise<any> {
+    return this.request(`/auth/departments/${id}/deactivate/`, {
+      method: 'POST'
+    })
+  }
+
+  async setDepartmentHead(id: number | string, userId: number): Promise<any> {
+    return this.request(`/auth/departments/${id}/set-head/`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId })
+    })
+  }
+
+  async removeDepartmentHead(id: number | string): Promise<any> {
+    return this.request(`/auth/departments/${id}/remove-head/`, {
+      method: 'POST'
+    })
+  }
+
   // Permission methods
   async getPermissions(): Promise<any[]> {
     return this.request('/authorization/permissions')

@@ -57,7 +57,7 @@ interface NewUserForm {
   last_name: string
   phone: string
   role: string
-  department: string
+  department: number | string
   employee_id: string
   send_welcome_email: boolean
 }
@@ -80,22 +80,15 @@ const defaultSystemRoles = [
   { value: 'user', label: 'Regular User' },
 ]
 
-const departments = [
-  'Sales & Marketing',
-  'Finance & Accounts',
-  'Operations',
-  'Human Resources',
-  'Information Technology',
-  'Administration',
-  'Management',
-  'Warehouse',
-]
-
 function UsersPage() {
   const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [totalActiveCount, setTotalActiveCount] = useState(0)
+
+  // Available departments fetched from backend
+  const [availableDepartments, setAvailableDepartments] = useState<Array<{ value: number; label: string }>>([])
+
   const [totalInactiveCount, setTotalInactiveCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -225,6 +218,28 @@ function UsersPage() {
     }
 
     fetchRoles()
+  }, [])
+
+  // Fetch available departments from backend
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await api.getDepartments({ is_active: true })
+        const departments = Array.isArray(response) ? response : response.results || []
+
+        // Transform backend departments to frontend format
+        const transformedDepartments = departments.map((dept: any) => ({
+          value: dept.id,
+          label: dept.name,
+        }))
+
+        setAvailableDepartments(transformedDepartments)
+      } catch (error) {
+        console.error('Failed to fetch departments:', error)
+      }
+    }
+
+    fetchDepartments()
   }, [])
 
   // Debounce search and reset to page 1 when filters change
@@ -977,11 +992,11 @@ function UsersPage() {
                     <select
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                       value={newUserForm.department}
-                      onChange={(e) => setNewUserForm({ ...newUserForm, department: e.target.value })}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, department: e.target.value ? parseInt(e.target.value) : '' })}
                     >
                       <option value="">Select Department</option>
-                      {departments.map(dept => (
-                        <option key={dept} value={dept}>{dept}</option>
+                      {availableDepartments.map(dept => (
+                        <option key={dept.value} value={dept.value}>{dept.label}</option>
                       ))}
                     </select>
                   </div>
@@ -1095,11 +1110,11 @@ function UsersPage() {
                     <select
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                       value={editForm.department || ''}
-                      onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                      onChange={(e) => setEditForm({ ...editForm, department: e.target.value ? parseInt(e.target.value) : '' })}
                     >
                       <option value="">Select Department</option>
-                      {departments.map(dept => (
-                        <option key={dept} value={dept}>{dept}</option>
+                      {availableDepartments.map(dept => (
+                        <option key={dept.value} value={dept.value}>{dept.label}</option>
                       ))}
                     </select>
                   </div>

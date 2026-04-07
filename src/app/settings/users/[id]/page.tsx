@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Edit, UserCheck, UserX, MapPin, Mail, Phone, Building, Calendar, Shield, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Edit, UserCheck, UserX, MapPin, Mail, Phone, Building, Calendar, Shield, Loader2, RefreshCw, Store } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { AppLayout } from '@/components/layout/AppLayout'
 import api from '@/lib/apiClient'
@@ -39,6 +39,21 @@ interface EntityAccess {
   accessible_lubebays: Array<{ id: number; name: string; code: string }>
 }
 
+interface Entity {
+  id: number
+  name: string
+  code: string
+}
+
+interface EntityAccessForm {
+  has_all_warehouse_access: boolean
+  has_all_substore_access: boolean
+  has_all_lubebay_access: boolean
+  warehouse_ids: number[]
+  substore_ids: number[]
+  lubebay_ids: number[]
+}
+
 function UserDetailsPage() {
   const params = useParams()
   const router = useRouter()
@@ -48,7 +63,23 @@ function UserDetailsPage() {
   const [entityAccess, setEntityAccess] = useState<EntityAccess | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
-  const [loadingEntityAccess, setLoadingEntityAccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+
+  // Entity Access Modal State
+  const [showEntityAccessModal, setShowEntityAccessModal] = useState(false)
+  const [entityAccessForm, setEntityAccessForm] = useState<EntityAccessForm>({
+    has_all_warehouse_access: false,
+    has_all_substore_access: false,
+    has_all_lubebay_access: false,
+    warehouse_ids: [],
+    substore_ids: [],
+    lubebay_ids: [],
+  })
+  const [allWarehouses, setAllWarehouses] = useState<Entity[]>([])
+  const [allSubstores, setAllSubstores] = useState<Entity[]>([])
+  const [allLubebays, setAllLubebays] = useState<Entity[]>([])
+  const [loadingEntities, setLoadingEntities] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     fetchUserDetails()
@@ -95,6 +126,96 @@ function UserDetailsPage() {
       : 'bg-red-100 text-red-800 border border-red-200'
   }
 
+  const showSuccess = (message: string) => {
+    setSuccessMessage(message)
+    setTimeout(() => setSuccessMessage(''), 3000)
+  }
+
+  const showError = (message: string) => {
+    setErrorMessage(message)
+    setTimeout(() => setErrorMessage(''), 5000)
+  }
+
+  // Entity Access Management
+  const fetchAllEntities = async () => {
+    setLoadingEntities(true)
+    try {
+      const [warehousesRes, substoresRes, lubebaysRes] = await Promise.all([
+        api.getWarehouses({ is_active: true }).catch(() => []),
+        api.getSubstores({ is_active: true }).catch(() => []),
+        api.getLubebays({ is_active: true }).catch(() => []),
+      ])
+
+      // Handle paginated responses
+      const warehouses = Array.isArray(warehousesRes) ? warehousesRes : (warehousesRes as any)?.results || []
+      const substores = Array.isArray(substoresRes) ? substoresRes : (substoresRes as any)?.results || []
+      const lubebays = Array.isArray(lubebaysRes) ? lubebaysRes : (lubebaysRes as any)?.results || []
+
+      setAllWarehouses(warehouses)
+      setAllSubstores(substores)
+      setAllLubebays(lubebays)
+    } catch (error) {
+      console.error('Error fetching entities:', error)
+    } finally {
+      setLoadingEntities(false)
+    }
+  }
+
+  const handleOpenEntityAccess = async () => {
+    if (!user) return
+
+    setLoadingEntities(true)
+    setShowEntityAccessModal(true)
+
+    try {
+      // Fetch all available entities
+      await fetchAllEntities()
+
+      // Fetch user's current entity access
+      const userAccess = await api.getUserEntityAccess(user.id)
+
+      setEntityAccessForm({
+        has_all_warehouse_access: userAccess.has_all_warehouse_access || false,
+        has_all_substore_access: userAccess.has_all_substore_access || false,
+        has_all_lubebay_access: userAccess.has_all_lubebay_access || false,
+        warehouse_ids: (userAccess.accessible_warehouses || []).map((w: Entity) => w.id),
+        substore_ids: (userAccess.accessible_substores || []).map((s: Entity) => s.id),
+        lubebay_ids: (userAccess.accessible_lubebays || []).map((l: Entity) => l.id),
+      })
+    } catch (error: any) {
+      showError(error.message || 'Failed to load entity access')
+      setShowEntityAccessModal(false)
+    } finally {
+      setLoadingEntities(false)
+    }
+  }
+
+  const handleSaveEntityAccess = async () => {
+    if (!user) return
+
+    try {
+      setIsSaving(true)
+      await api.updateUserEntityAccess(user.id, entityAccessForm)
+      showSuccess('Entity access updated successfully')
+      setShowEntityAccessModal(false)
+      // Refresh user details to show updated entity access
+      fetchUserDetails()
+    } catch (error: any) {
+      showError(error.message || 'Failed to update entity access')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const toggleEntityId = (type: 'warehouse_ids' | 'substore_ids' | 'lubebay_ids', id: number) => {
+    setEntityAccessForm(prev => ({
+      ...prev,
+      [type]: prev[type].includes(id)
+        ? prev[type].filter(i => i !== id)
+        : [...prev[type], id]
+    }))
+  }
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -108,7 +229,7 @@ function UserDetailsPage() {
     )
   }
 
-  if (errorMessage || !user) {
+  if (errorMessage && !user) {
     return (
       <AppLayout>
         <div className="p-6">
@@ -130,6 +251,22 @@ function UserDetailsPage() {
   return (
     <AppLayout>
       <div className="p-6 space-y-6">
+        {/* Success Message */}
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
+            <div className="h-2 w-2 bg-green-500 rounded-full mr-3"></div>
+            <p className="text-green-800 font-medium">{successMessage}</p>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {errorMessage && user && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
+            <div className="h-2 w-2 bg-red-500 rounded-full mr-3"></div>
+            <p className="text-red-800 font-medium">{errorMessage}</p>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -147,6 +284,10 @@ function UserDetailsPage() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
+            <Button className="mofad-btn-primary" onClick={handleOpenEntityAccess}>
+              <MapPin className="h-4 w-4 mr-2" />
+              Manage Entity Access
+            </Button>
           </div>
         </div>
 
@@ -156,7 +297,7 @@ function UserDetailsPage() {
             {/* Avatar */}
             <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-green-600 font-bold text-3xl">
-                {user.first_name?.[0]}{user.last_name?.[0]}
+                {user?.first_name?.[0]}{user?.last_name?.[0]}
               </span>
             </div>
 
@@ -164,25 +305,27 @@ function UserDetailsPage() {
             <div className="flex-1">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{user.full_name}</h2>
-                  <p className="text-gray-600 text-lg">{user.role}</p>
+                  <h2 className="text-2xl font-bold text-gray-900">{user?.full_name}</h2>
+                  <p className="text-gray-600 text-lg">{user?.role}</p>
                 </div>
-                <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${getStatusBadge(user.is_active)}`}>
-                  {user.is_active ? (
-                    <>
-                      <UserCheck className="h-4 w-4 mr-2" />
-                      Active
-                    </>
-                  ) : (
-                    <>
-                      <UserX className="h-4 w-4 mr-2" />
-                      Inactive
-                    </>
-                  )}
-                </span>
+                {user && (
+                  <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${getStatusBadge(user.is_active)}`}>
+                    {user.is_active ? (
+                      <>
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        Active
+                      </>
+                    ) : (
+                      <>
+                        <UserX className="h-4 w-4 mr-2" />
+                        Inactive
+                      </>
+                    )}
+                  </span>
+                )}
               </div>
 
-              {user.employee_id && (
+              {user?.employee_id && (
                 <div className="mt-2">
                   <span className="inline-flex items-center px-3 py-1 bg-blue-50 border border-blue-200 rounded-md text-sm font-medium text-blue-800">
                     Employee ID: {user.employee_id}
@@ -206,7 +349,7 @@ function UserDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Email Address</p>
-                  <p className="text-base text-gray-900">{user.email}</p>
+                  <p className="text-base text-gray-900">{user?.email}</p>
                 </div>
               </div>
 
@@ -216,7 +359,7 @@ function UserDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Phone Number</p>
-                  <p className="text-base text-gray-900">{user.phone || 'Not provided'}</p>
+                  <p className="text-base text-gray-900">{user?.phone || 'Not provided'}</p>
                 </div>
               </div>
             </div>
@@ -236,7 +379,7 @@ function UserDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Role</p>
-                  <p className="text-base text-gray-900">{user.role}</p>
+                  <p className="text-base text-gray-900">{user?.role}</p>
                 </div>
               </div>
 
@@ -246,7 +389,7 @@ function UserDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Department</p>
-                  <p className="text-base text-gray-900">{user.department || 'Not assigned'}</p>
+                  <p className="text-base text-gray-900">{user?.department || 'Not assigned'}</p>
                 </div>
               </div>
 
@@ -256,7 +399,7 @@ function UserDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Date Joined</p>
-                  <p className="text-base text-gray-900">{formatDateTime(user.date_joined)}</p>
+                  <p className="text-base text-gray-900">{user && formatDateTime(user.date_joined)}</p>
                 </div>
               </div>
 
@@ -266,7 +409,7 @@ function UserDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Staff Status</p>
-                  <p className="text-base text-gray-900">{user.is_staff ? 'Staff Member' : 'Regular User'}</p>
+                  <p className="text-base text-gray-900">{user?.is_staff ? 'Staff Member' : 'Regular User'}</p>
                 </div>
               </div>
             </div>
@@ -355,6 +498,196 @@ function UserDetailsPage() {
                     <p className="text-sm text-gray-500 italic">No lubebay access</p>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Entity Access Modal */}
+        {showEntityAccessModal && user && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-bold mb-4 flex items-center">
+                <MapPin className="h-5 w-5 mr-2 text-blue-600" />
+                Entity Access - {user.full_name}
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Configure which warehouses, substores, and lubebays this user can access.
+              </p>
+
+              {loadingEntities ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+                  <span className="ml-2 text-gray-600">Loading entities...</span>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Warehouses Section */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <Building className="h-5 w-5 mr-2 text-gray-600" />
+                        <h4 className="font-semibold">Warehouses</h4>
+                        <span className="ml-2 text-sm text-gray-500">
+                          ({entityAccessForm.has_all_warehouse_access ? 'All' : entityAccessForm.warehouse_ids.length} selected)
+                        </span>
+                      </div>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={entityAccessForm.has_all_warehouse_access}
+                          onChange={(e) => setEntityAccessForm(prev => ({
+                            ...prev,
+                            has_all_warehouse_access: e.target.checked,
+                            warehouse_ids: e.target.checked ? [] : prev.warehouse_ids
+                          }))}
+                          className="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-2"
+                        />
+                        <span className="text-sm font-medium">Access to all warehouses</span>
+                      </label>
+                    </div>
+                    {!entityAccessForm.has_all_warehouse_access && (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                        {allWarehouses.length === 0 ? (
+                          <p className="text-sm text-gray-500 col-span-3">No warehouses available</p>
+                        ) : (
+                          allWarehouses.map(warehouse => (
+                            <label key={warehouse.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={entityAccessForm.warehouse_ids.includes(warehouse.id)}
+                                onChange={() => toggleEntityId('warehouse_ids', warehouse.id)}
+                                className="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-2"
+                              />
+                              <span className="text-sm">{warehouse.name}</span>
+                              {warehouse.code && (
+                                <span className="ml-1 text-xs text-gray-400">({warehouse.code})</span>
+                              )}
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Substores Section */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <Store className="h-5 w-5 mr-2 text-gray-600" />
+                        <h4 className="font-semibold">Substores</h4>
+                        <span className="ml-2 text-sm text-gray-500">
+                          ({entityAccessForm.has_all_substore_access ? 'All' : entityAccessForm.substore_ids.length} selected)
+                        </span>
+                      </div>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={entityAccessForm.has_all_substore_access}
+                          onChange={(e) => setEntityAccessForm(prev => ({
+                            ...prev,
+                            has_all_substore_access: e.target.checked,
+                            substore_ids: e.target.checked ? [] : prev.substore_ids
+                          }))}
+                          className="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-2"
+                        />
+                        <span className="text-sm font-medium">Access to all substores</span>
+                      </label>
+                    </div>
+                    {!entityAccessForm.has_all_substore_access && (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                        {allSubstores.length === 0 ? (
+                          <p className="text-sm text-gray-500 col-span-3">No substores available</p>
+                        ) : (
+                          allSubstores.map(substore => (
+                            <label key={substore.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={entityAccessForm.substore_ids.includes(substore.id)}
+                                onChange={() => toggleEntityId('substore_ids', substore.id)}
+                                className="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-2"
+                              />
+                              <span className="text-sm">{substore.name}</span>
+                              {substore.code && (
+                                <span className="ml-1 text-xs text-gray-400">({substore.code})</span>
+                              )}
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Lubebays Section */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <MapPin className="h-5 w-5 mr-2 text-gray-600" />
+                        <h4 className="font-semibold">Lubebays</h4>
+                        <span className="ml-2 text-sm text-gray-500">
+                          ({entityAccessForm.has_all_lubebay_access ? 'All' : entityAccessForm.lubebay_ids.length} selected)
+                        </span>
+                      </div>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={entityAccessForm.has_all_lubebay_access}
+                          onChange={(e) => setEntityAccessForm(prev => ({
+                            ...prev,
+                            has_all_lubebay_access: e.target.checked,
+                            lubebay_ids: e.target.checked ? [] : prev.lubebay_ids
+                          }))}
+                          className="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-2"
+                        />
+                        <span className="text-sm font-medium">Access to all lubebays</span>
+                      </label>
+                    </div>
+                    {!entityAccessForm.has_all_lubebay_access && (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                        {allLubebays.length === 0 ? (
+                          <p className="text-sm text-gray-500 col-span-3">No lubebays available</p>
+                        ) : (
+                          allLubebays.map(lubebay => (
+                            <label key={lubebay.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={entityAccessForm.lubebay_ids.includes(lubebay.id)}
+                                onChange={() => toggleEntityId('lubebay_ids', lubebay.id)}
+                                className="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-2"
+                              />
+                              <span className="text-sm">{lubebay.name}</span>
+                              {lubebay.code && (
+                                <span className="ml-1 text-xs text-gray-400">({lubebay.code})</span>
+                              )}
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 justify-end mt-6">
+                <Button variant="outline" onClick={() => {
+                  setShowEntityAccessModal(false)
+                }}>
+                  Cancel
+                </Button>
+                <Button
+                  className="mofad-btn-primary"
+                  onClick={handleSaveEntityAccess}
+                  disabled={isSaving || loadingEntities}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Entity Access'
+                  )}
+                </Button>
               </div>
             </div>
           </div>
