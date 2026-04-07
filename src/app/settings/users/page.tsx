@@ -19,7 +19,12 @@ interface User {
   full_name: string
   phone: string | null
   role: string
-  department: string | null
+  department: number | null
+  department_details?: {
+    id: number
+    name: string
+    description: string | null
+  }
   employee_id: string | null
   is_active: boolean
   is_staff: boolean
@@ -620,7 +625,7 @@ function UsersPage() {
               <div>
                 <p className="text-sm text-gray-600">Departments</p>
                 <p className="text-2xl font-bold text-purple-600">
-                  {new Set(users.map(u => u.department).filter(Boolean)).size}
+                  {new Set(users.map(u => u.department_details?.id).filter(Boolean)).size}
                 </p>
               </div>
               <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -670,8 +675,8 @@ function UsersPage() {
             onChange={(e) => setDepartmentFilter(e.target.value)}
           >
             <option value="all">All Departments</option>
-            {departments.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
+            {availableDepartments.map(dept => (
+              <option key={dept.value} value={dept.value}>{dept.label}</option>
             ))}
           </select>
 
@@ -758,7 +763,7 @@ function UsersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">{getRoleLabel(user.role)}</div>
-                        <div className="text-sm text-gray-500">{user.department || '-'}</div>
+                        <div className="text-sm text-gray-500">{user.department_details?.name || '-'}</div>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(user.is_active)}`}>

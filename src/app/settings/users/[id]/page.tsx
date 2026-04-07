@@ -15,7 +15,12 @@ interface User {
   full_name: string
   phone: string | null
   role: string
-  department: string | null
+  department: number | null
+  department_details?: {
+    id: number
+    name: string
+    description: string | null
+  }
   employee_id: string | null
   is_active: boolean
   is_staff: boolean
@@ -389,7 +394,7 @@ function UserDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Department</p>
-                  <p className="text-base text-gray-900">{user?.department || 'Not assigned'}</p>
+                  <p className="text-base text-gray-900">{user?.department_details?.name || 'Not assigned'}</p>
                 </div>
               </div>
 
