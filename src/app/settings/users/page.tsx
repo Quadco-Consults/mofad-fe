@@ -62,7 +62,7 @@ interface NewUserForm {
   last_name: string
   phone: string
   role: string
-  department: number | string
+  department: string
   employee_id: string
   send_welcome_email: boolean
 }
@@ -319,7 +319,7 @@ function UsersPage() {
       last_name: last_name,
       phone: user.phone || '',
       role: user.role || '',
-      department: user.department || '',
+      department: user.department,
       employee_id: user.employee_id || '',
       is_active: user.is_active,
     }
@@ -997,7 +997,7 @@ function UsersPage() {
                     <select
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                       value={newUserForm.department}
-                      onChange={(e) => setNewUserForm({ ...newUserForm, department: e.target.value ? parseInt(e.target.value) : '' })}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, department: e.target.value })}
                     >
                       <option value="">Select Department</option>
                       {availableDepartments.map(dept => (
@@ -1115,7 +1115,7 @@ function UsersPage() {
                     <select
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                       value={editForm.department || ''}
-                      onChange={(e) => setEditForm({ ...editForm, department: e.target.value ? parseInt(e.target.value) : '' })}
+                      onChange={(e) => setEditForm({ ...editForm, department: e.target.value ? parseInt(e.target.value) : null })}
                     >
                       <option value="">Select Department</option>
                       {availableDepartments.map(dept => (

@@ -98,7 +98,7 @@ export function useIsAdmin(): boolean {
  * Returns filtered list if user has limited access
  * Returns original list if user has all access
  */
-export function useFilterByEntityAccess<T extends { id: number }>(
+export function useFilterByEntityAccess<T extends { id: number | string }>(
   items: T[] | undefined,
   entityType: 'warehouse' | 'substore' | 'lubebay'
 ): T[] {
@@ -109,7 +109,10 @@ export function useFilterByEntityAccess<T extends { id: number }>(
     if (accessibleIds === null) return items // User has all access
     if (accessibleIds.length === 0) return [] // User has no access
 
-    return items.filter(item => accessibleIds.includes(item.id))
+    return items.filter(item => {
+      const itemId = typeof item.id === 'string' ? parseInt(item.id) : item.id
+      return accessibleIds.includes(itemId)
+    })
   }, [items, accessibleIds])
 }
 

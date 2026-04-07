@@ -67,8 +67,8 @@ export default function CarWashServicesTab() {
   })
 
   const services = data?.results || []
-  const totalCount = data?.count || 0
-  const totalPages = Math.ceil(totalCount / pageSize)
+  const totalCount = data?.paginator?.count || data?.count || 0
+  const totalPages = data?.paginator?.total_pages || Math.ceil(totalCount / pageSize)
 
   // Toggle service status
   const toggleStatusMutation = useMutation({

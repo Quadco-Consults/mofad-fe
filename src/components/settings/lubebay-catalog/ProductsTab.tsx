@@ -57,8 +57,8 @@ export default function ProductsTab() {
   })
 
   const products = data?.results || []
-  const totalCount = data?.count || 0
-  const totalPages = Math.ceil(totalCount / pageSize)
+  const totalCount = data?.paginator?.count || data?.count || 0
+  const totalPages = data?.paginator?.total_pages || Math.ceil(totalCount / pageSize)
 
   // Reset to page 1 when filters change
   const handleFilterChange = (setter: (value: string) => void) => (value: string) => {

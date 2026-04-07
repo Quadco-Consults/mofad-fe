@@ -147,6 +147,20 @@ const navigationSections = [
         // No role restriction - all authenticated users can see
       },
       {
+        label: 'Memo',
+        href: '/admin/memo',
+        icon: FileCheck,
+        color: 'from-gray-500 to-gray-600',
+        // No role restriction - all authenticated users can see
+      },
+      {
+        label: 'Lodgements',
+        href: '/accounts/lodgements',
+        icon: DollarSign,
+        color: 'from-gray-500 to-gray-600',
+        // No role restriction - all authenticated users can see
+      },
+      {
         label: 'Reports',
         href: '/reports',
         icon: TrendingUp,
@@ -533,7 +547,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
 
                 {/* Submenu items */}
                 <div className="space-y-0.5 pl-6">
-                  {item.children?.map((child, index) => (
+                  {item.children?.map((child) => (
                     <div key={child.href} className="relative">
                       {/* Horizontal connecting line */}
                       <div className="absolute -left-6 top-1/2 w-6 h-px bg-gradient-to-r from-slate-300 to-transparent"></div>

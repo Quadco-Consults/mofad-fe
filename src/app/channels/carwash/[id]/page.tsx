@@ -295,15 +295,18 @@ export default function CarWashDashboardPage() {
     items: [] as Array<{ id?: number; service: number; service_name?: string; quantity: number; unit_price: number; notes: string }>
   })
 
-  // Fetch available services for dropdown
+  // Fetch available car wash services for dropdown
   const { data: availableServices } = useQuery({
-    queryKey: ['services'],
+    queryKey: ['services', 'car_wash'],
     queryFn: async () => {
       try {
-        const response = await apiClient.get('/services/')
+        const response = await apiClient.get('/services/', {
+          category: 'car_wash',
+          is_active: 'true'
+        })
         return response.results || response
       } catch (error) {
-        console.error('Error fetching services:', error)
+        console.error('Error fetching car wash services:', error)
         return []
       }
     }
@@ -381,15 +384,18 @@ export default function CarWashDashboardPage() {
     enabled: !!carWash, // Only fetch when carwash data is loaded
   })
 
-  // Fetch services
+  // Fetch car wash services
   const { data: servicesData, isLoading: servicesLoading } = useQuery({
-    queryKey: ['services'],
+    queryKey: ['services', 'car_wash'],
     queryFn: async () => {
       try {
-        const response = await apiClient.get('/services/?is_active=true')
+        const response = await apiClient.get('/services/', {
+          category: 'car_wash',
+          is_active: 'true'
+        })
         return response
       } catch (error) {
-        console.error('Error fetching services:', error)
+        console.error('Error fetching car wash services:', error)
         return null
       }
     },
@@ -880,16 +886,6 @@ export default function CarWashDashboardPage() {
             Overview
           </button>
           <button
-            onClick={() => setActiveTab('sales')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'sales'
-                ? 'bg-white text-primary shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Car Wash Services
-          </button>
-          <button
             onClick={() => setActiveTab('services')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'services'
@@ -898,16 +894,6 @@ export default function CarWashDashboardPage() {
             }`}
           >
             Car Wash Services
-          </button>
-          <button
-            onClick={() => setActiveTab('services')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'services'
-                ? 'bg-white text-primary shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Services
           </button>
           <button
             onClick={() => setActiveTab('expenses')}
@@ -1013,317 +999,16 @@ export default function CarWashDashboardPage() {
           </div>
         )}
 
-        {activeTab === 'sales' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Car Wash Services</h2>
-              <p className="text-sm text-muted-foreground">Engine Oil, Transmission Fluid, Grease & Other Lubricants</p>
-              <Button
-                onClick={() => {
-                  setSaleType('lubricant')
-                  setProductSearchTerm('')
-                  setShowRecordSaleModal(true)
-                }}
-                className="mofad-btn-primary"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Record Car Wash Service
-              </Button>
-            </div>
-
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b">
-                      <tr>
-                        <th className="text-left py-3 px-4 font-medium">Products</th>
-                        <th className="text-right py-3 px-4 font-medium">Amount</th>
-                        <th className="text-left py-3 px-4 font-medium">Payment</th>
-                        <th className="text-left py-3 px-4 font-medium">Transaction Date</th>
-                        <th className="text-center py-3 px-4 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {Array.isArray(finalLubricantSales) && finalLubricantSales.map((sale) => (
-                        <tr key={sale.id} className="hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            <div>
-                              {sale.products && Array.isArray(sale.products) && sale.products.slice(0, 2).map((product: any, index: number) => (
-                                <div key={index} className="text-sm">
-                                  {product.name || product.product_name || 'N/A'} (x{product.quantity || 1})
-                                </div>
-                              ))}
-                              {sale.products && sale.products.length > 2 && (
-                                <div className="text-sm text-muted-foreground">
-                                  +{sale.products.length - 2} more
-                                </div>
-                              )}
-                              {(!sale.products || !Array.isArray(sale.products)) && (
-                                <div className="text-sm">Product sale</div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="font-bold text-primary">{formatCurrency(sale.total_amount || sale.total || sale.amount || 0)}</div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                              {sale.paymentMethod || sale.payment_method || 'N/A'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-sm">{formatDateTime(sale.date || sale.transaction_date || sale.created_datetime || sale.created_at)}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={async () => {
-                                  try {
-                                    // Fetch full transaction details with items
-                                    const details = await apiClient.get(`/carwash-service-transactions/${sale.id}/`)
-                                    console.log('Transaction details fetched:', details)
-                                    console.log('Items in transaction:', details.items)
-                                    setSelectedTransaction(details)
-                                    setShowTransactionDetailModal(true)
-                                  } catch (error) {
-                                    console.error('Error fetching transaction details:', error)
-                                    // Fallback to showing what we have
-                                    setSelectedTransaction(sale)
-                                    setShowTransactionDetailModal(true)
-                                  }
-                                }}
-                                title="View Details"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={async () => {
-                                  try {
-                                    const details = await apiClient.get(`/carwash-service-transactions/${sale.id}/`)
-                                    console.log('Edit Sale - Full details:', details)
-                                    setSelectedTransaction(details)
-                                    // Initialize edit form with existing data
-                                    setEditTransactionForm({
-                                      payment_method: details.payment_method || 'cash',
-                                      bank_reference: details.bank_reference || '',
-                                      comment: details.comment || '',
-                                      items: (details.items || []).map((item: any) => ({
-                                        id: item.id,
-                                        service: item.service_id || item.service,
-                                        service_name: item.service_name,
-                                        quantity: item.quantity,
-                                        unit_price: parseFloat(item.unit_price),
-                                        notes: item.notes || ''
-                                      }))
-                                    })
-                                    setShowEditSaleModal(true)
-                                  } catch (error) {
-                                    console.error('Error fetching transaction:', error)
-                                    setSelectedTransaction(sale)
-                                    setShowEditSaleModal(true)
-                                  }
-                                }}
-                                title="Edit"
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setDeleteTarget({
-                                    type: 'sale',
-                                    id: sale.id,
-                                    name: sale.transaction_number || `Sale #${sale.id}`
-                                  })
-                                  setShowDeleteConfirm(true)
-                                }}
-                                title="Delete"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
         {activeTab === 'services' && (
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">Car Wash Services</h2>
-              <p className="text-sm text-muted-foreground">Oil Filters, Air Filters, Fuel Filters & Cabin Filters</p>
-              <Button
-                onClick={() => {
-                  setSaleType('filter')
-                  setProductSearchTerm('')
-                  setShowRecordSaleModal(true)
-                }}
-                className="mofad-btn-primary"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Record Car Wash Service
-              </Button>
-            </div>
-
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b">
-                      <tr>
-                        <th className="text-left py-3 px-4 font-medium">Products</th>
-                        <th className="text-right py-3 px-4 font-medium">Amount</th>
-                        <th className="text-left py-3 px-4 font-medium">Payment</th>
-                        <th className="text-left py-3 px-4 font-medium">Transaction Date</th>
-                        <th className="text-center py-3 px-4 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {Array.isArray(finalFilterSales) && finalFilterSales.length > 0 ? (
-                        finalFilterSales.map((sale) => (
-                          <tr key={sale.id} className="hover:bg-gray-50">
-                            <td className="py-3 px-4">
-                              <div>
-                                {sale.products && Array.isArray(sale.products) && sale.products.slice(0, 2).map((product: any, index: number) => (
-                                  <div key={index} className="text-sm">
-                                    {product.name || product.product_name || 'N/A'} (x{product.quantity || 1})
-                                  </div>
-                                ))}
-                                {sale.products && sale.products.length > 2 && (
-                                  <div className="text-sm text-muted-foreground">
-                                    +{sale.products.length - 2} more
-                                  </div>
-                                )}
-                                {(!sale.products || !Array.isArray(sale.products)) && (
-                                  <div className="text-sm">Filter sale</div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-right">
-                              <div className="font-bold text-primary">{formatCurrency(sale.total_amount || sale.total || sale.amount || 0)}</div>
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                {sale.paymentMethod || sale.payment_method || 'N/A'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-sm">{formatDateTime(sale.date || sale.transaction_date || sale.created_datetime || sale.created_at)}</td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      // Fetch full transaction details with items
-                                      const details = await apiClient.get(`/carwash-service-transactions/${sale.id}/`)
-                                      console.log('Transaction details fetched:', details)
-                                      console.log('Items in transaction:', details.items)
-                                      setSelectedTransaction(details)
-                                      setShowTransactionDetailModal(true)
-                                    } catch (error) {
-                                      console.error('Error fetching transaction details:', error)
-                                      // Fallback to showing what we have
-                                      setSelectedTransaction(sale)
-                                      setShowTransactionDetailModal(true)
-                                    }
-                                  }}
-                                  title="View Details"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      const details = await apiClient.get(`/carwash-service-transactions/${sale.id}/`)
-                                      console.log('Edit Sale - Full details:', details)
-                                      setSelectedTransaction(details)
-                                      // Initialize edit form with existing data
-                                      setEditTransactionForm({
-                                        payment_method: details.payment_method || 'cash',
-                                        bank_reference: details.bank_reference || '',
-                                        comment: details.comment || '',
-                                        items: (details.items || []).map((item: any) => ({
-                                          id: item.id,
-                                          service: item.service_id || item.service,
-                                          service_name: item.service_name,
-                                          quantity: item.quantity,
-                                          unit_price: parseFloat(item.unit_price),
-                                          notes: item.notes || ''
-                                        }))
-                                      })
-                                      setShowEditSaleModal(true)
-                                    } catch (error) {
-                                      console.error('Error fetching transaction:', error)
-                                      setSelectedTransaction(sale)
-                                      setShowEditSaleModal(true)
-                                    }
-                                  }}
-                                  title="Edit"
-                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                >
-                                  <Pencil className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setDeleteTarget({
-                                      type: 'sale',
-                                      id: sale.id,
-                                      name: sale.transaction_number || `Sale #${sale.id}`
-                                    })
-                                    setShowDeleteConfirm(true)
-                                  }}
-                                  title="Delete"
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={5} className="py-8 text-center text-muted-foreground">
-                            No filter sales recorded yet
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {activeTab === 'services' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Service Records</h2>
-              <p className="text-sm text-muted-foreground">Oil Changes, Maintenance, Repairs & Inspections</p>
               <Button
                 onClick={() => setShowRecordServiceModal(true)}
                 className="mofad-btn-primary"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Record Service
+                Record Car Wash Service
               </Button>
             </div>
 
@@ -1994,7 +1679,7 @@ export default function CarWashDashboardPage() {
                               setServiceForm(prev => ({
                                 ...prev,
                                 items: prev.items.map((it, i) =>
-                                  i === index ? { ...it, service: serviceId, unit_price: service?.price || 0 } : it
+                                  i === index ? { ...it, service: serviceId, unit_price: parseFloat(service?.base_price || 0) } : it
                                 )
                               }))
                             }}
@@ -2002,7 +1687,7 @@ export default function CarWashDashboardPage() {
                             <option value="">Select service</option>
                             {services.filter((s: any) => s.name).map((service: any) => (
                               <option key={service.id} value={service.id}>
-                                {service.name} {service.category ? `- ${service.category}` : ''} ({formatCurrency(service.price || 0)})
+                                {service.name} {service.category ? `- ${service.category}` : ''} ({formatCurrency(parseFloat(service.base_price || 0))})
                               </option>
                             ))}
                           </select>

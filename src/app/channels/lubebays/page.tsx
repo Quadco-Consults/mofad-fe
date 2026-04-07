@@ -155,19 +155,20 @@ export default function LubebaysPage() {
   // Handle both array and paginated responses
   const extractResults = (data: any) => {
     if (Array.isArray(data)) return data
+    if (data?.data?.results && Array.isArray(data.data.results)) return data.data.results
     if (data?.results && Array.isArray(data.results)) return data.results
     return []
   }
 
   // Get pagination info
-  const totalCount = lubebaysData?.paginator?.count ?? lubebaysData?.count ?? 0
-  const totalPages = lubebaysData?.paginator?.total_pages ?? Math.ceil(totalCount / pageSize)
+  const totalCount = lubebaysData?.data?.paginator?.count ?? lubebaysData?.paginator?.count ?? lubebaysData?.count ?? 0
+  const totalPages = lubebaysData?.data?.paginator?.total_pages ?? lubebaysData?.paginator?.total_pages ?? Math.ceil(totalCount / pageSize)
 
-  const allLubebays = extractResults(lubebaysData)
+  const allLubebays = extractResults(lubebaysData) as Lubebay[]
 
   // Apply entity-level access control filtering
   const accessibleLubebays = useFilterByEntityAccess(allLubebays, 'lubebay')
-  const lubebays = accessibleLubebays
+  const lubebays = accessibleLubebays as Lubebay[]
 
   // Create mutation
   const createMutation = useMutation({
@@ -334,13 +335,13 @@ export default function LubebaysPage() {
   }
 
   const totalLubebays = lubebays.length
-  const activeLubebays = lubebays.filter((l: Lubebay) => {
+  const activeLubebays = lubebays.filter((l) => {
     // For API data use is_active, for mock data use status
     return l.is_active !== undefined ? l.is_active : (l.status === 'active')
   }).length
-  const totalRevenue = lubebays.reduce((sum: number, l: Lubebay) => sum + (l.monthlyRevenue || 0), 0)
+  const totalRevenue = lubebays.reduce((sum, l) => sum + (l.monthlyRevenue || 0), 0)
   const averageRating = lubebays.length > 0
-    ? lubebays.reduce((sum: number, l: Lubebay) => sum + (l.rating || 0), 0) / lubebays.length
+    ? lubebays.reduce((sum, l) => sum + (l.rating || 0), 0) / lubebays.length
     : 0
 
   return (

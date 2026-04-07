@@ -175,22 +175,22 @@ function WarehousesPage() {
   const totalCount = warehousesList?.paginator?.count ?? warehousesList?.count ?? 0
   const totalPages = warehousesList?.paginator?.total_pages ?? Math.ceil(totalCount / pageSize)
 
-  const allWarehouses = extractResults(warehousesList)
+  const allWarehouses = extractResults(warehousesList) as WarehouseData[]
 
   // Apply entity-level access control filtering
   const accessibleWarehouses = useFilterByEntityAccess(allWarehouses, 'warehouse')
-  const warehouses = accessibleWarehouses
+  const warehouses = accessibleWarehouses as WarehouseData[]
 
   // Calculate summary stats
-  const totalCapacity = warehouses.reduce((sum: number, w: WarehouseData) => {
+  const totalCapacity = warehouses.reduce((sum, w) => {
     const capacity = typeof w.total_capacity === 'string' ? parseFloat(w.total_capacity) : w.total_capacity
     return sum + (capacity || 0)
   }, 0)
-  const totalAvailable = warehouses.reduce((sum: number, w: WarehouseData) => {
+  const totalAvailable = warehouses.reduce((sum, w) => {
     const available = typeof w.available_capacity === 'string' ? parseFloat(w.available_capacity) : w.available_capacity
     return sum + (available || 0)
   }, 0)
-  const activeWarehouses = warehouses.filter((w: WarehouseData) => w.is_active).length
+  const activeWarehouses = warehouses.filter(w => w.is_active).length
 
   const handleView = (warehouse: WarehouseData) => {
     setSelectedWarehouse(warehouse)

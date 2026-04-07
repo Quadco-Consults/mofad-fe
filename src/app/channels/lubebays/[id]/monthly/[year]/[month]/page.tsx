@@ -2281,7 +2281,7 @@ export default function LubebayMonthlyDetailPage() {
                               setServiceForm(prev => ({
                                 ...prev,
                                 items: prev.items.map((it, i) =>
-                                  i === index ? { ...it, service: serviceId, unit_price: service?.price || 0 } : it
+                                  i === index ? { ...it, service: serviceId, unit_price: parseFloat(service?.base_price || 0) } : it
                                 )
                               }))
                             }}
@@ -2289,7 +2289,7 @@ export default function LubebayMonthlyDetailPage() {
                             <option value="">Select service</option>
                             {services.filter((s: any) => s.name).map((service: any) => (
                               <option key={service.id} value={service.id}>
-                                {service.name} {service.category ? `- ${service.category}` : ''} ({formatCurrency(service.price || 0)})
+                                {service.name} {service.category ? `- ${service.category}` : ''} ({formatCurrency(parseFloat(service.base_price || 0))})
                               </option>
                             ))}
                           </select>

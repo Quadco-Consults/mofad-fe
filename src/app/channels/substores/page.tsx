@@ -200,11 +200,11 @@ export default function SubstoresPage() {
   const totalCount = substoresList?.paginator?.count ?? substoresList?.count ?? 0
   const totalPages = substoresList?.paginator?.total_pages ?? Math.ceil(totalCount / pageSize)
 
-  const allSubstores = extractResults(substoresList)
+  const allSubstores = extractResults(substoresList) as Substore[]
 
   // Apply entity-level access control filtering
   const accessibleSubstores = useFilterByEntityAccess(allSubstores, 'substore')
-  const substores = accessibleSubstores
+  const substores = accessibleSubstores as Substore[]
 
   // Create mutation
   const createMutation = useMutation({
@@ -358,10 +358,10 @@ export default function SubstoresPage() {
   }
 
   // Get unique states for filter
-  const states: string[] = Array.from(new Set(substores.map((s: Substore) => s.state)))
+  const states: string[] = Array.from(new Set(substores.map(s => s.state_name).filter((s): s is string => s !== null)))
 
   // Get unique types for filter
-  const types: string[] = Array.from(new Set(substores.map((s: Substore) => (s as any).type)))
+  const types: string[] = Array.from(new Set(substores.map(s => s.substore_type).filter((t): t is string => t !== null && t !== '')))
 
   // Navigation handler
   const handleViewSubstore = (substoreId: number) => {
