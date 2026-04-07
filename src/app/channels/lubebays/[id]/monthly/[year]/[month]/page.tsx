@@ -243,7 +243,7 @@ export default function LubebayMonthlyDetailPage() {
     },
   })
 
-  // Fetch lubebay transactions
+  // Fetch lubebay transactions (optional - cash movements)
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
     queryKey: ['lubebay-transactions', lubebayId, year, month],
     queryFn: async () => {
@@ -251,7 +251,7 @@ export default function LubebayMonthlyDetailPage() {
         const response = await apiClient.get(`/lubebay-transactions/?lubebay=${lubebayId}&created_datetime__gte=${startDate}&created_datetime__lte=${endDate}`)
         return response
       } catch (error) {
-        console.error('Error fetching lubebay transactions:', error)
+        // Optional query - no transactions is normal
         return null
       }
     },
@@ -302,7 +302,7 @@ export default function LubebayMonthlyDetailPage() {
     enabled: !!showBinCardModal && !!lubebay?.warehouse && !!selectedInventoryItem?.product
   })
 
-  // Fetch monthly inventory snapshot for this month/year
+  // Fetch monthly inventory snapshot for this month/year (optional)
   const { data: monthlySnapshot, isLoading: snapshotLoading, refetch: refetchSnapshot } = useQuery({
     queryKey: ['monthly-inventory-snapshot', lubebayId, year, month],
     queryFn: async () => {
@@ -314,7 +314,7 @@ export default function LubebayMonthlyDetailPage() {
         console.log('📊 Monthly snapshot:', response)
         return response?.results?.[0] || null
       } catch (error) {
-        console.error('Error fetching monthly snapshot:', error)
+        // Optional query - no snapshot is normal if not yet created
         return null
       }
     }
