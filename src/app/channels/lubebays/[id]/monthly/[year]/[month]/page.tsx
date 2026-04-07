@@ -257,21 +257,32 @@ export default function LubebayMonthlyDetailPage() {
     },
   })
 
-  // Fetch warehouse inventory for this lubebay
+  // Fetch lubebay inventory from multiple possible endpoints
   const { data: inventoryData, isLoading: inventoryLoading } = useQuery({
-    queryKey: ['lubebay-inventory', lubebay?.warehouse],
+    queryKey: ['lubebay-inventory', lubebayId],
     queryFn: async () => {
-      try {
-        if (!lubebay?.warehouse) return { results: [] }
-        const response = await apiClient.get(`/warehouse-inventory/?warehouse=${lubebay.warehouse}`)
-        console.log('📦 Inventory data:', response)
-        return response
-      } catch (error) {
-        console.error('Error fetching inventory:', error)
-        return { results: [] }
+      // Try multiple endpoints in order
+      const endpoints = [
+        `/substore/inventory/${lubebayId}`,  // Legacy endpoint
+        `/substores/${lubebayId}/inventory/`,
+        `/lubebay-inventory/?lubebay=${lubebayId}`,
+        lubebay?.warehouse ? `/warehouse-inventory/?warehouse=${lubebay.warehouse}` : null
+      ].filter(Boolean)
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await apiClient.get(endpoint as string)
+          console.log(`✅ Inventory loaded from ${endpoint}:`, response)
+          return response
+        } catch (error) {
+          console.log(`❌ Failed to load from ${endpoint}`)
+        }
       }
+
+      console.error('⚠️ All inventory endpoints failed')
+      return { results: [] }
     },
-    enabled: !!lubebay?.warehouse
+    enabled: true
   })
 
   // Fetch stock transactions for bin card (only when modal is open)
@@ -309,17 +320,66 @@ export default function LubebayMonthlyDetailPage() {
     }
   })
 
-  // Fetch service transactions
+  // Fetch service transactions and sales from multiple endpoints
   const { data: serviceTransactionsData, isLoading: serviceTransactionsLoading } = useQuery({
     queryKey: ['lubebay-service-transactions', lubebayId, year, month],
     queryFn: async () => {
-      try {
-        const url = `/lubebay-service-transactions/?lubebay=${lubebayId}&created_datetime__gte=${startDate}&created_datetime__lte=${endDate}`
-        const response = await apiClient.get(url)
-        return response
-      } catch (error) {
-        // Silently handle error - transactions will be empty if API fails
-        return null
+      let servicesData: any[] = []
+      let salesData: any[] = []
+
+      // Try to fetch services (lst - lubebay service transactions)
+      const serviceEndpoints = [
+        `/lst/?lubebay=${lubebayId}&date__gte=${startDate}&date__lte=${endDate}`,
+        `/lubebay/days-transactions/?lubebay=${lubebayId}&date__gte=${startDate}&date__lte=${endDate}`,
+        `/lubebay-service-transactions/?lubebay=${lubebayId}&transaction_type=services&created_datetime__gte=${startDate}&created_datetime__lte=${endDate}`
+      ]
+
+      for (const endpoint of serviceEndpoints) {
+        try {
+          const response = await apiClient.get(endpoint)
+          console.log(`✅ Services loaded from ${endpoint}:`, response)
+          const results = response?.results || response?.data || response || []
+          servicesData = Array.isArray(results) ? results : []
+          if (servicesData.length > 0) {
+            // Mark as services and break
+            servicesData = servicesData.map((item: any) => ({ ...item, transaction_type: 'services' }))
+            break
+          }
+        } catch (error) {
+          console.log(`❌ Failed to load services from ${endpoint}`)
+        }
+      }
+
+      // Try to fetch sales (sst - substore sales transactions)
+      const salesEndpoints = [
+        `/sst/?lubebay=${lubebayId}&date__gte=${startDate}&date__lte=${endDate}`,
+        `/lubebay/substore/days-transactions/?lubebay=${lubebayId}&date__gte=${startDate}&date__lte=${endDate}`,
+        `/lubebay-service-transactions/?lubebay=${lubebayId}&transaction_type=lubricant_sales&created_datetime__gte=${startDate}&created_datetime__lte=${endDate}`
+      ]
+
+      for (const endpoint of salesEndpoints) {
+        try {
+          const response = await apiClient.get(endpoint)
+          console.log(`✅ Sales loaded from ${endpoint}:`, response)
+          const results = response?.results || response?.data || response || []
+          salesData = Array.isArray(results) ? results : []
+          if (salesData.length > 0) {
+            // Mark as lubricant_sales and break
+            salesData = salesData.map((item: any) => ({ ...item, transaction_type: 'lubricant_sales' }))
+            break
+          }
+        } catch (error) {
+          console.log(`❌ Failed to load sales from ${endpoint}`)
+        }
+      }
+
+      // Combine services and sales
+      const combined = [...servicesData, ...salesData]
+      console.log(`📊 Combined transactions: ${servicesData.length} services + ${salesData.length} sales = ${combined.length} total`)
+
+      return {
+        results: combined,
+        count: combined.length
       }
     },
   })
@@ -367,31 +427,49 @@ export default function LubebayMonthlyDetailPage() {
     },
   })
 
-  // Fetch lubebay expenses
+  // Fetch lubebay expenses from multiple endpoints
   const { data: expensesData, isLoading: expensesLoading } = useQuery({
     queryKey: ['lubebay-expenses', lubebayId, year, month],
     queryFn: async () => {
-      try {
-        const response = await apiClient.get(`/lubebay-expenses/?lubebay=${lubebayId}&expense_date__gte=${startDate}&expense_date__lte=${endDate}`)
-        return response
-      } catch (error) {
-        console.error('Error fetching expenses:', error)
-        return null
+      const endpoints = [
+        `/substore/expenses/${lubebayId}/?start_date=${startDate}&end_date=${endDate}`,
+        `/substores/${lubebayId}/expenses/?expense_date__gte=${startDate}&expense_date__lte=${endDate}`,
+        `/lubebay-expenses/?lubebay=${lubebayId}&expense_date__gte=${startDate}&expense_date__lte=${endDate}`
+      ]
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await apiClient.get(endpoint)
+          console.log(`✅ Expenses loaded from ${endpoint}`)
+          return response
+        } catch (error) {
+          console.log(`❌ Failed to load expenses from ${endpoint}`)
+        }
       }
+      return null
     },
   })
 
-  // Fetch lubebay lodgements
+  // Fetch lubebay lodgements from multiple endpoints
   const { data: lodgementsData, isLoading: lodgementsLoading } = useQuery({
     queryKey: ['lubebay-lodgements', lubebayId, year, month],
     queryFn: async () => {
-      try {
-        const response = await apiClient.get(`/lodgements/?lubebay=${lubebayId}&lodgement_type=lubebay&lodgement_date__gte=${startDate}&lodgement_date__lte=${endDate}`)
-        return response
-      } catch (error) {
-        console.error('Error fetching lodgements:', error)
-        return null
+      const endpoints = [
+        `/substore/lodgements/${lubebayId}/?start_date=${startDate}&end_date=${endDate}`,
+        `/substores/${lubebayId}/lodgements/?lodgement_date__gte=${startDate}&lodgement_date__lte=${endDate}`,
+        `/lodgements/?lubebay=${lubebayId}&lodgement_type=lubebay&lodgement_date__gte=${startDate}&lodgement_date__lte=${endDate}`
+      ]
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await apiClient.get(endpoint)
+          console.log(`✅ Lodgements loaded from ${endpoint}`)
+          return response
+        } catch (error) {
+          console.log(`❌ Failed to load lodgements from ${endpoint}`)
+        }
       }
+      return null
     },
   })
 
@@ -543,20 +621,25 @@ export default function LubebayMonthlyDetailPage() {
     }
   })
 
-  // Get inventory items for product sales (only items in stock at this lubebay)
+  // Get inventory items for stock levels
   const inventoryItems = inventoryData?.results || []
 
-  // Convert inventory items to product format for sales modal
-  const productsForSale = inventoryItems.map((item: any) => ({
-    id: item.product,
-    code: item.product_code,
-    name: item.product_name,
-    category: item.product_category,
-    selling_price: item.product_retail_selling_price || item.product_bulk_selling_price || 0,
-    quantity_on_hand: item.quantity_on_hand,
-    quantity_available: item.quantity_available,
-    unit_of_measure: item.unit_of_measure
-  }))
+  // Use products from API (all products) and join with inventory for stock levels
+  const productsForSale = products.map((product: any) => {
+    // Find matching inventory item to get stock levels
+    const inventoryItem = inventoryItems.find((item: any) => item.product === product.id)
+
+    return {
+      id: product.id,
+      code: product.sku,
+      name: product.name,
+      category: product.category,
+      selling_price: product.retail_selling_price || product.bulk_selling_price || 0,
+      quantity_on_hand: inventoryItem?.quantity_on_hand || 0,
+      quantity_available: inventoryItem?.quantity_available || 0,
+      unit_of_measure: product.unit_of_measurement || 'Unit'
+    }
+  })
 
   // Calculate sale total
   const calculateSaleTotal = () => {
@@ -1758,8 +1841,8 @@ export default function LubebayMonthlyDetailPage() {
           <div>
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-xl font-semibold">Lubebay Inventory</h2>
-                <p className="text-sm text-muted-foreground">Stock of Lubricants & Filters</p>
+                <h2 className="text-xl font-semibold">Lubricants Inventory</h2>
+                <p className="text-sm text-muted-foreground">Stock of Engine Oils & Lubricants</p>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -1796,14 +1879,19 @@ export default function LubebayMonthlyDetailPage() {
                           <th className="text-left py-3 px-4 font-medium">Product Code</th>
                           <th className="text-left py-3 px-4 font-medium">Product Name</th>
                           <th className="text-left py-3 px-4 font-medium">Category</th>
+                          <th className="text-right py-3 px-4 font-medium">Unit Price</th>
                           <th className="text-right py-3 px-4 font-medium">Quantity</th>
                           <th className="text-left py-3 px-4 font-medium">Unit</th>
                           <th className="text-center py-3 px-4 font-medium">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {inventoryData?.results && inventoryData.results.length > 0 ? (
-                          inventoryData.results.map((item: any) => (
+                        {inventoryData?.results && inventoryData.results.filter((item: any) =>
+                          !item.product_category?.toLowerCase().includes('filter')
+                        ).length > 0 ? (
+                          inventoryData.results.filter((item: any) =>
+                            !item.product_category?.toLowerCase().includes('filter')
+                          ).map((item: any) => (
                             <tr
                               key={item.id}
                               className="hover:bg-gray-50 cursor-pointer"
@@ -1822,14 +1910,13 @@ export default function LubebayMonthlyDetailPage() {
                                 )}
                               </td>
                               <td className="py-3 px-4">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  item.product_category?.toLowerCase().includes('lubricant')
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : item.product_category?.toLowerCase().includes('filter')
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {item.product_category || 'Other'}
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  {item.product_category || 'Lubricant'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <span className="font-medium text-gray-900">
+                                  {formatCurrency(item.product_retail_selling_price || item.product_bulk_selling_price || 0)}
                                 </span>
                               </td>
                               <td className="py-3 px-4 text-right">
@@ -1864,10 +1951,10 @@ export default function LubebayMonthlyDetailPage() {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={6} className="py-8 text-center text-gray-500">
+                            <td colSpan={7} className="py-8 text-center text-gray-500">
                               <Package className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                              <p>No inventory found for this lubebay</p>
-                              <p className="text-sm mt-1">Stock items will appear here once added to the warehouse</p>
+                              <p>No lubricants found for this lubebay</p>
+                              <p className="text-sm mt-1">Lubricant stock items will appear here once added to the warehouse</p>
                             </td>
                           </tr>
                         )}
@@ -1877,6 +1964,117 @@ export default function LubebayMonthlyDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Filter Inventory Section */}
+            <div className="mt-8">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold">Filter Inventory</h2>
+                  <p className="text-sm text-muted-foreground">Stock of Oil Filters & Air Filters</p>
+                </div>
+              </div>
+
+              {inventoryLoading ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Loading inventory...</p>
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="text-left py-3 px-4 font-medium">Product Code</th>
+                            <th className="text-left py-3 px-4 font-medium">Product Name</th>
+                            <th className="text-left py-3 px-4 font-medium">Category</th>
+                            <th className="text-right py-3 px-4 font-medium">Unit Price</th>
+                            <th className="text-right py-3 px-4 font-medium">Quantity</th>
+                            <th className="text-left py-3 px-4 font-medium">Unit</th>
+                            <th className="text-center py-3 px-4 font-medium">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {inventoryData?.results && inventoryData.results.filter((item: any) =>
+                            item.product_category?.toLowerCase().includes('filter')
+                          ).length > 0 ? (
+                            inventoryData.results.filter((item: any) =>
+                              item.product_category?.toLowerCase().includes('filter')
+                            ).map((item: any) => (
+                              <tr
+                                key={item.id}
+                                className="hover:bg-gray-50 cursor-pointer"
+                                onClick={() => {
+                                  setSelectedInventoryItem(item)
+                                  setShowBinCardModal(true)
+                                }}
+                              >
+                                <td className="py-3 px-4">
+                                  <span className="font-mono text-sm">{item.product_code || 'N/A'}</span>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="font-medium text-gray-900">{item.product_name}</div>
+                                  {item.product_description && (
+                                    <div className="text-xs text-gray-500 mt-1">{item.product_description}</div>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    {item.product_category || 'Filter'}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <span className="font-medium text-gray-900">
+                                    {formatCurrency(item.product_retail_selling_price || item.product_bulk_selling_price || 0)}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <span className={`font-bold ${
+                                    Number(item.quantity_on_hand) > 10
+                                      ? 'text-green-600'
+                                      : Number(item.quantity_on_hand) > 0
+                                      ? 'text-orange-600'
+                                      : 'text-red-600'
+                                  }`}>
+                                    {Number(item.quantity_on_hand).toFixed(2)}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className="text-sm">{item.unit_of_measure || 'Units'}</span>
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setSelectedInventoryItem(item)
+                                      setShowBinCardModal(true)
+                                    }}
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                    <span className="ml-1">Bin Card</span>
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={7} className="py-8 text-center text-gray-500">
+                                <Package className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                                <p>No filters found for this lubebay</p>
+                                <p className="text-sm mt-1">Filter stock items will appear here once added to the warehouse</p>
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
             {/* Monthly Inventory Closing Section */}
             <div className="mt-6">
@@ -2072,10 +2270,7 @@ export default function LubebayMonthlyDetailPage() {
                                   (p.name || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
                                   (p.code || '').toLowerCase().includes(productSearchTerm.toLowerCase())
 
-                                // Only show items with available stock
-                                const hasStock = p.quantity_available > 0
-
-                                return p.name && isCorrectCategory && matchesSearch && hasStock
+                                return p.name && isCorrectCategory && matchesSearch
                               }).map((prod: any) => (
                                 <option key={prod.id} value={prod.id}>
                                   [{prod.code}] {prod.name} - Stock: {prod.quantity_available} {prod.unit_of_measure} ({formatCurrency(prod.selling_price || 0)})

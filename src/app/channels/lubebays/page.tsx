@@ -13,7 +13,6 @@ import { Pagination } from '@/components/ui/Pagination'
 import { BulkActionBar } from '@/components/ui/BulkActionBar'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useSelection } from '@/hooks/useSelection'
-import { useFilterByEntityAccess } from '@/hooks/usePermissions'
 import apiClient from '@/lib/apiClient'
 import { useToast } from '@/components/ui/Toast'
 
@@ -166,9 +165,9 @@ export default function LubebaysPage() {
 
   const allLubebays = extractResults(lubebaysData) as Lubebay[]
 
-  // Apply entity-level access control filtering
-  const accessibleLubebays = useFilterByEntityAccess(allLubebays, 'lubebay')
-  const lubebays = accessibleLubebays as Lubebay[]
+  // Backend API already handles access control, so we use the data directly
+  // Entity-level filtering is handled on the backend
+  const lubebays = allLubebays
 
   // Create mutation
   const createMutation = useMutation({
@@ -477,16 +476,6 @@ export default function LubebaysPage() {
                   ? 'Try adjusting your search or filters'
                   : 'Get started by adding your first lubebay'}
               </p>
-              {!searchTerm && statusFilter === 'all' && (
-                <>
-                  <p className="text-sm text-gray-400 mb-4">
-                    Total records from API: {lubebaysData?.count || lubebaysData?.paginator?.count || 0}
-                  </p>
-                  <p className="text-xs text-gray-400 mb-4">
-                    Debug: {JSON.stringify({ hasData: !!lubebaysData, dataKeys: lubebaysData ? Object.keys(lubebaysData) : [] })}
-                  </p>
-                </>
-              )}
               <Button className="mofad-btn-primary" onClick={handleCreateClick}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Lubebay
