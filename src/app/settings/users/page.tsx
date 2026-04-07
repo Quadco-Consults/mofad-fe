@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Search, Plus, Edit, Trash2, Eye, Users, Shield, UserCheck, UserX, Loader2, RefreshCw, MapPin, Building, Store } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Checkbox } from '@/components/ui/Checkbox'
@@ -91,6 +92,7 @@ const departments = [
 ]
 
 function UsersPage() {
+  const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [totalActiveCount, setTotalActiveCount] = useState(0)
@@ -108,7 +110,6 @@ function UsersPage() {
   const [availableRoles, setAvailableRoles] = useState<Array<{ value: string; label: string }>>(defaultSystemRoles)
 
   const [showAddModal, setShowAddModal] = useState(false)
-  const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
@@ -273,8 +274,7 @@ function UsersPage() {
   const endRecord = Math.min(currentPage * pageSize, totalCount)
 
   const handleView = (user: User) => {
-    setSelectedUser(user)
-    setShowViewModal(true)
+    router.push(`/settings/users/${user.id}`)
   }
 
   const splitFullName = (fullName: string) => {
@@ -1025,71 +1025,6 @@ function UsersPage() {
                   ) : (
                     'Create User'
                   )}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* View User Modal */}
-        {showViewModal && selectedUser && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
-              <h3 className="text-lg font-bold mb-4">User Details</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <p className="text-sm text-gray-900">{selectedUser.full_name}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Employee ID</label>
-                    <p className="text-sm text-gray-900">{selectedUser.employee_id || '-'}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Email</label>
-                    <p className="text-sm text-gray-900">{selectedUser.email}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Phone</label>
-                    <p className="text-sm text-gray-900">{selectedUser.phone || '-'}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Role</label>
-                    <p className="text-sm text-gray-900">{getRoleLabel(selectedUser.role)}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Department</label>
-                    <p className="text-sm text-gray-900">{selectedUser.department || '-'}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Status</label>
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(selectedUser.is_active)}`}>
-                      {selectedUser.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Date Joined</label>
-                    <p className="text-sm text-gray-900">{formatDateTime(selectedUser.date_joined)}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2 justify-end mt-6">
-                <Button variant="outline" onClick={() => setShowViewModal(false)}>Close</Button>
-                <Button
-                  className="mofad-btn-primary"
-                  onClick={() => {
-                    setShowViewModal(false)
-                    handleEdit(selectedUser)
-                  }}
-                >
-                  Edit User
                 </Button>
               </div>
             </div>
