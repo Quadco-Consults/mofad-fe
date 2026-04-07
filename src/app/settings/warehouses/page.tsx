@@ -10,6 +10,7 @@ import { Pagination } from '@/components/ui/Pagination'
 import { BulkActionBar } from '@/components/ui/BulkActionBar'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useSelection } from '@/hooks/useSelection'
+import { useFilterByEntityAccess } from '@/hooks/usePermissions'
 import { useToast } from '@/components/ui/Toast'
 import apiClient from '@/lib/apiClient'
 import { formatDateTime } from '@/lib/utils'
@@ -174,7 +175,11 @@ function WarehousesPage() {
   const totalCount = warehousesList?.paginator?.count ?? warehousesList?.count ?? 0
   const totalPages = warehousesList?.paginator?.total_pages ?? Math.ceil(totalCount / pageSize)
 
-  const warehouses = extractResults(warehousesList)
+  const allWarehouses = extractResults(warehousesList)
+
+  // Apply entity-level access control filtering
+  const accessibleWarehouses = useFilterByEntityAccess(allWarehouses, 'warehouse')
+  const warehouses = accessibleWarehouses
 
   // Calculate summary stats
   const totalCapacity = warehouses.reduce((sum: number, w: WarehouseData) => {

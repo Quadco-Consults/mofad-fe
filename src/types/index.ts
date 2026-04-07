@@ -1,13 +1,52 @@
 // Auth Types
-export interface User {
+export interface EntityAccessSummary {
+  has_all_warehouse_access: boolean
+  has_all_substore_access: boolean
+  has_all_lubebay_access: boolean
+  warehouse_count: number | 'All'
+  substore_count: number | 'All'
+  lubebay_count: number | 'All'
+}
+
+export interface AccessibleEntity {
   id: number
   name: string
+  code: string
+}
+
+export interface User {
+  id: number
+  name?: string
+  first_name?: string
+  last_name?: string
+  full_name?: string
   email: string
   email_verified_at?: string
+  phone?: string
+  role?: string
+  department?: string
+  employee_id?: string
+  is_active?: boolean
+  is_staff?: boolean
   created_at: string
   updated_at: string
+  date_joined?: string
   avatar?: string
   signature?: string
+  bio?: string
+
+  // Entity access (from UserSerializer)
+  entity_access?: EntityAccessSummary
+
+  // Detailed entity access (from UserDetailedSerializer)
+  has_all_warehouse_access?: boolean
+  has_all_substore_access?: boolean
+  has_all_lubebay_access?: boolean
+  accessible_warehouses?: AccessibleEntity[]
+  accessible_substores?: AccessibleEntity[]
+  accessible_lubebays?: AccessibleEntity[]
+
+  // Legacy Laravel fields (deprecated)
   permissions?: Permission[]
   roles?: Role[]
 }

@@ -12,6 +12,7 @@ import { Pagination } from '@/components/ui/Pagination'
 import { BulkActionBar } from '@/components/ui/BulkActionBar'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useSelection } from '@/hooks/useSelection'
+import { useFilterByEntityAccess } from '@/hooks/usePermissions'
 import { useToast } from '@/components/ui/Toast'
 import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
@@ -199,7 +200,11 @@ export default function SubstoresPage() {
   const totalCount = substoresList?.paginator?.count ?? substoresList?.count ?? 0
   const totalPages = substoresList?.paginator?.total_pages ?? Math.ceil(totalCount / pageSize)
 
-  const substores = extractResults(substoresList)
+  const allSubstores = extractResults(substoresList)
+
+  // Apply entity-level access control filtering
+  const accessibleSubstores = useFilterByEntityAccess(allSubstores, 'substore')
+  const substores = accessibleSubstores
 
   // Create mutation
   const createMutation = useMutation({

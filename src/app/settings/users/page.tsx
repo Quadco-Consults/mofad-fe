@@ -74,11 +74,8 @@ const initialNewUserForm: NewUserForm = {
   send_welcome_email: true,
 }
 
-const systemRoles = [
-  { value: 'admin', label: 'Administrator' },
-  { value: 'manager', label: 'Manager' },
-  { value: 'accountant', label: 'Accountant' },
-  { value: 'storekeeper', label: 'Store Keeper' },
+// Roles will be fetched from backend dynamically
+const defaultSystemRoles = [
   { value: 'user', label: 'Regular User' },
 ]
 
@@ -106,6 +103,9 @@ function UsersPage() {
   const [employeeTypeFilter, setEmployeeTypeFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
+
+  // Dynamic roles from backend
+  const [availableRoles, setAvailableRoles] = useState<Array<{ value: string; label: string }>>(defaultSystemRoles)
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
@@ -203,6 +203,29 @@ function UsersPage() {
     fetchUsers()
   }, [fetchUsers])
 
+  // Fetch available roles from backend
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const response = await api.getRoles({ is_active: true })
+        const roles = Array.isArray(response) ? response : response.results || []
+
+        // Transform backend roles to frontend format
+        const transformedRoles = roles.map((role: any) => ({
+          value: role.name,
+          label: role.name,
+        }))
+
+        setAvailableRoles(transformedRoles)
+      } catch (error) {
+        console.error('Failed to fetch roles:', error)
+        // Keep using default roles on error
+      }
+    }
+
+    fetchRoles()
+  }, [])
+
   // Debounce search and reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
@@ -240,7 +263,7 @@ function UsersPage() {
   }
 
   const getRoleLabel = (role: string) => {
-    const roleObj = systemRoles.find(r => r.value === role)
+    const roleObj = availableRoles.find(r => r.value === role)
     return roleObj ? roleObj.label : role
   }
 
@@ -611,7 +634,7 @@ function UsersPage() {
             onChange={(e) => setRoleFilter(e.target.value)}
           >
             <option value="all">All Roles</option>
-            {systemRoles.map(role => (
+            {availableRoles.map(role => (
               <option key={role.value} value={role.value}>{role.label}</option>
             ))}
           </select>
@@ -944,7 +967,7 @@ function UsersPage() {
                       value={newUserForm.role}
                       onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
                     >
-                      {systemRoles.map(role => (
+                      {availableRoles.map(role => (
                         <option key={role.value} value={role.value}>{role.label}</option>
                       ))}
                     </select>
@@ -1127,7 +1150,7 @@ function UsersPage() {
                       value={editForm.role || ''}
                       onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                     >
-                      {systemRoles.map(role => (
+                      {availableRoles.map(role => (
                         <option key={role.value} value={role.value}>{role.label}</option>
                       ))}
                     </select>

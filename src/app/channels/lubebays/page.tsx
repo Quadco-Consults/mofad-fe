@@ -13,6 +13,7 @@ import { Pagination } from '@/components/ui/Pagination'
 import { BulkActionBar } from '@/components/ui/BulkActionBar'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useSelection } from '@/hooks/useSelection'
+import { useFilterByEntityAccess } from '@/hooks/usePermissions'
 import apiClient from '@/lib/apiClient'
 import { useToast } from '@/components/ui/Toast'
 
@@ -162,7 +163,11 @@ export default function LubebaysPage() {
   const totalCount = lubebaysData?.paginator?.count ?? lubebaysData?.count ?? 0
   const totalPages = lubebaysData?.paginator?.total_pages ?? Math.ceil(totalCount / pageSize)
 
-  const lubebays = extractResults(lubebaysData)
+  const allLubebays = extractResults(lubebaysData)
+
+  // Apply entity-level access control filtering
+  const accessibleLubebays = useFilterByEntityAccess(allLubebays, 'lubebay')
+  const lubebays = accessibleLubebays
 
   // Create mutation
   const createMutation = useMutation({
