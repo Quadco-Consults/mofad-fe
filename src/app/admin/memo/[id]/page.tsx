@@ -410,6 +410,46 @@ export default function MemoDetailPage() {
               </Button>
             )}
 
+            {memo.status === 'coo_review' && (
+              <>
+                <Button
+                  onClick={() => cooApproveMutation.mutate('')}
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                  disabled={cooApproveMutation.isPending}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  COO Approve
+                </Button>
+                <Button
+                  onClick={() => setShowRejectModal(true)}
+                  className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Reject
+                </Button>
+              </>
+            )}
+
+            {memo.status === 'md_review' && (
+              <>
+                <Button
+                  onClick={() => mdApproveMutation.mutate('')}
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                  disabled={mdApproveMutation.isPending}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  MD Approve
+                </Button>
+                <Button
+                  onClick={() => setShowRejectModal(true)}
+                  className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Reject
+                </Button>
+              </>
+            )}
+
             {memo.category === 'procurement' && memo.status === 'approved' && !memo.generated_pro && (
               <Button
                 onClick={() => setShowConfirmConvert(true)}
