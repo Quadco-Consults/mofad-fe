@@ -50,8 +50,8 @@ interface DashboardStats {
   lubebay_count: number
 }
 
-const formatCurrency = (amount: number): string => {
-  if (!amount && amount !== 0) return '₦0'
+const formatCurrency = (amount?: number): string => {
+  if (amount === undefined || amount === null || isNaN(amount)) return '₦0'
   if (amount >= 1000000) return `₦${(amount / 1000000).toFixed(1)}M`
   if (amount >= 1000) return `₦${(amount / 1000).toFixed(1)}K`
   return `₦${amount.toLocaleString()}`
@@ -304,7 +304,7 @@ export default function Dashboard() {
                 </Link>
               </div>
 
-              {stats.warehouse_values.length > 0 ? (
+              {stats.warehouse_values && stats.warehouse_values.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {stats.warehouse_values.map((warehouse) => (
                     <WarehouseCard key={warehouse.id} warehouse={warehouse} />
