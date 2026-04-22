@@ -123,101 +123,10 @@ const mockCarWash: CarWash = {
 }
 
 // Mock lubricant sales
-const mockServiceSales: CarWashService[] = [
-  {
-    id: 'LS001',
-    date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    customerName: 'John Adebayo',
-    customerPhone: '+234-801-234-5678',
-    products: [
-      { name: 'Mobil 1 5W-30', brand: 'Mobil', quantity: 2, unitPrice: 15000, total: 30000 },
-      { name: 'Oil Filter', brand: 'Mann', quantity: 1, unitPrice: 3500, total: 3500 }
-    ],
-    subtotal: 33500,
-    tax: 2512.50,
-    discount: 1000,
-    total: 35012.50,
-    paymentMethod: 'cash',
-    salesRep: 'Ahmed Musa',
-    notes: 'Regular customer, 5% discount applied'
-  },
-  {
-    id: 'LS002',
-    date: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    customerName: 'Sarah Okafor',
-    customerPhone: '+234-807-987-6543',
-    products: [
-      { name: 'Shell Helix HX7', brand: 'Shell', quantity: 1, unitPrice: 12500, total: 12500 },
-      { name: 'Air Filter', brand: 'Bosch', quantity: 1, unitPrice: 4000, total: 4000 }
-    ],
-    subtotal: 16500,
-    tax: 1237.50,
-    discount: 0,
-    total: 17737.50,
-    paymentMethod: 'card',
-    salesRep: 'Fatima Hassan',
-    notes: 'First-time customer'
-  }
-]
+const mockServiceSales: CarWashService[] = []
 
 // Mock service records
-const mockServiceRecords: ServiceRecord[] = [
-  {
-    id: 'SR001',
-    date: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-    customerName: 'David Okwu',
-    customerPhone: '+234-803-456-7890',
-    vehicleInfo: {
-      make: 'Toyota',
-      model: 'Camry',
-      year: '2018',
-      plateNumber: 'ABC-123-DE'
-    },
-    services: [
-      { name: 'Full Service', category: 'maintenance', duration: 90, price: 25000 },
-      { name: 'Engine Diagnostics', category: 'inspection', duration: 30, price: 8000 }
-    ],
-    parts: [
-      { name: 'Engine Oil 5W-30', quantity: 5, unitPrice: 3000, total: 15000 },
-      { name: 'Oil Filter', quantity: 1, unitPrice: 3500, total: 3500 }
-    ],
-    laborCost: 33000,
-    partsCost: 18500,
-    total: 51500,
-    paymentMethod: 'transfer',
-    technician: 'Ibrahim Garba',
-    bayNumber: 3,
-    status: 'completed',
-    notes: 'Full service completed, next service due in 6 months'
-  },
-  {
-    id: 'SR002',
-    date: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-    customerName: 'Grace Emeka',
-    customerPhone: '+234-805-123-4567',
-    vehicleInfo: {
-      make: 'Honda',
-      model: 'Civic',
-      year: '2020',
-      plateNumber: 'XYZ-789-FG'
-    },
-    services: [
-      { name: 'Oil Change', category: 'maintenance', duration: 45, price: 15000 }
-    ],
-    parts: [
-      { name: 'Engine Oil 0W-20', quantity: 4, unitPrice: 3500, total: 14000 },
-      { name: 'Oil Filter', quantity: 1, unitPrice: 3000, total: 3000 }
-    ],
-    laborCost: 15000,
-    partsCost: 17000,
-    total: 32000,
-    paymentMethod: 'cash',
-    technician: 'Musa Abdullahi',
-    bayNumber: 1,
-    status: 'completed',
-    notes: 'Quick oil change service'
-  }
-]
+const mockServiceRecords: ServiceRecord[] = []
 
 export default function CarWashDashboardPage() {
   const params = useParams()
