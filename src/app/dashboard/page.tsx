@@ -51,6 +51,7 @@ interface DashboardStats {
 }
 
 const formatCurrency = (amount: number): string => {
+  if (!amount && amount !== 0) return '₦0'
   if (amount >= 1000000) return `₦${(amount / 1000000).toFixed(1)}M`
   if (amount >= 1000) return `₦${(amount / 1000).toFixed(1)}K`
   return `₦${amount.toLocaleString()}`
@@ -124,7 +125,7 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseValue }) {
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Items</span>
-            <span className="text-sm font-semibold text-gray-700">{warehouse.item_count.toLocaleString()}</span>
+            <span className="text-sm font-semibold text-gray-700">{(warehouse.item_count || 0).toLocaleString()}</span>
           </div>
         </div>
       </CardContent>
