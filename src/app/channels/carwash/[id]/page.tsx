@@ -659,7 +659,7 @@ export default function CarWashDashboardPage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-4">
           <Button
             variant="ghost"
             size="sm"
@@ -667,6 +667,14 @@ export default function CarWashDashboardPage() {
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to CarWashs
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => router.push(`/channels/carwashs/${carWashId}/monthly`)}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            View Monthly Sales
           </Button>
         </div>
 
