@@ -910,7 +910,7 @@ export default function PaymentVoucherDetailPage() {
                             sum + (entry.entry_type === 'credit' ? parseFloat(entry.amount) : 0), 0);
 
                           // Display up to 5 entries
-                          const displayEntries = [...accountingEntries.slice(0, 5)];
+                          const displayEntries: (any | null)[] = [...accountingEntries.slice(0, 5)];
                           // Fill remaining rows with empty data
                           while (displayEntries.length < 5) {
                             displayEntries.push(null);

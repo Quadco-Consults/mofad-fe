@@ -525,6 +525,20 @@ export type PaymentMethod =
   | 'cash'
   | 'mobile_money'
 
+export interface AccountingEntry {
+  id?: number
+  payment_voucher?: number
+  gl_code: string
+  gl_code_description?: string | null
+  entry_type: 'debit' | 'credit'
+  amount: string
+  debit_amount?: string
+  credit_amount?: string
+  display_order: number
+  created_at?: string
+  updated_at?: string
+}
+
 export interface PaymentVoucher {
   id: number
   voucher_number: string
@@ -532,63 +546,66 @@ export interface PaymentVoucher {
   memo_number?: string
   memo_title?: string
   memo_supplier_name?: string
-  
+
   // Payee details
   payee_name: string
   payee_bank_name?: string | null
   payee_account_number?: string | null
   payee_account_name?: string | null
-  
+
   // Payment details
   payment_method: PaymentMethod
   amount: string
   payment_reference?: string | null
   payment_date?: string | null
-  
+
   // Description
   description: string
   notes?: string | null
-  
+
   // Status
   status: PaymentVoucherStatus
-  
+
   // Approval workflow
   created_by?: number
   created_by_name?: string | null
-  
+
   finance_reviewed_by?: number | null
   finance_reviewed_by_name?: string | null
   finance_reviewed_at?: string | null
   finance_comments?: string | null
-  
+
   cfo_approved_by?: number | null
   cfo_approved_by_name?: string | null
   cfo_approved_at?: string | null
   cfo_comments?: string | null
-  
+
   md_approved_by?: number | null
   md_approved_by_name?: string | null
   md_approved_at?: string | null
   md_comments?: string | null
-  
+
   paid_by?: number | null
   paid_by_name?: string | null
   paid_at?: string | null
-  
+
   rejected_by?: number | null
   rejected_by_name?: string | null
   rejected_at?: string | null
   rejection_reason?: string | null
-  
+
+  // Accounting entries
+  accounting_entries?: AccountingEntry[]
+
   // Computed properties
   is_approved?: boolean
   is_paid?: boolean
   is_pending?: boolean
   approval_progress?: number
-  
+
   // Attachments
   attachments?: string[]
-  
+
   // Timestamps
   created_at: string
   updated_at: string
@@ -621,6 +638,7 @@ export interface CreatePaymentVoucherForm {
   amount: number | string
   description: string
   notes?: string
+  accounting_entries?: Omit<AccountingEntry, 'id' | 'payment_voucher' | 'created_at' | 'updated_at'>[]
 }
 
 export interface PaymentConfirmationForm {
