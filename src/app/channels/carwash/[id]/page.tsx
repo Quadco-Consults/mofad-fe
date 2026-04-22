@@ -671,7 +671,7 @@ export default function CarWashDashboardPage() {
           <Button
             variant="default"
             size="sm"
-            onClick={() => router.push(`/channels/carwashs/${carWashId}/monthly`)}
+            onClick={() => router.push(`/channels/carwash/${carWashId}/monthly`)}
           >
             <Calendar className="w-4 h-4 mr-2" />
             View Monthly Sales

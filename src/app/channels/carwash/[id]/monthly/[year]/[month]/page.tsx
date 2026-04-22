@@ -850,7 +850,7 @@ export default function CarwashMonthlyDetailPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push(`/channels/carwashs/${carwashId}/monthly`)}
+              onClick={() => router.push(`/channels/carwash/${carwashId}/monthly`)}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Monthly Overview
@@ -879,7 +879,7 @@ export default function CarwashMonthlyDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(`/channels/carwashs/${carwashId}/monthly`)}
+            onClick={() => router.push(`/channels/carwash/${carwashId}/monthly`)}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Monthly Overview
@@ -1004,7 +1004,7 @@ export default function CarwashMonthlyDetailPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <button
-                  onClick={() => router.push(`/channels/carwashs/${carwashId}/monthly/${prevYear}/${prevMonth}`)}
+                  onClick={() => router.push(`/channels/carwash/${carwashId}/monthly/${prevYear}/${prevMonth}`)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   title="Previous month"
                 >
@@ -1016,7 +1016,7 @@ export default function CarwashMonthlyDetailPage() {
                 </div>
 
                 <button
-                  onClick={() => router.push(`/channels/carwashs/${carwashId}/monthly/${nextYear}/${nextMonth}`)}
+                  onClick={() => router.push(`/channels/carwash/${carwashId}/monthly/${nextYear}/${nextMonth}`)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   title="Next month"
                 >
@@ -1025,7 +1025,7 @@ export default function CarwashMonthlyDetailPage() {
               </div>
 
               <Link
-                href={`/channels/carwashs/${carwashId}/monthly`}
+                href={`/channels/carwash/${carwashId}/monthly`}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 View All Months
@@ -1256,7 +1256,7 @@ export default function CarwashMonthlyDetailPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  router.push(`/channels/carwashs/transactions/${sale.id}`)
+                                  router.push(`/channels/carwash/transactions/${sale.id}`)
                                 }}
                                 title="View Details"
                               >
@@ -1391,7 +1391,7 @@ export default function CarwashMonthlyDetailPage() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => {
-                                    router.push(`/channels/carwashs/transactions/${sale.id}`)
+                                    router.push(`/channels/carwash/transactions/${sale.id}`)
                                   }}
                                   title="View Details"
                                 >
@@ -1549,7 +1549,7 @@ export default function CarwashMonthlyDetailPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  router.push(`/channels/carwashs/transactions/${service.id}`)
+                                  router.push(`/channels/carwash/transactions/${service.id}`)
                                 }}
                                 title="View Details"
                               >
@@ -2137,7 +2137,7 @@ export default function CarwashMonthlyDetailPage() {
                           )}
                         </div>
                         <Link
-                          href={`/channels/carwashs/${carwashId}/inventory-closing/${monthlySnapshot.id}`}
+                          href={`/channels/carwash/${carwashId}/inventory-closing/${monthlySnapshot.id}`}
                           className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
                         >
                           View Closing Details
@@ -2162,7 +2162,7 @@ export default function CarwashMonthlyDetailPage() {
                         Month-end closing has not been initiated for this period
                       </p>
                       <Link
-                        href={`/channels/carwashs/${carwashId}/inventory-closing`}
+                        href={`/channels/carwash/${carwashId}/inventory-closing`}
                         className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
                       >
                         <Plus className="w-4 h-4 mr-2" />

@@ -71,7 +71,7 @@ export default function CarwashMonthlyPage() {
   const months = generateLast12Months()
 
   const handleMonthClick = (year: number, month: number) => {
-    router.push(`/channels/carwashs/${carwashId}/monthly/${year}/${month}`)
+    router.push(`/channels/carwash/${carwashId}/monthly/${year}/${month}`)
   }
 
   return (
@@ -81,12 +81,12 @@ export default function CarwashMonthlyPage() {
         <div className="bg-white border-b">
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-              <Link href="/channels/carwashs" className="hover:text-gray-900">
+              <Link href="/channels/carwash" className="hover:text-gray-900">
                 Carwashs
               </Link>
               <span>/</span>
               <Link
-                href={`/channels/carwashs/${carwashId}`}
+                href={`/channels/carwash/${carwashId}`}
                 className="hover:text-gray-900"
               >
                 {carwash?.name || 'Loading...'}
