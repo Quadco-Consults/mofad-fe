@@ -1457,7 +1457,8 @@ export default function WarehouseInventoryPage() {
                               return
                             }
 
-                            const response = await fetch(`http://localhost:8000/api/v1/warehouse-inventory/generate-template/?warehouse_id=${warehouseId}`, {
+                            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://mofad-app-363f0ff77886.herokuapp.com/api/v1'
+                            const response = await fetch(`${apiBaseUrl}/warehouse-inventory/generate-template/?warehouse_id=${warehouseId}`, {
                               method: 'GET',
                               headers: {
                                 'Authorization': `Bearer ${token}`,
@@ -1582,7 +1583,8 @@ export default function WarehouseInventoryPage() {
                           formData.append('file', uploadFile)
                           formData.append('warehouse_id', warehouseId.toString())
 
-                          const response = await fetch('http://localhost:8000/api/v1/warehouse-inventory/upload-stock/', {
+                          const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://mofad-app-363f0ff77886.herokuapp.com/api/v1'
+                          const response = await fetch(`${apiBaseUrl}/warehouse-inventory/upload-stock/`, {
                             method: 'POST',
                             body: formData,
                             headers: {

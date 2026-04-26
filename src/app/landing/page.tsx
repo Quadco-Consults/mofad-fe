@@ -109,21 +109,13 @@ export default function LandingPage() {
                 Partners
               </Link>
 
-              <div className="flex items-center space-x-4">
-                <Link
-                  href="/auth/login"
-                  className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2"
-                >
-                  <Users className="w-5 h-5" />
-                  <span>Staff Portal</span>
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className="px-6 py-3 bg-white border-2 border-green-600 text-green-600 font-bold rounded-lg hover:bg-green-600 hover:text-white transition-all duration-300 shadow-lg"
-                >
-                  Dashboard
-                </Link>
-              </div>
+              <Link
+                href="/auth/login"
+                className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2"
+              >
+                <Users className="w-5 h-5" />
+                <span>Staff Portal</span>
+              </Link>
             </div>
 
             {/* Mobile menu button */}
@@ -146,9 +138,8 @@ export default function LandingPage() {
               <Link href="#about" className="block py-3 text-gray-700 hover:text-green-600 font-semibold text-lg">About Us</Link>
               <Link href="#services" className="block py-3 text-gray-700 hover:text-green-600 font-semibold text-lg">Services</Link>
               <Link href="#partners" className="block py-3 text-gray-700 hover:text-green-600 font-semibold text-lg">Partners</Link>
-              <div className="pt-4 space-y-3">
+              <div className="pt-4">
                 <Link href="/auth/login" className="flex items-center justify-center w-full px-6 py-3 bg-green-600 text-white font-bold rounded-lg">Staff Portal</Link>
-                <Link href="/dashboard" className="block w-full px-6 py-3 border-2 border-green-600 text-green-600 font-bold rounded-lg text-center">Dashboard</Link>
               </div>
             </div>
           </div>
@@ -187,19 +178,19 @@ export default function LandingPage() {
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
-                  href="/dashboard"
-                  className="group flex items-center justify-center px-8 py-4 bg-green-600 text-white font-bold text-lg rounded-lg hover:bg-green-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
-                >
-                  <span>Explore Solutions</span>
-                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Link>
-
-                <Link
                   href="#about"
-                  className="flex items-center justify-center px-8 py-4 bg-white border-2 border-green-600 text-green-600 font-bold text-lg rounded-lg hover:bg-green-50 transition-all duration-300 shadow-lg"
+                  className="flex items-center justify-center px-8 py-4 bg-green-600 text-white font-bold text-lg rounded-lg hover:bg-green-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
                 >
                   <Play className="w-5 h-5 mr-2" />
                   <span>Learn More</span>
+                </Link>
+
+                <Link
+                  href="#services"
+                  className="flex items-center justify-center px-8 py-4 bg-white border-2 border-green-600 text-green-600 font-bold text-lg rounded-lg hover:bg-green-50 transition-all duration-300 shadow-lg"
+                >
+                  <span>Our Services</span>
+                  <ArrowRight className="w-5 h-5 ml-2" />
                 </Link>
               </div>
 
@@ -361,10 +352,10 @@ export default function LandingPage() {
                 </div>
 
                 <Link
-                  href="/dashboard"
+                  href="#contact"
                   className="w-full mt-4 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors text-center block"
                 >
-                  Book Now
+                  Contact Us
                 </Link>
               </div>
             ))}
@@ -376,18 +367,12 @@ export default function LandingPage() {
               Visit any of our conveniently located lube bays in Lagos, Abuja, Kano, Port Harcourt,
               and other major cities for fast, reliable automotive service.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex justify-center">
               <Link
                 href="#contact"
                 className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-all duration-300 shadow-lg"
               >
                 Find Nearest Location
-              </Link>
-              <Link
-                href="/dashboard"
-                className="px-8 py-3 bg-white border-2 border-blue-600 text-green-600 font-bold rounded-lg hover:bg-green-50 transition-all duration-300"
-              >
-                Schedule Service
               </Link>
             </div>
           </div>
@@ -546,16 +531,10 @@ export default function LandingPage() {
             automotive expertise that keeps your fleet performing at its best.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <Link
-              href="/dashboard"
-              className="px-10 py-4 bg-white text-green-600 font-bold text-lg rounded-lg hover:bg-gray-100 transition-all duration-300 shadow-xl hover:shadow-2xl"
-            >
-              Visit Our Service Center
-            </Link>
+          <div className="flex justify-center">
             <Link
               href="#contact"
-              className="px-10 py-4 bg-transparent border-2 border-white text-white font-bold text-lg rounded-lg hover:bg-white hover:text-green-600 transition-all duration-300"
+              className="px-10 py-4 bg-white text-green-600 font-bold text-lg rounded-lg hover:bg-gray-100 transition-all duration-300 shadow-xl hover:shadow-2xl"
             >
               Get Quote Today
             </Link>

@@ -44,18 +44,22 @@ const getStatusIcon = (status: string) => {
       return <Edit className="w-4 h-4 text-gray-500" />
     case 'pending_review':
       return <Clock className="w-4 h-4 text-yellow-500" />
-    case 'reviewed':
-      return <CheckCircle className="w-4 h-4 text-blue-500" />
     case 'pending_approval':
       return <Clock className="w-4 h-4 text-orange-500" />
     case 'approved':
       return <CheckCircle className="w-4 h-4 text-green-500" />
+    case 'payment_confirmed':
+      return <CheckCircle className="w-4 h-4 text-green-600" />
+    case 'ready_for_issue':
+      return <CheckCircle className="w-4 h-4 text-blue-500" />
+    case 'goods_issued':
+      return <CheckCircle className="w-4 h-4 text-purple-500" />
     case 'rejected':
       return <XCircle className="w-4 h-4 text-red-500" />
     case 'partially_fulfilled':
       return <AlertTriangle className="w-4 h-4 text-blue-500" />
     case 'fulfilled':
-      return <CheckCircle className="w-4 h-4 text-green-600" />
+      return <CheckCircle className="w-4 h-4 text-green-700" />
     case 'cancelled':
       return <Ban className="w-4 h-4 text-gray-500" />
     default:
@@ -67,21 +71,25 @@ const getStatusBadge = (status: string) => {
   const colors: Record<string, string> = {
     draft: 'bg-gray-100 text-gray-800',
     pending_review: 'bg-yellow-100 text-yellow-800',
-    reviewed: 'bg-blue-100 text-blue-800',
     pending_approval: 'bg-orange-100 text-orange-800',
     approved: 'bg-green-100 text-green-800',
+    payment_confirmed: 'bg-green-200 text-green-900',
+    ready_for_issue: 'bg-blue-100 text-blue-800',
+    goods_issued: 'bg-purple-100 text-purple-800',
     rejected: 'bg-red-100 text-red-800',
     partially_fulfilled: 'bg-purple-100 text-purple-800',
-    fulfilled: 'bg-green-200 text-green-900',
+    fulfilled: 'bg-green-300 text-green-900',
     cancelled: 'bg-gray-200 text-gray-700',
   }
 
   const labels: Record<string, string> = {
     draft: 'Draft',
     pending_review: 'Pending Review',
-    reviewed: 'Reviewed',
     pending_approval: 'Pending Approval',
     approved: 'Approved',
+    payment_confirmed: 'Payment Confirmed',
+    ready_for_issue: 'Ready for Issue',
+    goods_issued: 'Goods Issued',
     rejected: 'Rejected',
     partially_fulfilled: 'Partially Fulfilled',
     fulfilled: 'Fulfilled',
