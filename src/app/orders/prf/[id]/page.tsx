@@ -512,7 +512,8 @@ export default function PRFViewPage() {
     if (!prfId) return
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/prfs/${prfId}/invoice/`, {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://mofad-app-363f0ff77886.herokuapp.com/api/v1'
+      const response = await fetch(`${apiBaseUrl}/prfs/${prfId}/invoice/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -550,7 +551,8 @@ export default function PRFViewPage() {
     if (!prfId) return
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/prfs/${prfId}/waybill/`, {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://mofad-app-363f0ff77886.herokuapp.com/api/v1'
+      const response = await fetch(`${apiBaseUrl}/prfs/${prfId}/waybill/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
