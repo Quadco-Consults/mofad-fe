@@ -41,7 +41,7 @@ interface PRO {
   supplier_email: string | null
   supplier_phone: string | null
   total_amount: number | string
-  status: 'draft' | 'pending_review' | 'reviewed' | 'pending_approval' | 'approved' | 'rejected' | 'sent' | 'confirmed' | 'partially_delivered' | 'delivered' | 'cancelled'
+  status: 'draft' | 'pending_review' | 'pending_approval' | 'approved' | 'rejected' | 'sent' | 'confirmed' | 'partially_delivered' | 'delivered' | 'cancelled'
   delivery_status: 'pending' | 'partial' | 'completed'
   delivery_location: number | null
   delivery_location_name: string | null
@@ -81,14 +81,22 @@ const getStatusIcon = (status: string) => {
   switch (status) {
     case 'draft':
       return <Clock className="w-4 h-4 text-gray-500" />
+    case 'pending_review':
+      return <Clock className="w-4 h-4 text-yellow-500" />
+    case 'pending_approval':
+      return <Clock className="w-4 h-4 text-purple-500" />
+    case 'approved':
+      return <CheckCircle className="w-4 h-4 text-green-500" />
+    case 'rejected':
+      return <XCircle className="w-4 h-4 text-red-500" />
     case 'sent':
-      return <Send className="w-4 h-4 text-yellow-500" />
+      return <Send className="w-4 h-4 text-indigo-500" />
     case 'confirmed':
-      return <FileCheck className="w-4 h-4 text-blue-500" />
+      return <FileCheck className="w-4 h-4 text-teal-500" />
     case 'partially_delivered':
       return <Truck className="w-4 h-4 text-orange-500" />
     case 'delivered':
-      return <PackageCheck className="w-4 h-4 text-green-500" />
+      return <PackageCheck className="w-4 h-4 text-emerald-500" />
     case 'cancelled':
       return <XCircle className="w-4 h-4 text-red-500" />
     default:
@@ -100,7 +108,6 @@ const getStatusBadge = (status: string) => {
   const colors: Record<string, string> = {
     draft: 'bg-gray-100 text-gray-800',
     pending_review: 'bg-yellow-100 text-yellow-800',
-    reviewed: 'bg-blue-100 text-blue-800',
     pending_approval: 'bg-purple-100 text-purple-800',
     approved: 'bg-green-100 text-green-800',
     rejected: 'bg-red-100 text-red-800',
@@ -114,7 +121,6 @@ const getStatusBadge = (status: string) => {
   const labels: Record<string, string> = {
     draft: 'Draft',
     pending_review: 'Pending Review',
-    reviewed: 'Reviewed',
     pending_approval: 'Pending Approval',
     approved: 'Approved',
     rejected: 'Rejected',
