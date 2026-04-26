@@ -33,7 +33,8 @@ import {
   X,
   Loader2,
   Receipt,
-  Truck
+  Truck,
+  Eye
 } from 'lucide-react'
 
 // Helper functions for localStorage management (same as in main PRF page)
@@ -508,6 +509,36 @@ export default function PRFViewPage() {
     }, 500)
   }
 
+  const handlePreviewInvoice = async () => {
+    if (!prfId) return
+
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://mofad-app-363f0ff77886.herokuapp.com/api/v1'
+      const url = `${apiBaseUrl}/prfs/${prfId}/invoice/`
+      const token = localStorage.getItem('auth_token')
+
+      // Open in new tab with authorization
+      const newWindow = window.open('', '_blank')
+      if (newWindow) {
+        newWindow.document.write('<html><head><title>Invoice Preview</title></head><body style="margin:0;"><iframe src="' + url + '" style="border:none;width:100%;height:100vh;"></iframe></body></html>')
+
+        // Fetch and display PDF
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+
+        if (response.ok) {
+          const blob = await response.blob()
+          const blobUrl = window.URL.createObjectURL(blob)
+          newWindow.location.href = blobUrl
+        }
+      }
+    } catch (error: any) {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to preview invoice' })
+    }
+  }
+
   const handleDownloadInvoice = async () => {
     if (!prfId) return
 
@@ -544,6 +575,36 @@ export default function PRFViewPage() {
       addToast({ type: 'success', title: 'Success', message: 'Invoice downloaded successfully' })
     } catch (error: any) {
       addToast({ type: 'error', title: 'Error', message: error.message || 'Failed to download invoice' })
+    }
+  }
+
+  const handlePreviewWaybill = async () => {
+    if (!prfId) return
+
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://mofad-app-363f0ff77886.herokuapp.com/api/v1'
+      const url = `${apiBaseUrl}/prfs/${prfId}/waybill/`
+      const token = localStorage.getItem('auth_token')
+
+      // Open in new tab with authorization
+      const newWindow = window.open('', '_blank')
+      if (newWindow) {
+        newWindow.document.write('<html><head><title>Waybill Preview</title></head><body style="margin:0;"><iframe src="' + url + '" style="border:none;width:100%;height:100vh;"></iframe></body></html>')
+
+        // Fetch and display PDF
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+
+        if (response.ok) {
+          const blob = await response.blob()
+          const blobUrl = window.URL.createObjectURL(blob)
+          newWindow.location.href = blobUrl
+        }
+      }
+    } catch (error: any) {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to preview waybill' })
     }
   }
 
@@ -636,17 +697,37 @@ export default function PRFViewPage() {
               Download PDF
             </Button>
 
-            {/* Invoice and Waybill Download Buttons */}
+            {/* Invoice and Waybill Preview/Download Buttons */}
             {(prf.status === 'approved' || prf.status === 'ready_for_issue' || prf.goods_issued) && (
               <>
+                <Button
+                  onClick={handlePreviewInvoice}
+                  variant="outline"
+                  className="flex items-center gap-2 border-gold-500 text-gold-700 hover:bg-gold-50"
+                  style={{ borderColor: '#D4AF37', color: '#B8941F' }}
+                  title="Preview Invoice"
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview Invoice
+                </Button>
                 <Button
                   onClick={handleDownloadInvoice}
                   variant="outline"
                   className="flex items-center gap-2 border-green-500 text-green-700 hover:bg-green-50"
                   title="Download Invoice"
                 >
-                  <Receipt className="w-4 h-4" />
-                  Invoice
+                  <Download className="w-4 h-4" />
+                  Download Invoice
+                </Button>
+                <Button
+                  onClick={handlePreviewWaybill}
+                  variant="outline"
+                  className="flex items-center gap-2 border-gold-500 text-gold-700 hover:bg-gold-50"
+                  style={{ borderColor: '#D4AF37', color: '#B8941F' }}
+                  title="Preview Waybill"
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview Waybill
                 </Button>
                 <Button
                   onClick={handleDownloadWaybill}
@@ -654,8 +735,8 @@ export default function PRFViewPage() {
                   className="flex items-center gap-2 border-blue-500 text-blue-700 hover:bg-blue-50"
                   title="Download Waybill"
                 >
-                  <Truck className="w-4 h-4" />
-                  Waybill
+                  <Download className="w-4 h-4" />
+                  Download Waybill
                 </Button>
               </>
             )}
