@@ -31,9 +31,13 @@ import {
   TrendingUp,
   Shield,
   Info,
+  Car,
+  Store,
+  Users,
 } from 'lucide-react'
 
 interface CustomerOrderFormData {
+  client_type: 'customer' | 'lubebay' | 'substore'
   customer_id: string
   customer_name: string
   customer_contact: string
@@ -56,6 +60,32 @@ interface CustomerOrderFormData {
     package_size?: number
     warehouse_name?: string
   }>
+}
+
+interface Lubebay {
+  id: number
+  name: string
+  code: string
+  address: string | null
+  location_name: string | null
+  manager_name: string | null
+  phone: string | null
+  email: string | null
+  is_active: boolean
+  warehouse_name: string | null
+}
+
+interface Substore {
+  id: number
+  name: string
+  code: string
+  address: string | null
+  location_name: string | null
+  manager_name: string | null
+  phone: string | null
+  email: string | null
+  is_active: boolean
+  warehouse_name: string | null
 }
 
 interface OrderItem {
@@ -126,7 +156,10 @@ export default function CreateCustomerOrderPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
 
+  const [clientType, setClientType] = useState<'customer' | 'lubebay' | 'substore' | ''>('')
+
   const [formData, setFormData] = useState<CustomerOrderFormData>({
+    client_type: 'customer',
     customer_id: '',
     customer_name: '',
     customer_contact: '',
@@ -140,11 +173,15 @@ export default function CreateCustomerOrderPage() {
   })
 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [selectedLubebay, setSelectedLubebay] = useState<Lubebay | null>(null)
+  const [selectedSubstore, setSelectedSubstore] = useState<Substore | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<MofadProduct | null>(null)
   const [showProductCatalog, setShowProductCatalog] = useState(false)
   const [quantity, setQuantity] = useState(0)
   const [productSearchTerm, setProductSearchTerm] = useState('')
   const [customerSearchTerm, setCustomerSearchTerm] = useState('')
+  const [lubebaySearchTerm, setLubebaySearchTerm] = useState('')
+  const [substoreSearchTerm, setSubstoreSearchTerm] = useState('')
   const [selectedWarehouse, setSelectedWarehouse] = useState('')
   const [warehouseForOrder, setWarehouseForOrder] = useState('')
 
@@ -155,10 +192,35 @@ export default function CreateCustomerOrderPage() {
       search: customerSearchTerm || undefined,
       page_size: 100 // Load more customers
     }),
+    enabled: clientType === 'customer',
+  })
+
+  // Fetch lubebays with search
+  const { data: lubebaysData, isLoading: lubebaysLoading } = useQuery({
+    queryKey: ['lubebays', lubebaySearchTerm],
+    queryFn: () => apiClient.get('/lubebays/', {
+      search: lubebaySearchTerm || undefined,
+      is_active: 'true',
+      page_size: 100
+    }),
+    enabled: clientType === 'lubebay',
+  })
+
+  // Fetch substores with search
+  const { data: substoresData, isLoading: substoresLoading } = useQuery({
+    queryKey: ['substores', substoreSearchTerm],
+    queryFn: () => apiClient.get('/substores/', {
+      search: substoreSearchTerm || undefined,
+      is_active: 'true',
+      page_size: 100
+    }),
+    enabled: clientType === 'substore',
   })
 
   // Extract customers array from response
   const customers = customersData?.results || (Array.isArray(customersData) ? customersData : [])
+  const lubebays = lubebaysData?.results || (Array.isArray(lubebaysData) ? lubebaysData : [])
+  const substores = substoresData?.results || (Array.isArray(substoresData) ? substoresData : [])
 
   // Debug logging
   console.log('Customer data:', { customersData, customers, count: customers?.length, searchTerm: customerSearchTerm })
@@ -167,7 +229,7 @@ export default function CreateCustomerOrderPage() {
   const { data: inventoryData, isLoading: productsLoading } = useQuery({
     queryKey: ['warehouse-inventory', warehouseForOrder],
     queryFn: () => apiClient.getWarehouseInventory(warehouseForOrder),
-    enabled: !!selectedCustomer && !!warehouseForOrder,
+    enabled: !!(selectedCustomer || selectedLubebay || selectedSubstore) && !!warehouseForOrder,
   })
 
   // Extract inventory items and map to product format
@@ -291,16 +353,25 @@ export default function CreateCustomerOrderPage() {
 
   const createCustomerOrder = useMutation({
     mutationFn: (data: CustomerOrderFormData) => {
+      // Determine the title based on client type
+      const titlePrefix = data.client_type === 'customer' ? 'Customer Order' :
+                         data.client_type === 'lubebay' ? 'Lubebay Stock Request' :
+                         'Substore Stock Request'
+
+      const description = data.client_type === 'customer' ? 'Customer purchase order' :
+                         data.client_type === 'lubebay' ? 'Internal stock transfer to lubebay' :
+                         'Internal stock transfer to substore'
+
       // Transform form data to match backend API format
       const apiData = {
-        title: `Customer Order - ${data.customer_name}`,
-        description: data.order_notes || 'Customer purchase order',
-        department: 'Sales',
-        purpose: `Customer order for ${data.customer_name}`,
+        title: `${titlePrefix} - ${data.customer_name}`,
+        description: data.order_notes || description,
+        department: data.client_type === 'customer' ? 'Sales' : 'Operations',
+        purpose: `${titlePrefix} for ${data.customer_name}`,
         priority: 'medium' as const,
         expected_delivery_date: data.delivery_date || undefined,
         estimated_total: data.items.reduce((sum, item) => sum + item.total, 0),
-        client_type: 'customer',
+        client_type: data.client_type,
         client_id: parseInt(data.customer_id) || undefined,
         reviewer: data.reviewer || undefined,
         approver: data.approver || undefined,
@@ -327,6 +398,7 @@ export default function CreateCustomerOrderPage() {
     setSelectedCustomer(customer)
     setFormData(prev => ({
       ...prev,
+      client_type: 'customer',
       customer_id: customer.id.toString(),
       customer_name: customer.name || customer.business_name || customer.customer_name || '',
       customer_contact: customer.phone || customer.contact_phone || '',
@@ -336,8 +408,36 @@ export default function CreateCustomerOrderPage() {
     }))
   }
 
+  const handleLubebaySelect = (lubebay: Lubebay) => {
+    setSelectedLubebay(lubebay)
+    setFormData(prev => ({
+      ...prev,
+      client_type: 'lubebay',
+      customer_id: lubebay.id.toString(),
+      customer_name: lubebay.name,
+      customer_contact: lubebay.phone || '',
+      customer_email: lubebay.email || '',
+      delivery_address: lubebay.address || lubebay.location_name || 'NA',
+      payment_terms: 'Internal Transfer', // Lubebays don't have payment terms
+    }))
+  }
+
+  const handleSubstoreSelect = (substore: Substore) => {
+    setSelectedSubstore(substore)
+    setFormData(prev => ({
+      ...prev,
+      client_type: 'substore',
+      customer_id: substore.id.toString(),
+      customer_name: substore.name,
+      customer_contact: substore.phone || '',
+      customer_email: substore.email || '',
+      delivery_address: substore.address || substore.location_name || 'NA',
+      payment_terms: 'Internal Transfer', // Substores don't have payment terms
+    }))
+  }
+
   const handleContinueToProducts = () => {
-    if (selectedCustomer) {
+    if (selectedCustomer || selectedLubebay || selectedSubstore) {
       setShowProductCatalog(true)
     }
   }
@@ -460,8 +560,11 @@ export default function CreateCustomerOrderPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
+    const clientLabel = clientType === 'customer' ? 'customer' :
+                       clientType === 'lubebay' ? 'lubebay' : 'substore'
+
     if (!formData.customer_name || formData.items.length === 0) {
-      alert('Please select customer and add at least one product.')
+      alert(`Please select ${clientLabel} and add at least one product.`)
       return
     }
 
@@ -474,12 +577,21 @@ export default function CreateCustomerOrderPage() {
 
   // Determine current step
   const getCurrentStep = () => {
-    if (!selectedCustomer || !showProductCatalog) return 1
+    // Step 0: Client type selection
+    if (!clientType) return 0
+    // Step 1: Client selection (customer/lubebay/substore)
+    if (!selectedCustomer && !selectedLubebay && !selectedSubstore) return 1
+    if (!showProductCatalog) return 1
+    // Step 2: Products
     if (formData.items.length === 0) return 2
+    // Step 3: Review
     return 3
   }
 
   const currentStep = getCurrentStep()
+
+  // Get selected client for display
+  const selectedClient = selectedCustomer || selectedLubebay || selectedSubstore
 
   return (
     <AppLayout>
@@ -501,7 +613,12 @@ export default function CreateCustomerOrderPage() {
                 <div className="h-8 w-px bg-gray-300"></div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">New Purchase Request Form</h1>
-                  <p className="text-sm text-gray-500 mt-0.5">Create a new customer order PRF</p>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {!clientType && 'Select order type to begin'}
+                    {clientType === 'customer' && 'Create customer order PRF'}
+                    {clientType === 'lubebay' && 'Create lubebay stock request PRF'}
+                    {clientType === 'substore' && 'Create substore stock request PRF'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -509,7 +626,8 @@ export default function CreateCustomerOrderPage() {
             {/* Progress Indicator */}
             <div className="flex items-center gap-3">
               {[
-                { num: 1, label: 'Customer', icon: User },
+                { num: 0, label: 'Type', icon: Users },
+                { num: 1, label: clientType === 'customer' ? 'Customer' : clientType === 'lubebay' ? 'Lubebay' : clientType === 'substore' ? 'Substore' : 'Client', icon: clientType === 'customer' ? User : clientType === 'lubebay' ? Car : clientType === 'substore' ? Store : Users },
                 { num: 2, label: 'Products', icon: Package },
                 { num: 3, label: 'Review', icon: CheckCircle },
               ].map((step, idx) => {
@@ -535,7 +653,7 @@ export default function CreateCustomerOrderPage() {
                         {step.label}
                       </span>
                     </div>
-                    {idx < 2 && (
+                    {idx < 3 && (
                       <div className={`h-0.5 w-16 ${currentStep > step.num ? 'bg-green-600' : 'bg-gray-300'}`}></div>
                     )}
                   </div>
@@ -550,8 +668,107 @@ export default function CreateCustomerOrderPage() {
           <div className="grid grid-cols-12 gap-6">
             {/* Left Column - Main Form (8 columns) */}
             <div className="col-span-12 lg:col-span-8 space-y-6">
+              {/* STEP 0: Client Type Selection */}
+              {currentStep === 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg font-semibold">Select Order Type</CardTitle>
+                    <p className="text-sm text-gray-600 mt-1">Choose who this purchase request is for</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Customer Option */}
+                      <div
+                        onClick={() => setClientType('customer')}
+                        className={`border-2 rounded-lg p-6 cursor-pointer transition-all hover:shadow-md ${
+                          clientType === 'customer'
+                            ? 'border-green-600 bg-green-50 shadow-md'
+                            : 'border-gray-200 hover:border-green-500'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center text-center gap-3">
+                          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                            clientType === 'customer' ? 'bg-green-600' : 'bg-gray-100'
+                          }`}>
+                            <User className={`w-8 h-8 ${clientType === 'customer' ? 'text-white' : 'text-gray-600'}`} />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-lg text-gray-900">External Customer</h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Direct sales to customers (revenue generating)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Lubebay Option */}
+                      <div
+                        onClick={() => setClientType('lubebay')}
+                        className={`border-2 rounded-lg p-6 cursor-pointer transition-all hover:shadow-md ${
+                          clientType === 'lubebay'
+                            ? 'border-green-600 bg-green-50 shadow-md'
+                            : 'border-gray-200 hover:border-green-500'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center text-center gap-3">
+                          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                            clientType === 'lubebay' ? 'bg-green-600' : 'bg-gray-100'
+                          }`}>
+                            <Car className={`w-8 h-8 ${clientType === 'lubebay' ? 'text-white' : 'text-gray-600'}`} />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-lg text-gray-900">Lubebay</h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Internal stock transfer to service centers
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Substore Option */}
+                      <div
+                        onClick={() => setClientType('substore')}
+                        className={`border-2 rounded-lg p-6 cursor-pointer transition-all hover:shadow-md ${
+                          clientType === 'substore'
+                            ? 'border-green-600 bg-green-50 shadow-md'
+                            : 'border-gray-200 hover:border-green-500'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center text-center gap-3">
+                          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                            clientType === 'substore' ? 'bg-green-600' : 'bg-gray-100'
+                          }`}>
+                            <Store className={`w-8 h-8 ${clientType === 'substore' ? 'text-white' : 'text-gray-600'}`} />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-lg text-gray-900">Substore</h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Internal stock transfer to retail outlets
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Continue Button - Only show when client type is selected */}
+                    {clientType && (
+                      <div className="mt-6 pt-4 border-t border-gray-200">
+                        <Button
+                          type="button"
+                          onClick={() => {}}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
+                        >
+                          Continue to {clientType === 'customer' ? 'Customer' : clientType === 'lubebay' ? 'Lubebay' : 'Substore'} Selection
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* STEP 1: Customer Selection */}
-              {currentStep === 1 && (
+              {currentStep === 1 && clientType === 'customer' && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base font-semibold">Select Customer</CardTitle>
@@ -652,37 +869,261 @@ export default function CreateCustomerOrderPage() {
                 </Card>
               )}
 
-              {/* STEP 2: Add Products - shown when customer is selected */}
-              {selectedCustomer && currentStep >= 2 && (
+              {/* STEP 1: Lubebay Selection */}
+              {currentStep === 1 && clientType === 'lubebay' && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold">Select Lubebay</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Lubebay Search Input */}
+                      <div className="relative">
+                        <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search lubebays by name, code, or location..."
+                          value={lubebaySearchTerm}
+                          onChange={(e) => setLubebaySearchTerm(e.target.value)}
+                          className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
+                        />
+                      </div>
+
+                      {lubebaysLoading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {[...Array(6)].map((_, i) => (
+                            <div key={i} className="animate-pulse">
+                              <div className="h-28 bg-gray-100 rounded-lg"></div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-2">
+                          {lubebays.length > 0 ? lubebays.map((lubebay: Lubebay) => {
+                            const isSelected = selectedLubebay?.id === lubebay.id
+                            return (
+                              <div
+                                key={lubebay.id}
+                                className={`border-2 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer group ${
+                                  isSelected
+                                    ? 'border-green-600 bg-green-50 shadow-md'
+                                    : 'border-gray-200 hover:border-green-500'
+                                }`}
+                                onClick={() => handleLubebaySelect(lubebay)}
+                              >
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold text-base group-hover:text-green-600 transition-colors">
+                                      {lubebay.name}
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground">{lubebay.code}</p>
+                                  </div>
+                                  <Car className="w-5 h-5 text-gray-400" />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  {lubebay.location_name && (
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <MapPin className="w-3 h-3" />
+                                      {lubebay.location_name}
+                                    </div>
+                                  )}
+                                  {lubebay.manager_name && (
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <User className="w-3 h-3" />
+                                      {lubebay.manager_name}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="mt-2 pt-2 border-t border-gray-100">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">Warehouse</span>
+                                    <span className="font-medium text-green-600">
+                                      {lubebay.warehouse_name || 'Not assigned'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          }) : (
+                            <div className="col-span-3 text-center py-12 text-muted-foreground">
+                              <Car className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                              <p className="text-sm">No lubebays found</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Continue Button */}
+                      {selectedLubebay && (
+                        <div className="mt-6 pt-4 border-t border-gray-200">
+                          <Button
+                            type="button"
+                            onClick={handleContinueToProducts}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
+                          >
+                            Continue to Products
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* STEP 1: Substore Selection */}
+              {currentStep === 1 && clientType === 'substore' && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold">Select Substore</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Substore Search Input */}
+                      <div className="relative">
+                        <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search substores by name, code, or location..."
+                          value={substoreSearchTerm}
+                          onChange={(e) => setSubstoreSearchTerm(e.target.value)}
+                          className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
+                        />
+                      </div>
+
+                      {substoresLoading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {[...Array(6)].map((_, i) => (
+                            <div key={i} className="animate-pulse">
+                              <div className="h-28 bg-gray-100 rounded-lg"></div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-2">
+                          {substores.length > 0 ? substores.map((substore: Substore) => {
+                            const isSelected = selectedSubstore?.id === substore.id
+                            return (
+                              <div
+                                key={substore.id}
+                                className={`border-2 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer group ${
+                                  isSelected
+                                    ? 'border-green-600 bg-green-50 shadow-md'
+                                    : 'border-gray-200 hover:border-green-500'
+                                }`}
+                                onClick={() => handleSubstoreSelect(substore)}
+                              >
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold text-base group-hover:text-green-600 transition-colors">
+                                      {substore.name}
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground">{substore.code}</p>
+                                  </div>
+                                  <Store className="w-5 h-5 text-gray-400" />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  {substore.location_name && (
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <MapPin className="w-3 h-3" />
+                                      {substore.location_name}
+                                    </div>
+                                  )}
+                                  {substore.manager_name && (
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <User className="w-3 h-3" />
+                                      {substore.manager_name}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="mt-2 pt-2 border-t border-gray-100">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">Warehouse</span>
+                                    <span className="font-medium text-green-600">
+                                      {substore.warehouse_name || 'Not assigned'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          }) : (
+                            <div className="col-span-3 text-center py-12 text-muted-foreground">
+                              <Store className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                              <p className="text-sm">No substores found</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Continue Button */}
+                      {selectedSubstore && (
+                        <div className="mt-6 pt-4 border-t border-gray-200">
+                          <Button
+                            type="button"
+                            onClick={handleContinueToProducts}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
+                          >
+                            Continue to Products
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* STEP 2: Add Products - shown when any client is selected */}
+              {(selectedCustomer || selectedLubebay || selectedSubstore) && currentStep >= 2 && (
                 <>
-                  {/* Selected Customer Summary Bar */}
+                  {/* Selected Client Summary Bar */}
                   <Card className="bg-green-50 border-green-200">
                     <CardContent className="py-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">
-                            <User className="w-5 h-5 text-white" />
+                            {clientType === 'customer' && <User className="w-5 h-5 text-white" />}
+                            {clientType === 'lubebay' && <Car className="w-5 h-5 text-white" />}
+                            {clientType === 'substore' && <Store className="w-5 h-5 text-white" />}
                           </div>
                           <div>
-                            <p className="text-xs text-gray-600">Selected Customer</p>
+                            <p className="text-xs text-gray-600">
+                              Selected {clientType === 'customer' ? 'Customer' : clientType === 'lubebay' ? 'Lubebay' : 'Substore'}
+                            </p>
                             <h3 className="font-semibold text-base">
-                              {selectedCustomer.name || selectedCustomer.business_name || selectedCustomer.customer_name || 'Unknown'}
+                              {selectedClient?.name || (selectedClient as any)?.business_name || (selectedClient as any)?.customer_name || 'Unknown'}
                             </h3>
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
-                          <div className="text-right">
-                            <p className="text-xs text-gray-600">Credit Available</p>
-                            <p className="font-semibold text-green-600">
-                              ₦{((selectedCustomer.credit_limit || 0) - (selectedCustomer.outstanding_balance || 0)).toLocaleString()}
-                            </p>
-                          </div>
+                          {clientType === 'customer' && selectedCustomer && (
+                            <div className="text-right">
+                              <p className="text-xs text-gray-600">Credit Available</p>
+                              <p className="font-semibold text-green-600">
+                                ₦{((selectedCustomer.credit_limit || 0) - (selectedCustomer.outstanding_balance || 0)).toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+                          {(clientType === 'lubebay' || clientType === 'substore') && selectedClient && (
+                            <div className="text-right">
+                              <p className="text-xs text-gray-600">Location</p>
+                              <p className="font-semibold text-green-600">
+                                {(selectedClient as any).location_name || 'N/A'}
+                              </p>
+                            </div>
+                          )}
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             onClick={() => {
                               setSelectedCustomer(null)
+                              setSelectedLubebay(null)
+                              setSelectedSubstore(null)
                               setFormData(prev => ({ ...prev, customer_id: '', customer_name: '', customer_contact: '', customer_email: '', delivery_address: '', items: [] }))
                               setShowProductCatalog(false)
                             }}
@@ -1150,37 +1591,56 @@ export default function CreateCustomerOrderPage() {
                   </CardHeader>
                   <CardContent className="pt-6">
                     <div className="space-y-4">
-                      {/* Customer Info */}
-                      {selectedCustomer ? (
+                      {/* Client Info */}
+                      {selectedClient ? (
                         <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                           <div className="flex items-start gap-3">
                             <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0">
-                              <User className="w-6 h-6 text-white" />
+                              {clientType === 'customer' && <User className="w-6 h-6 text-white" />}
+                              {clientType === 'lubebay' && <Car className="w-6 h-6 text-white" />}
+                              {clientType === 'substore' && <Store className="w-6 h-6 text-white" />}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs text-gray-600 mb-1">Customer</p>
+                              <p className="text-xs text-gray-600 mb-1">
+                                {clientType === 'customer' ? 'Customer' : clientType === 'lubebay' ? 'Lubebay' : 'Substore'}
+                              </p>
                               <h4 className="font-semibold text-base text-gray-900 truncate">
-                                {selectedCustomer.name || selectedCustomer.business_name || selectedCustomer.customer_name || 'Unknown'}
+                                {selectedClient.name || (selectedClient as any).business_name || (selectedClient as any).customer_name || 'Unknown'}
                               </h4>
                               <p className="text-xs text-gray-600 mt-1 flex items-center gap-1">
                                 <Phone className="w-3 h-3" />
-                                {selectedCustomer.phone || selectedCustomer.contact_phone || 'N/A'}
+                                {(selectedClient as any).phone || (selectedClient as any).contact_phone || 'N/A'}
                               </p>
                               <div className="mt-2 pt-2 border-t border-green-200">
-                                <div className="flex justify-between text-xs">
-                                  <span className="text-gray-600">Credit Available</span>
-                                  <span className="font-semibold text-green-700">
-                                    ₦{((selectedCustomer.credit_limit || 0) - (selectedCustomer.outstanding_balance || 0)).toLocaleString()}
-                                  </span>
-                                </div>
+                                {clientType === 'customer' && selectedCustomer && (
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-gray-600">Credit Available</span>
+                                    <span className="font-semibold text-green-700">
+                                      ₦{((selectedCustomer.credit_limit || 0) - (selectedCustomer.outstanding_balance || 0)).toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                                {(clientType === 'lubebay' || clientType === 'substore') && (
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-gray-600">Location</span>
+                                    <span className="font-semibold text-green-700">
+                                      {(selectedClient as any).location_name || 'N/A'}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
                         </div>
                       ) : (
                         <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
-                          <User className="w-10 h-10 mx-auto mb-2 text-gray-400" />
-                          <p className="text-sm text-gray-500">No customer selected</p>
+                          {clientType === 'customer' && <User className="w-10 h-10 mx-auto mb-2 text-gray-400" />}
+                          {clientType === 'lubebay' && <Car className="w-10 h-10 mx-auto mb-2 text-gray-400" />}
+                          {clientType === 'substore' && <Store className="w-10 h-10 mx-auto mb-2 text-gray-400" />}
+                          {!clientType && <Users className="w-10 h-10 mx-auto mb-2 text-gray-400" />}
+                          <p className="text-sm text-gray-500">
+                            No {clientType === 'customer' ? 'customer' : clientType === 'lubebay' ? 'lubebay' : clientType === 'substore' ? 'substore' : 'client'} selected
+                          </p>
                         </div>
                       )}
 
@@ -1220,7 +1680,7 @@ export default function CreateCustomerOrderPage() {
                         <Button
                           type="submit"
                           className="w-full mofad-btn-primary py-6 text-base font-semibold"
-                          disabled={createCustomerOrder.isPending || !selectedCustomer || formData.items.length === 0}
+                          disabled={createCustomerOrder.isPending || !selectedClient || formData.items.length === 0}
                         >
                           <Save className="w-5 h-5 mr-2" />
                           {createCustomerOrder.isPending ? 'Creating PRF...' : 'Create Purchase Request'}
