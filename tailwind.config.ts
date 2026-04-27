@@ -23,34 +23,34 @@ const config: Config = {
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
-          // MOFAD Primary Brand Colors (Dark Green #1F4224)
+          // MOFAD Primary Brand Colors (Green #1B4F3A)
           50: '#f0fdf4',
           100: '#dcfce7',
           200: '#bbf7d0',
           300: '#86efac',
           400: '#4ade80',
-          500: '#1F4224', // Main MOFAD green
-          600: '#1a3820',
-          700: '#152e1a',
-          800: '#102415',
-          900: '#0c1a10',
-          950: '#060d08',
+          500: '#1B4F3A', // Main MOFAD green
+          600: '#164032',
+          700: '#123129',
+          800: '#0e2621',
+          900: '#0a1b18',
+          950: '#05100f',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
           foreground: 'hsl(var(--secondary-foreground))',
-          // MOFAD Secondary Brand Colors (Gold #D0A33E)
+          // MOFAD Secondary Brand Colors (Gold #D4AF37)
           50: '#fefce8',
-          100: '#fef3c7',
-          200: '#fde68a',
-          300: '#fcd34d',
-          400: '#D0A33E', // Main MOFAD gold
-          500: '#c49535',
-          600: '#a67c2e',
-          700: '#876426',
-          800: '#6b4f1f',
-          900: '#4f3a17',
-          950: '#33250f',
+          100: '#fef9c3',
+          200: '#fef08a',
+          300: '#fde047',
+          400: '#facc15',
+          500: '#D4AF37', // Main MOFAD gold
+          600: '#b8941f',
+          700: '#8f7319',
+          800: '#735c14',
+          900: '#5c4a10',
+          950: '#33290a',
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',
@@ -59,60 +59,76 @@ const config: Config = {
         accent: {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
-          // MOFAD Accent Colors (Gold highlights)
-          50: '#fefce8',
-          100: '#fef3c7',
-          200: '#fde68a',
-          300: '#fcd34d',
-          400: '#D0A33E',
-          500: '#c49535',
-          600: '#a67c2e',
-          700: '#876426',
-          800: '#6b4f1f',
-          900: '#4f3a17',
-          950: '#33250f',
         },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
-        // MOFAD Brand Colors
+        // MOFAD Brand Colors - Standardized
         mofad: {
-          primary: '#1F4224', // Dark green
-          secondary: '#D0A33E', // Gold
-          black: '#000000',
-          gradient: {
-            start: '#1F4224',
-            end: '#D0A33E',
-          },
-          dark: '#152e1a',
-          light: '#dcfce7',
+          green: '#1B4F3A',      // Primary brand green
+          gold: '#D4AF37',       // Primary brand gold
+          'gold-light': '#F5EFD7', // Light gold accent
+          'green-dark': '#123129', // Dark green
+          'green-light': '#dcfce7', // Light green
+        },
+        // Semantic Colors
+        success: '#10B981',
+        warning: '#F59E0B',
+        error: '#EF4444',
+        info: '#3B82F6',
+        // Neutral Grays
+        gray: {
+          50: '#F9FAFB',
+          100: '#F3F4F6',
+          200: '#E5E7EB',
+          300: '#D1D5DB',
+          400: '#9CA3AF',
+          500: '#6B7280',
+          600: '#4B5563',
+          700: '#374151',
+          800: '#1F2937',
+          900: '#111827',
+          950: '#030712',
         },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        lg: '0.75rem',
+        md: '0.5rem',
+        sm: '0.375rem',
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
       },
-      backgroundImage: {
-        // MOFAD Brand Gradients
-        'mofad-gradient': 'linear-gradient(45deg, #1F4224, #D0A33E)',
-        'mofad-gradient-reverse': 'linear-gradient(225deg, #1F4224, #D0A33E)',
-        'mofad-header': 'linear-gradient(135deg, #1F4224, #2d5a32, #D0A33E)',
-        'mofad-full': 'linear-gradient(45deg, #1F4224, #2d5a32, #D0A33E, #000000)',
-        'mofad-brand': 'linear-gradient(45deg, #1F4224, #D0A33E)',
-        'mofad-subtle': 'linear-gradient(45deg, #f0fdf4, #fefce8)',
+      fontSize: {
+        'xs': ['0.75rem', { lineHeight: '1rem' }],
+        'sm': ['0.875rem', { lineHeight: '1.25rem' }],
+        'base': ['1rem', { lineHeight: '1.5rem' }],
+        'lg': ['1.125rem', { lineHeight: '1.75rem' }],
+        'xl': ['1.25rem', { lineHeight: '1.75rem' }],
+        '2xl': ['1.5rem', { lineHeight: '2rem' }],
+        '3xl': ['1.875rem', { lineHeight: '2.25rem' }],
+        '4xl': ['2.25rem', { lineHeight: '2.5rem' }],
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-        'card-hover': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        'mofad': '0 4px 15px 0 rgba(31, 66, 36, 0.2)',
+        'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        'DEFAULT': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+        'md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        'lg': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        'xl': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        'card': '0 1px 3px rgba(0, 0, 0, 0.05)',
+        'card-hover': '0 4px 12px rgba(0, 0, 0, 0.08)',
+        'mofad': '0 4px 20px rgba(27, 79, 58, 0.12)',
+        'mofad-lg': '0 8px 30px rgba(27, 79, 58, 0.15)',
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '112': '28rem',
+        '128': '32rem',
       },
     },
   },

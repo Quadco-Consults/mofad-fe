@@ -277,12 +277,6 @@ function UsersPage() {
     })
   }
 
-  const getStatusBadge = (isActive: boolean) => {
-    return isActive
-      ? 'bg-green-100 text-green-800'
-      : 'bg-red-100 text-red-800'
-  }
-
   const getRoleLabel = (role: string) => {
     const roleObj = availableRoles.find(r => r.value === role)
     return roleObj ? roleObj.label : role
@@ -720,13 +714,16 @@ function UsersPage() {
                       />
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
+                      Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role & Department
+                      Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      Role
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Department
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date Joined
@@ -738,58 +735,41 @@ function UsersPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {users.map((user) => (
-                    <tr key={user.id} className={`hover:bg-gray-50 transition-colors ${selection.isSelected(user.id) ? 'bg-primary/5' : ''}`}>
-                      <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                    <tr key={user.id} className={`hover:bg-gray-50 transition-colors ${selection.isSelected(user.id) ? 'bg-green-50' : ''}`}>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selection.isSelected(user.id)}
                           onChange={() => selection.toggle(user.id)}
                         />
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                            <span className="text-green-600 font-medium text-sm">
-                              {user.first_name?.[0]}{user.last_name?.[0]}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{user.full_name}</div>
-                            <div className="text-sm text-gray-500">{user.email}</div>
-                            {user.employee_id && (
-                              <div className="text-xs text-gray-400">{user.employee_id}</div>
-                            )}
-                          </div>
-                        </div>
+                      <td className="px-6 py-3">
+                        <div className="text-sm font-medium text-gray-900">{user.full_name}</div>
+                        {user.employee_id && (
+                          <div className="text-xs text-gray-500 mt-0.5">ID: {user.employee_id}</div>
+                        )}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{getRoleLabel(user.role)}</div>
-                        <div className="text-sm text-gray-500">{user.department_details?.name || '-'}</div>
+                      <td className="px-6 py-3">
+                        <div className="text-sm text-gray-900">{user.email}</div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(user.is_active)}`}>
-                          {user.is_active ? (
-                            <>
-                              <UserCheck className="h-3 w-3 mr-1" />
-                              Active
-                            </>
-                          ) : (
-                            <>
-                              <UserX className="h-3 w-3 mr-1" />
-                              Inactive
-                            </>
-                          )}
+                      <td className="px-6 py-3">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {getRoleLabel(user.role)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-3">
+                        <div className="text-sm text-gray-900">{user.department_details?.name || '-'}</div>
+                      </td>
+                      <td className="px-6 py-3 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{formatDateTime(user.date_joined)}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
+                      <td className="px-6 py-3 whitespace-nowrap">
+                        <div className="flex items-center space-x-1">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleView(user)}
-                            title="View"
+                            className="text-gray-600 hover:text-gray-900"
+                            title="View Details"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -797,7 +777,8 @@ function UsersPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(user)}
-                            title="Edit"
+                            className="text-blue-600 hover:text-blue-700"
+                            title="Edit User"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -814,8 +795,8 @@ function UsersPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleOpenEntityAccess(user)}
-                            className="text-blue-600 hover:text-blue-700"
-                            title="Entity Access"
+                            className="text-purple-600 hover:text-purple-700"
+                            title="Manage Access"
                           >
                             <MapPin className="h-4 w-4" />
                           </Button>
@@ -824,7 +805,7 @@ function UsersPage() {
                             size="sm"
                             onClick={() => handleDelete(user.id)}
                             className="text-red-600 hover:text-red-700"
-                            title="Delete"
+                            title="Delete User"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

@@ -26,7 +26,6 @@ export function AppLayout({ children }: AppLayoutProps) {
     // Only check auth after Zustand has hydrated from localStorage
     if (_hasHydrated && !isLoading && !isAuthenticated) {
       // Save the current path before redirecting to login
-      // This allows the user to return to this page after logging back in
       if (pathname) {
         saveLastVisitedPath(pathname)
       }
@@ -36,24 +35,18 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   if (isLoading || !_hasHydrated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="relative">
-            {/* Animated background circles */}
-            <div className="absolute inset-0 -top-10 -left-10 w-32 h-32 bg-blue-500/10 rounded-full blur-xl animate-pulse"></div>
-            <div className="absolute inset-0 -bottom-10 -right-10 w-32 h-32 bg-purple-500/10 rounded-full blur-xl animate-pulse delay-1000"></div>
+          {/* Clean Modern Loading */}
+          <div className="relative bg-white rounded-2xl p-12 shadow-xl border border-gray-100">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-mofad-green mb-6" />
+            <div className="space-y-3">
+              <h3 className="text-xl font-semibold text-gray-900">MOFAD ERP</h3>
+              <p className="text-gray-600">Initializing workspace...</p>
 
-            {/* Modern loading spinner */}
-            <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 shadow-2xl">
-              <Loader2 className="h-12 w-12 animate-spin mx-auto text-white mb-6" />
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold text-white">MOFAD ERP</h3>
-                <p className="text-slate-300">Initializing your workspace...</p>
-
-                {/* Modern progress bar */}
-                <div className="mt-4 w-full bg-white/10 rounded-full h-1.5">
-                  <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-1.5 rounded-full animate-pulse w-3/4"></div>
-                </div>
+              {/* Clean Progress Bar */}
+              <div className="mt-6 w-64 bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div className="bg-gradient-to-r from-mofad-green to-mofad-gold h-2 rounded-full animate-pulse w-3/4"></div>
               </div>
             </div>
           </div>
@@ -67,50 +60,33 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="h-screen flex bg-gradient-to-br from-slate-50 via-white to-slate-100 overflow-hidden">
-      {/* Modern Sidebar */}
+    <div className="h-screen flex bg-gray-50 overflow-hidden">
+      {/* Sidebar */}
       <Sidebar collapsed={sidebarCollapsed} />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 relative">
-        {/* Modern Header */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
         <Header onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
-        {/* Main Content with Glassmorphism */}
-        <main className="flex-1 overflow-hidden relative">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-slate-50/90 to-blue-50/80"></div>
-          <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 25px 25px, rgba(59, 130, 246, 0.1) 2px, transparent 0)`,
-            backgroundSize: '50px 50px'
-          }}></div>
-
-          {/* Content Container */}
-          <div className="relative h-full overflow-y-auto">
-            <div className="p-6 lg:p-8 max-w-full">
-              {/* Modern Content Wrapper */}
-              <div className="animate-in fade-in duration-500">
-                {children}
-              </div>
+        {/* Main Content - Clean & Simple */}
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+            {/* Content with subtle fade-in animation */}
+            <div className="animate-fade-in">
+              {children}
             </div>
           </div>
         </main>
       </div>
 
-      {/* Mobile sidebar overlay with blur effect */}
+      {/* Mobile sidebar overlay */}
       {!sidebarCollapsed && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm lg:hidden z-30"
           onClick={() => setSidebarCollapsed(true)}
         />
       )}
-
-      {/* Floating Elements for Visual Enhancement */}
-      <div className="fixed top-20 right-10 w-32 h-32 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="fixed bottom-20 left-10 w-40 h-40 bg-gradient-to-r from-green-400/10 to-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
     </div>
   )
 }
-
-// Add default export for compatibility
-export default AppLayout

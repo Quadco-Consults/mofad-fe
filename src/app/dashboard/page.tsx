@@ -73,7 +73,7 @@ function MetricCard({ title, value, icon: Icon, color, bgColor, link, subtitle }
 
   return (
     <CardWrapper {...cardProps}>
-      <Card className={`${bgColor} border-0 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group cursor-pointer`}>
+      <Card className="bg-white border border-gray-200 hover:shadow-md transition-shadow duration-200 cursor-pointer">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
@@ -85,8 +85,8 @@ function MetricCard({ title, value, icon: Icon, color, bgColor, link, subtitle }
                 <p className="text-xs text-gray-500">{subtitle}</p>
               )}
             </div>
-            <div className={`p-4 rounded-2xl ${color} shadow-lg`}>
-              <Icon className="h-8 w-8 text-white" />
+            <div className="p-3 rounded-lg bg-mofad-green">
+              <Icon className="h-6 w-6 text-white" />
             </div>
           </div>
         </CardContent>
@@ -97,12 +97,12 @@ function MetricCard({ title, value, icon: Icon, color, bgColor, link, subtitle }
 
 function WarehouseCard({ warehouse }: { warehouse: WarehouseValue }) {
   return (
-    <Card className="bg-white border border-gray-200 hover:shadow-md transition-all duration-300">
+    <Card className="bg-white border border-gray-200 hover:shadow-md transition-shadow">
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Building2 className="h-5 w-5 text-blue-600" />
+            <div className="p-2 bg-green-50 rounded-lg">
+              <Building2 className="h-5 w-5 text-mofad-green" />
             </div>
             <div>
               <h3 className="text-base font-semibold text-gray-900">{warehouse.name}</h3>
@@ -121,7 +121,7 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseValue }) {
           </div>
           <div className="flex justify-between items-center pb-2 border-b border-gray-100">
             <span className="text-sm text-gray-600">Sales</span>
-            <span className="text-sm font-bold text-green-600">{formatCurrency(warehouse.sales)}</span>
+            <span className="text-sm font-bold text-mofad-green">{formatCurrency(warehouse.sales)}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Items</span>
@@ -173,9 +173,9 @@ export default function Dashboard() {
           </div>
           <button
             onClick={() => refetch()}
-            className="flex items-center px-4 py-2 text-sm text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-mofad-green rounded-md hover:bg-mofad-green/90 transition-colors font-medium"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className="h-4 w-4" />
             Refresh
           </button>
         </div>
@@ -197,8 +197,8 @@ export default function Dashboard() {
                   title="Lubebay Sales"
                   value={stats.lubebay_sales}
                   icon={Car}
-                  color="bg-gradient-to-br from-blue-500 to-blue-600"
-                  bgColor="bg-gradient-to-br from-blue-50 to-blue-100/80"
+                  color=""
+                  bgColor=""
                   link="/channels/lubebays"
                   subtitle="Product sales from lubebays"
                 />
@@ -207,8 +207,8 @@ export default function Dashboard() {
                   title="Stock Value"
                   value={stats.stock_value}
                   icon={Package}
-                  color="bg-gradient-to-br from-purple-500 to-purple-600"
-                  bgColor="bg-gradient-to-br from-purple-50 to-purple-100/80"
+                  color=""
+                  bgColor=""
                   link="/inventory"
                   subtitle="Total inventory value"
                 />
@@ -217,8 +217,8 @@ export default function Dashboard() {
                   title="Direct Sales"
                   value={stats.direct_sales}
                   icon={ShoppingCart}
-                  color="bg-gradient-to-br from-green-500 to-green-600"
-                  bgColor="bg-gradient-to-br from-green-50 to-green-100/80"
+                  color=""
+                  bgColor=""
                   link="/channels/substores"
                   subtitle="Substore sales"
                 />
@@ -227,8 +227,8 @@ export default function Dashboard() {
                   title="Services Sales"
                   value={stats.total_services_sales}
                   icon={Wrench}
-                  color="bg-gradient-to-br from-orange-500 to-orange-600"
-                  bgColor="bg-gradient-to-br from-orange-50 to-orange-100/80"
+                  color=""
+                  bgColor=""
                   subtitle="Lubebay & carwash services"
                 />
               </div>
@@ -238,7 +238,7 @@ export default function Dashboard() {
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Services Breakdown</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="bg-gradient-to-br from-amber-50 to-amber-100/80 border-0">
+                <Card className="bg-white border border-gray-200 hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -248,14 +248,14 @@ export default function Dashboard() {
                         </p>
                         <p className="text-xs text-gray-500 mt-1">Oil change, diagnostics, etc.</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 shadow-lg">
+                      <div className="p-3 rounded-lg bg-mofad-green">
                         <Wrench className="h-6 w-6 text-white" />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100/80 border-0">
+                <Card className="bg-white border border-gray-200 hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -265,14 +265,14 @@ export default function Dashboard() {
                         </p>
                         <p className="text-xs text-gray-500 mt-1">Car cleaning services</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-lg">
+                      <div className="p-3 rounded-lg bg-mofad-green">
                         <Car className="h-6 w-6 text-white" />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/80 border-0">
+                <Card className="bg-white border border-gray-200 hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -282,7 +282,7 @@ export default function Dashboard() {
                         </p>
                         <p className="text-xs text-gray-500 mt-1">All channels combined</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg">
+                      <div className="p-3 rounded-lg bg-mofad-green">
                         <DollarSign className="h-6 w-6 text-white" />
                       </div>
                     </div>
@@ -297,10 +297,10 @@ export default function Dashboard() {
                 <h2 className="text-lg font-semibold text-gray-900">Warehouse Stock & Sales</h2>
                 <Link
                   href="/inventory"
-                  className="text-sm text-green-600 hover:text-green-700 font-medium flex items-center"
+                  className="text-sm text-mofad-green hover:text-mofad-green/80 font-medium flex items-center gap-1"
                 >
                   View All
-                  <ArrowUpRight className="h-4 w-4 ml-1" />
+                  <ArrowUpRight className="h-4 w-4" />
                 </Link>
               </div>
 

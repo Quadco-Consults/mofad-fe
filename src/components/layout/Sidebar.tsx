@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -368,7 +368,8 @@ export function Sidebar({ collapsed }: SidebarProps) {
   const pathname = usePathname()
   const { user } = useAuthStore()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+  const activeItemRef = useRef<HTMLDivElement>(null)
+  const navRef = useRef<HTMLElement>(null)
 
   // Get user role - handle different ways role might be stored
   const userRole = useMemo(() => {
@@ -427,100 +428,82 @@ export function Sidebar({ collapsed }: SidebarProps) {
     })
   }, [pathname, filteredNavigation, filteredNavigationSections])
 
+  // Scroll active item into view when pathname changes
+  useEffect(() => {
+    if (activeItemRef.current && navRef.current) {
+      // Small delay to ensure DOM has updated
+      setTimeout(() => {
+        activeItemRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest'
+        })
+      }, 100)
+    }
+  }, [pathname])
+
   const renderNavItem = (item: NavItem, depth = 0) => {
     const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
     const hasChildren = item.children && item.children.length > 0
     const isExpanded = expandedItems.includes(item.href)
     const Icon = item.icon
-    const isHovered = hoveredItem === item.href
 
     return (
-      <div key={item.href} className="relative group">
+      <div key={item.href} ref={isActive ? activeItemRef : null}>
         {/* Main Nav Item */}
         <div
           className={cn(
-            "relative flex items-center group cursor-pointer transition-all duration-300 ease-out",
-            depth === 0 ? "mx-2 mb-1.5" : "ml-8 mr-2 mb-1",
-            collapsed && depth === 0 ? "justify-center" : "justify-between"
+            "relative group cursor-pointer",
+            depth === 0 ? "mb-0.5" : "mb-0.5"
           )}
-          onMouseEnter={() => setHoveredItem(item.href)}
-          onMouseLeave={() => setHoveredItem(null)}
           onClick={() => hasChildren ? toggleExpanded(item.href) : null}
         >
-          {/* Enhanced Background with better shadows */}
-          <div className={cn(
-            "absolute inset-0 rounded-2xl transition-all duration-500 ease-out",
-            isActive
-              ? `bg-gradient-to-r ${item.color || 'from-green-600 to-green-700'} shadow-lg shadow-green-500/25 border border-green-400/20`
-              : isHovered
-                ? "bg-gradient-to-r from-white to-slate-50 shadow-md shadow-slate-200/50 border border-slate-200/40 backdrop-blur-sm"
-                : "hover:bg-gradient-to-r hover:from-slate-50/70 hover:to-white hover:shadow-sm hover:border hover:border-slate-200/30"
-          )}></div>
-
-          {/* Enhanced Content */}
           <Link
             href={hasChildren ? '#' : item.href}
             className={cn(
-              "relative flex items-center w-full rounded-2xl transition-all duration-300",
-              isActive ? "text-white" : "text-slate-700 hover:text-slate-900",
-              depth === 0 ? "px-4 py-3.5" : "px-3 py-3",
-              depth > 0 && "text-sm font-normal"
+              "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200",
+              isActive
+                ? "bg-mofad-green text-white"
+                : "text-gray-700 hover:bg-gray-100",
+              depth > 0 && "pl-10 py-2 text-sm"
             )}
             onClick={(e) => hasChildren && e.preventDefault()}
           >
-            {/* Enhanced Icon with better styling */}
-            <div className={cn(
-              "flex items-center justify-center rounded-xl transition-all duration-300 flex-shrink-0",
-              isActive
-                ? "bg-white/25 text-white shadow-lg shadow-white/25 backdrop-blur-sm border border-white/20"
-                : isHovered
-                  ? "bg-slate-100/80 text-slate-700 shadow-sm border border-slate-200/50"
-                  : "bg-slate-100/40 text-slate-600 border border-transparent",
-              depth === 0 ? "w-11 h-11" : "w-8 h-8",
-              collapsed && depth === 0 ? "mr-0" : depth > 0 ? "mr-3" : "mr-4"
-            )}>
-              <Icon className={cn(
-                "transition-all duration-300",
-                depth === 0 ? "w-5 h-5" : "w-4 h-4",
-                isActive && "scale-110"
-              )} />
-            </div>
+            {/* Icon */}
+            <Icon className={cn(
+              "flex-shrink-0",
+              depth === 0 ? "w-5 h-5" : "w-4 h-4",
+              isActive ? "text-white" : "text-gray-600"
+            )} />
 
-            {/* Enhanced Label and badges */}
+            {/* Label and badges */}
             {(!collapsed || depth > 0) && (
               <div className="flex items-center justify-between flex-1 min-w-0">
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   <span className={cn(
-                    "truncate font-medium tracking-wide",
-                    depth === 0 ? "text-sm" : "text-xs",
-                    isActive ? "font-semibold" : "font-medium"
+                    "truncate font-medium",
+                    depth === 0 ? "text-sm" : "text-xs"
                   )}>{item.label}</span>
                   {item.isNew && (
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
-                      <span className="text-[10px] bg-gradient-to-r from-green-400 to-green-500 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">
-                        NEW
-                      </span>
-                    </div>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-mofad-gold text-gray-900 uppercase">
+                      <Sparkles className="w-3 h-3" />
+                      New
+                    </span>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {item.badge && (
-                    <span className={cn(
-                      "bg-gradient-to-r from-red-500 to-red-600 text-white font-bold rounded-full min-w-[20px] text-center shadow-sm border border-red-400/20",
-                      depth > 0 ? "text-[10px] px-1.5 py-0.5 min-w-[18px]" : "text-xs px-2 py-1 animate-pulse"
-                    )}>
+                    <span className="bg-red-500 text-white text-xs font-semibold rounded-full min-w-[20px] px-1.5 py-0.5 text-center">
                       {item.badge}
                     </span>
                   )}
 
                   {hasChildren && (
                     <ChevronRight className={cn(
-                      "transition-all duration-300 flex-shrink-0",
-                      depth === 0 ? "w-4 h-4" : "w-3.5 h-3.5",
+                      "transition-transform duration-200 flex-shrink-0 w-4 h-4",
                       isExpanded && "rotate-90",
-                      isActive ? "text-white/80" : "text-slate-400 group-hover:text-slate-600"
+                      isActive ? "text-white" : "text-gray-400"
                     )} />
                   )}
                 </div>
@@ -530,37 +513,16 @@ export function Sidebar({ collapsed }: SidebarProps) {
 
           {/* Tooltip for collapsed state */}
           {collapsed && depth === 0 && (
-            <div className="absolute left-full ml-3 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap shadow-xl">
+            <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap shadow-lg">
               {item.label}
-              <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-900 rotate-45"></div>
             </div>
           )}
         </div>
 
-        {/* Enhanced Submenu with better animation and styling */}
+        {/* Submenu */}
         {hasChildren && isExpanded && !collapsed && (
-          <div className="overflow-hidden">
-            <div className="animate-in slide-in-from-top-2 duration-500 ease-out">
-              <div className="relative ml-8 mt-2 mb-3">
-                {/* Vertical connecting line */}
-                <div className="absolute left-3 top-0 bottom-0 w-px bg-gradient-to-b from-slate-300 via-slate-200 to-transparent"></div>
-
-                {/* Submenu items */}
-                <div className="space-y-0.5 pl-6">
-                  {item.children?.map((child) => (
-                    <div key={child.href} className="relative">
-                      {/* Horizontal connecting line */}
-                      <div className="absolute -left-6 top-1/2 w-6 h-px bg-gradient-to-r from-slate-300 to-transparent"></div>
-
-                      {/* Connecting dot */}
-                      <div className="absolute -left-7 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-slate-300 rounded-full border-2 border-white shadow-sm"></div>
-
-                      {renderNavItem(child, depth + 1)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+          <div className="mt-0.5 mb-1">
+            {item.children?.map((child) => renderNavItem(child, depth + 1))}
           </div>
         )}
       </div>
@@ -569,111 +531,81 @@ export function Sidebar({ collapsed }: SidebarProps) {
 
   return (
     <div className={cn(
-      "relative h-full flex flex-col transition-all duration-300 ease-out",
-      "bg-gradient-to-b from-slate-50 to-white border-r border-slate-200/60 shadow-sm",
-      collapsed ? "w-20" : "w-80"
+      "h-full flex flex-col transition-all duration-300 bg-white border-r border-gray-200",
+      collapsed ? "w-20" : "w-72"
     )}>
-      {/* Enhanced Background with subtle gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-50 via-white to-slate-50/30"></div>
-
-      {/* Subtle overlay pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)]"></div>
-
-      {/* Content */}
-      <div className="relative h-full flex flex-col">
-        {/* Enhanced Logo Area */}
-        <div className={cn(
-          "flex items-center border-b border-slate-200/50 bg-gradient-to-r from-white to-slate-50/50",
-          collapsed ? "px-4 py-6 justify-center" : "px-6 py-6"
-        )}>
-          <div className="flex items-center gap-3">
-            {!collapsed && (
-              <div className="flex items-center">
-                <div className="relative">
-                  <img
-                    src="/modah_logo-removebg-preview.png"
-                    alt="MOFAD Energy Solutions"
-                    className="h-14 w-auto drop-shadow-sm"
-                  />
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
-                </div>
-                <div className="ml-4">
-                  <h1 className="text-xl font-bold text-slate-900 leading-tight">MOFAD Energy</h1>
-                  <p className="text-sm text-slate-600 font-medium">Enterprise ERP System</p>
-                </div>
-              </div>
-            )}
-
-            {collapsed && (
-              <div className="relative">
-                <img
-                  src="/modah_logo-removebg-preview.png"
-                  alt="MOFAD"
-                  className="h-10 w-auto drop-shadow-sm"
-                />
-                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white shadow-sm animate-pulse"></div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Enhanced Navigation */}
-        <nav className="flex-1 py-6 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
-          <div className={cn(
-            "space-y-1",
-            collapsed ? "px-3" : "px-5"
-          )}>
-            {/* Render main navigation (Dashboard) */}
-            {filteredNavigation.map((item) => renderNavItem(item))}
-
-            {/* Render sectioned navigation */}
-            {!collapsed && filteredNavigationSections.map((section, sectionIndex) => (
-              <div key={section.title} className={cn("mt-8", sectionIndex === 0 && "mt-6")}>
-                {/* Section Header */}
-                <div className="px-3 mb-4">
-                  <h3 className="text-xs font-bold text-green-600 uppercase tracking-wider">
-                    {section.title}
-                  </h3>
-                </div>
-
-                {/* Section Items */}
-                <div className="space-y-1">
-                  {section.items.map((item: NavItem) => renderNavItem(item))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </nav>
-
-        {/* Enhanced Footer with better design */}
+      {/* Logo Area */}
+      <div className={cn(
+        "flex items-center border-b border-gray-200",
+        collapsed ? "px-4 py-5 justify-center" : "px-6 py-5"
+      )}>
         {!collapsed && (
-          <div className="p-5 border-t border-slate-200/50">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-500/10 via-green-600/10 to-green-700/10 border border-green-200/50 backdrop-blur-sm">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-green-600/5"></div>
-              <div className="relative flex items-center gap-4 p-4">
-                <div className="flex-shrink-0">
-                  <div className="relative">
-                    <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                      <Activity className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow-sm animate-ping"></div>
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800">System Status</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <p className="text-sm text-green-700 font-medium">All Systems Online</p>
-                  </div>
-                </div>
-                <div className="flex-shrink-0">
-                  <ArrowUpRight className="w-5 h-5 text-green-600" />
-                </div>
-              </div>
+          <div className="flex items-center gap-3">
+            <img
+              src="/modah_logo-removebg-preview.png"
+              alt="MOFAD Energy Solutions"
+              className="h-12 w-auto"
+            />
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">MOFAD Energy</h1>
+              <p className="text-xs text-gray-600">ERP System</p>
             </div>
           </div>
         )}
+
+        {collapsed && (
+          <img
+            src="/modah_logo-removebg-preview.png"
+            alt="MOFAD"
+            className="h-10 w-auto"
+          />
+        )}
       </div>
+
+      {/* Navigation */}
+      <nav ref={navRef} className="flex-1 py-4 overflow-y-auto scrollbar-thin">
+        <div className={cn(collapsed ? "px-2" : "px-3")}>
+          {/* Render main navigation (Dashboard) */}
+          {filteredNavigation.map((item) => renderNavItem(item))}
+
+          {/* Render sectioned navigation */}
+          {!collapsed && filteredNavigationSections.map((section, sectionIndex) => (
+            <div key={section.title} className={cn("mt-6", sectionIndex === 0 && "mt-5")}>
+              {/* Section Header */}
+              <div className="px-3 mb-2">
+                <h3 className="text-[11px] font-semibold text-mofad-green uppercase tracking-wider">
+                  {section.title}
+                </h3>
+              </div>
+
+              {/* Section Items */}
+              <div>
+                {section.items.map((item: NavItem) => renderNavItem(item))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </nav>
+
+      {/* Footer */}
+      {!collapsed && (
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-md bg-green-50 border border-green-100">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 bg-mofad-green rounded-md flex items-center justify-center">
+                <Activity className="w-4 h-4 text-white" />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-gray-900">System Status</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                <p className="text-xs text-gray-600">Online</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
