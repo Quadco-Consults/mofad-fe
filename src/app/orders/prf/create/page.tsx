@@ -185,12 +185,13 @@ export default function CreateCustomerOrderPage() {
   const [selectedWarehouse, setSelectedWarehouse] = useState('')
   const [warehouseForOrder, setWarehouseForOrder] = useState('')
 
-  // Fetch customers with search
+  // Fetch customers with search (exclude substores/lubebays which have customer_type "Station")
   const { data: customersData, isLoading: customersLoading } = useQuery({
-    queryKey: ['customers', customerSearchTerm],
-    queryFn: () => apiClient.getCustomers({
+    queryKey: ['customers', customerSearchTerm, 'exclude-stations'],
+    queryFn: () => apiClient.get('/customers/', {
       search: customerSearchTerm || undefined,
-      page_size: 100 // Load more customers
+      page_size: 100, // Load more customers
+      exclude_stations: 'true' // Exclude substores/lubebays from customer list
     }),
     enabled: clientType === 'customer',
   })
