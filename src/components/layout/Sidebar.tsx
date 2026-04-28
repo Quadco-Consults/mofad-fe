@@ -27,7 +27,6 @@ import {
   Receipt,
   CreditCard,
   Sparkles,
-  ArrowUpRight,
   Activity,
   Truck,
   Shield,
@@ -41,7 +40,6 @@ import {
   Fuel,
   MapPin,
   Calendar,
-  AlertTriangle,
   Building,
   BarChart3,
   Droplets
@@ -50,8 +48,7 @@ import {
 // Define user roles for access control
 type UserRole = 'admin' | 'manager' | 'accountant' | 'storekeeper' | 'user'
 
-// All roles that have access to most features (not regular users)
-const PRIVILEGED_ROLES: UserRole[] = ['admin', 'manager', 'accountant', 'storekeeper']
+// All roles that have access to admin features
 const ADMIN_ROLES: UserRole[] = ['admin', 'manager']
 
 interface NavItem {

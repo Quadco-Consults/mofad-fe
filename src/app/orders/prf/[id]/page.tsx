@@ -10,6 +10,9 @@ import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { PRF } from '@/types/api'
 import PRFPaymentGoodsIssue from '@/components/orders/PRFPaymentGoodsIssue'
+import PRFReversalModal from '@/components/orders/PRFReversalModal'
+import MarkGoodsReturnedModal from '@/components/orders/MarkGoodsReturnedModal'
+import { canReversePRF, requiresGoodsReturn } from '@/types/reversals'
 import {
   ArrowLeft,
   Download,
@@ -34,7 +37,9 @@ import {
   Loader2,
   Receipt,
   Truck,
-  Eye
+  Eye,
+  RotateCcw,
+  PackageCheck
 } from 'lucide-react'
 
 // Helper functions for localStorage management (same as in main PRF page)
@@ -96,6 +101,8 @@ export default function PRFViewPage() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectAction, setRejectAction] = useState<'review' | 'approve'>('review')
   const [rejectionReason, setRejectionReason] = useState('')
+  const [showReversalModal, setShowReversalModal] = useState(false)
+  const [showMarkGoodsReturnedModal, setShowMarkGoodsReturnedModal] = useState(false)
 
   const prfId = params?.id ? parseInt(params.id as string) : null
 
@@ -814,6 +821,27 @@ export default function PRFViewPage() {
                 </Button>
               </>
             )}
+
+            {/* Reversal Buttons */}
+            {canReversePRF(prf.status) && !(prf as any).is_reversed && (
+              <Button
+                onClick={() => setShowReversalModal(true)}
+                className="bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reverse PRF
+              </Button>
+            )}
+
+            {(prf as any).is_reversed && !(prf as any).goods_returned && requiresGoodsReturn(prf.status, prf.goods_issued) && (
+              <Button
+                onClick={() => setShowMarkGoodsReturnedModal(true)}
+                className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+              >
+                <PackageCheck className="w-4 h-4" />
+                Mark Goods Returned
+              </Button>
+            )}
           </div>
         </div>
 
@@ -930,6 +958,77 @@ export default function PRFViewPage() {
 
               </div>
             </div>
+
+            {/* Reversal Information (if reversed) */}
+            {(prf as any).is_reversed && (
+              <div className="mb-8">
+                <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <RotateCcw className="w-6 h-6 text-orange-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-orange-900 mb-3">PRF Reversed</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-orange-700 font-semibold">Reversed By:</span>
+                          <span className="ml-2 text-orange-900">{(prf as any).reversed_by_name || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-orange-700 font-semibold">Reversed At:</span>
+                          <span className="ml-2 text-orange-900">
+                            {(prf as any).reversed_at ? formatDateTime((prf as any).reversed_at) : 'N/A'}
+                          </span>
+                        </div>
+                        <div className="md:col-span-2">
+                          <span className="text-orange-700 font-semibold">Reason:</span>
+                          <p className="mt-1 text-orange-900">{(prf as any).reversal_reason || 'No reason provided'}</p>
+                        </div>
+                        {(prf as any).reversal_notes && (
+                          <div className="md:col-span-2">
+                            <span className="text-orange-700 font-semibold">Notes:</span>
+                            <p className="mt-1 text-orange-900 whitespace-pre-wrap">{(prf as any).reversal_notes}</p>
+                          </div>
+                        )}
+                        {requiresGoodsReturn(prf.status, prf.goods_issued) && (
+                          <div className="md:col-span-2 mt-2">
+                            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+                              (prf as any).goods_returned
+                                ? 'bg-green-100 border border-green-300'
+                                : 'bg-yellow-100 border border-yellow-300'
+                            }`}>
+                              <PackageCheck className={`w-5 h-5 ${
+                                (prf as any).goods_returned ? 'text-green-700' : 'text-yellow-700'
+                              }`} />
+                              <div>
+                                <span className={`font-semibold ${
+                                  (prf as any).goods_returned ? 'text-green-900' : 'text-yellow-900'
+                                }`}>
+                                  Goods Return Status:
+                                </span>
+                                <span className={`ml-2 ${
+                                  (prf as any).goods_returned ? 'text-green-900' : 'text-yellow-900'
+                                }`}>
+                                  {(prf as any).goods_returned ? 'Returned' : 'Awaiting Return'}
+                                </span>
+                                {(prf as any).goods_returned && (prf as any).goods_return_date && (
+                                  <span className="ml-2 text-green-800 text-xs">
+                                    ({formatDateTime((prf as any).goods_return_date)})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {(prf as any).goods_return_notes && (
+                              <p className="mt-2 text-sm text-orange-800 italic">{(prf as any).goods_return_notes}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Items & Services Section */}
             <div className="mb-8">
@@ -1132,6 +1231,20 @@ export default function PRFViewPage() {
             </div>
           </div>
         )}
+
+        {/* Reversal Modal */}
+        <PRFReversalModal
+          prf={prf}
+          isOpen={showReversalModal}
+          onClose={() => setShowReversalModal(false)}
+        />
+
+        {/* Mark Goods Returned Modal */}
+        <MarkGoodsReturnedModal
+          prf={prf}
+          isOpen={showMarkGoodsReturnedModal}
+          onClose={() => setShowMarkGoodsReturnedModal(false)}
+        />
       </div>
     </AppLayout>
   )
