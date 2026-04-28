@@ -15,6 +15,8 @@ import apiClient from '@/lib/apiClient'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { PRF, Product, Customer } from '@/types/api'
+import PRFReversalModal from '@/components/orders/PRFReversalModal'
+import { canReversePRF } from '@/types/reversals'
 import {
   Plus,
   Search,
@@ -36,6 +38,7 @@ import {
   Send,
   Check,
   Ban,
+  RotateCcw,
 } from 'lucide-react'
 
 const getStatusIcon = (status: string) => {
@@ -247,6 +250,8 @@ export default function PRFPage() {
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve')
   const [rejectionReason, setRejectionReason] = useState('')
   const [selectedPRF, setSelectedPRF] = useState<PRF | null>(null)
+  const [showReversalModal, setShowReversalModal] = useState(false)
+  const [prfToReverse, setPrfToReverse] = useState<PRF | null>(null)
   const [formData, setFormData] = useState<PRFFormData>(initialFormData)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   // Searchable dropdown state
@@ -1015,6 +1020,11 @@ export default function PRFPage() {
     setShowDeleteModal(true)
   }
 
+  const handleReverse = (prf: PRF) => {
+    setPrfToReverse(prf)
+    setShowReversalModal(true)
+  }
+
   const handleSubmit = (prf: PRF) => {
     submitMutation.mutate(prf.id)
   }
@@ -1477,6 +1487,16 @@ export default function PRFPage() {
                                   <Ban className="w-4 h-4 text-red-500" />
                                 </Button>
                               </>
+                            )}
+                            {canReversePRF(prf.status) && !(prf as any).is_reversed && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleReverse(prf)}
+                                title="Reverse PRF"
+                              >
+                                <RotateCcw className="w-4 h-4 text-orange-600" />
+                              </Button>
                             )}
                           </div>
                         </td>
@@ -2091,6 +2111,18 @@ export default function PRFPage() {
           isDeleting={bulkDeleteMutation.isPending}
           entityName="PRF"
         />
+
+        {/* PRF Reversal Modal */}
+        {prfToReverse && (
+          <PRFReversalModal
+            prf={prfToReverse}
+            isOpen={showReversalModal}
+            onClose={() => {
+              setShowReversalModal(false)
+              setPrfToReverse(null)
+            }}
+          />
+        )}
       </div>
     </AppLayout>
   )
