@@ -39,7 +39,10 @@ import {
   Truck,
   Eye,
   RotateCcw,
-  PackageCheck
+  PackageCheck,
+  FileText as FileTextIcon,
+  ChevronDown,
+  MoreVertical
 } from 'lucide-react'
 
 // Helper functions for localStorage management (same as in main PRF page)
@@ -103,6 +106,7 @@ export default function PRFViewPage() {
   const [rejectionReason, setRejectionReason] = useState('')
   const [showReversalModal, setShowReversalModal] = useState(false)
   const [showMarkGoodsReturnedModal, setShowMarkGoodsReturnedModal] = useState(false)
+  const [showDocumentsMenu, setShowDocumentsMenu] = useState(false)
 
   const prfId = params?.id ? parseInt(params.id as string) : null
 
@@ -695,58 +699,105 @@ export default function PRFViewPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button onClick={handlePrint} variant="outline" className="flex items-center gap-2">
-              <Printer className="w-4 h-4" />
-              Print
-            </Button>
-            <Button onClick={handleDownloadPDF} className="text-white flex items-center gap-2" style={{ backgroundColor: '#D4AF37' }} onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#B8941F'} onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = '#D4AF37'}>
-              <Download className="w-4 h-4" />
-              Download PDF
-            </Button>
+            {/* Documents Dropdown Menu */}
+            <div className="relative">
+              <Button
+                onClick={() => setShowDocumentsMenu(!showDocumentsMenu)}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <FileTextIcon className="w-4 h-4" />
+                Documents
+                <ChevronDown className="w-4 h-4" />
+              </Button>
 
-            {/* Invoice and Waybill Preview/Download Buttons */}
-            {(prf.status === 'approved' || prf.status === 'ready_for_issue' || prf.goods_issued) && (
-              <>
-                <Button
-                  onClick={handlePreviewInvoice}
-                  variant="outline"
-                  className="flex items-center gap-2 border-gold-500 text-gold-700 hover:bg-gold-50"
-                  style={{ borderColor: '#D4AF37', color: '#B8941F' }}
-                  title="Preview Invoice"
-                >
-                  <Eye className="w-4 h-4" />
-                  Preview Invoice
-                </Button>
-                <Button
-                  onClick={handleDownloadInvoice}
-                  variant="outline"
-                  className="flex items-center gap-2 border-green-500 text-green-700 hover:bg-green-50"
-                  title="Download Invoice"
-                >
-                  <Download className="w-4 h-4" />
-                  Download Invoice
-                </Button>
-                <Button
-                  onClick={handlePreviewWaybill}
-                  variant="outline"
-                  className="flex items-center gap-2 border-gold-500 text-gold-700 hover:bg-gold-50"
-                  style={{ borderColor: '#D4AF37', color: '#B8941F' }}
-                  title="Preview Waybill"
-                >
-                  <Eye className="w-4 h-4" />
-                  Preview Waybill
-                </Button>
-                <Button
-                  onClick={handleDownloadWaybill}
-                  variant="outline"
-                  className="flex items-center gap-2 border-blue-500 text-blue-700 hover:bg-blue-50"
-                  title="Download Waybill"
-                >
-                  <Download className="w-4 h-4" />
-                  Download Waybill
-                </Button>
-              </>
-            )}
+              {showDocumentsMenu && (
+                <>
+                  {/* Backdrop to close dropdown */}
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowDocumentsMenu(false)}
+                  />
+
+                  {/* Dropdown Menu */}
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                    <button
+                      onClick={() => {
+                        handlePrint()
+                        setShowDocumentsMenu(false)
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3 text-gray-700"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>Print PRF</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleDownloadPDF()
+                        setShowDocumentsMenu(false)
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3 text-gray-700"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download PDF</span>
+                    </button>
+
+                    {(prf.status === 'approved' || prf.status === 'ready_for_issue' || prf.goods_issued) && (
+                      <>
+                        <div className="border-t border-gray-200 my-1" />
+
+                        <button
+                          onClick={() => {
+                            handlePreviewInvoice()
+                            setShowDocumentsMenu(false)
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3 text-gray-700"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>Preview Invoice</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            handleDownloadInvoice()
+                            setShowDocumentsMenu(false)
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3 text-gray-700"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span>Download Invoice</span>
+                        </button>
+
+                        <div className="border-t border-gray-200 my-1" />
+
+                        <button
+                          onClick={() => {
+                            handlePreviewWaybill()
+                            setShowDocumentsMenu(false)
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3 text-gray-700"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>Preview Waybill</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            handleDownloadWaybill()
+                            setShowDocumentsMenu(false)
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3 text-gray-700"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span>Download Waybill</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Approval Workflow Buttons */}
             {prf.status === 'draft' && (
