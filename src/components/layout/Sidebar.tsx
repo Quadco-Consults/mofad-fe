@@ -173,6 +173,19 @@ const navigationSections = [
           { label: 'Inventory Analytics', href: '/reports/inventory', icon: BarChart3 },
         ],
       },
+      {
+        label: 'Incidents',
+        href: '/incidents',
+        icon: AlertTriangle,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+        children: [
+          { label: 'Leakages', href: '/incidents/leakages', icon: AlertTriangle },
+          { label: 'Damages', href: '/incidents/damages', icon: AlertTriangle },
+          { label: 'Supplier Returns', href: '/supplier-returns', icon: Package },
+          { label: 'Reversal/Return', href: '/accounts/reversals', icon: ArrowUpRight },
+        ],
+      },
     ]
   },
   {
@@ -219,18 +232,6 @@ const navigationSections = [
         icon: Users,
         color: 'from-gray-500 to-gray-600',
         roles: ADMIN_ROLES,
-      },
-      {
-        label: 'Incidents',
-        href: '/incidents',
-        icon: AlertTriangle,
-        color: 'from-gray-500 to-gray-600',
-        roles: ADMIN_ROLES,
-        children: [
-          { label: 'Leakages', href: '/incidents/leakages', icon: AlertTriangle },
-          { label: 'Damages', href: '/incidents/damages', icon: AlertTriangle },
-          { label: 'Reversal/Return', href: '/accounts/reversals', icon: ArrowUpRight },
-        ],
       },
       {
         label: 'Expenses',

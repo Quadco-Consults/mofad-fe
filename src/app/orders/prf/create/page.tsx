@@ -219,7 +219,11 @@ export default function CreateCustomerOrderPage() {
   })
 
   // Extract customers array from response
-  const customers = customersData?.results || (Array.isArray(customersData) ? customersData : [])
+  // Filter out stations client-side as temporary workaround until backend is deployed
+  const allCustomers = customersData?.results || (Array.isArray(customersData) ? customersData : [])
+  const customers = allCustomers.filter((customer: Customer) =>
+    !customer.customer_type_name?.toLowerCase().includes('station')
+  )
   const lubebays = lubebaysData?.results || (Array.isArray(lubebaysData) ? lubebaysData : [])
   const substores = substoresData?.results || (Array.isArray(substoresData) ? substoresData : [])
 
