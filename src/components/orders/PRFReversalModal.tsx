@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import apiClient from '@/lib/apiClient'
@@ -32,6 +32,21 @@ export default function PRFReversalModal({ prf, isOpen, onClose }: PRFReversalMo
   })
 
   const needsManagerApproval = requiresManagerApproval(prf.status)
+
+  // Fetch users with manager/admin roles for authorization dropdown
+  const { data: managers } = useQuery({
+    queryKey: ['users', 'managers'],
+    queryFn: async () => {
+      const response = await apiClient.get('/users/')
+      // Filter for users with admin or manager roles
+      return response.filter((user: any) =>
+        user.roles?.some((role: any) =>
+          role.name === 'admin' || role.name === 'manager'
+        )
+      )
+    },
+    enabled: needsManagerApproval,
+  })
 
   // Reversal mutation
   const reversalMutation = useMutation({
