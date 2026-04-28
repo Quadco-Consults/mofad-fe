@@ -174,17 +174,11 @@ const navigationSections = [
         ],
       },
       {
-        label: 'Incidents',
-        href: '/incidents',
-        icon: AlertTriangle,
+        label: 'Supplier Returns',
+        href: '/supplier-returns',
+        icon: Package,
         color: 'from-gray-500 to-gray-600',
         roles: ADMIN_ROLES,
-        children: [
-          { label: 'Leakages', href: '/incidents/leakages', icon: AlertTriangle },
-          { label: 'Damages', href: '/incidents/damages', icon: AlertTriangle },
-          { label: 'Supplier Returns', href: '/supplier-returns', icon: Package },
-          { label: 'Reversal/Return', href: '/accounts/reversals', icon: ArrowUpRight },
-        ],
       },
     ]
   },
