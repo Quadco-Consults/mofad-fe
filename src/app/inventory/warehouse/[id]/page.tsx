@@ -1418,7 +1418,7 @@ export default function WarehouseInventoryPage() {
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Upload Opening Stock</h3>
-                  <p className="text-sm text-gray-500 mt-1">Upload CSV file to initialize warehouse inventory</p>
+                  <p className="text-sm text-gray-500 mt-1">Upload CSV or Excel file to initialize warehouse inventory</p>
                 </div>
                 <button
                   onClick={() => {
@@ -1516,12 +1516,12 @@ export default function WarehouseInventoryPage() {
                   {/* File Upload */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select CSV File
+                      Select CSV or Excel File
                     </label>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
                       <input
                         type="file"
-                        accept=".csv"
+                        accept=".csv,.xlsx,.xls"
                         onChange={(e) => {
                           const file = e.target.files?.[0]
                           if (file) {
@@ -1537,10 +1537,10 @@ export default function WarehouseInventoryPage() {
                       >
                         <Upload className="h-12 w-12 text-gray-400 mb-2" />
                         <span className="text-sm text-gray-600">
-                          {uploadFile ? uploadFile.name : 'Click to select CSV file'}
+                          {uploadFile ? uploadFile.name : 'Click to select CSV or Excel file'}
                         </span>
                         <span className="text-xs text-gray-500 mt-1">
-                          or drag and drop
+                          Supports .csv, .xlsx, .xls formats
                         </span>
                       </label>
                     </div>

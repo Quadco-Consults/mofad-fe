@@ -58,11 +58,12 @@ export default function BulkUploadPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      if (file.name.endsWith('.csv')) {
+      const fileName = file.name.toLowerCase()
+      if (fileName.endsWith('.csv') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
         setSelectedFile(file)
         setUploadResult(null)
       } else {
-        alert('Please select a CSV file')
+        alert('Please select a CSV or Excel file (.csv, .xlsx, .xls)')
         event.target.value = ''
       }
     }
@@ -98,7 +99,7 @@ FILTER-AIR-001,Air Filter XYZ123,filter,castrol,,500.00,750.00,900.00`
         {/* Header */}
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold text-foreground">Bulk Upload Product Prices</h1>
-          <p className="text-muted-foreground">Upload a CSV file to update product prices in bulk</p>
+          <p className="text-muted-foreground">Upload a CSV or Excel file to update product prices in bulk</p>
         </div>
         {/* Instructions Card */}
         <Card>
@@ -167,7 +168,7 @@ FILTER-AIR-001,Air Filter XYZ123,filter,castrol,,500.00,750.00,900.00`
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.xlsx,.xls"
                   onChange={handleFileChange}
                   className="hidden"
                   id="file-upload"
@@ -178,10 +179,10 @@ FILTER-AIR-001,Air Filter XYZ123,filter,castrol,,500.00,750.00,900.00`
                 >
                   <FileText className="w-12 h-12 text-gray-400" />
                   <span className="text-sm font-medium text-gray-700">
-                    Click to select CSV file
+                    Click to select CSV or Excel file
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    or drag and drop
+                    Supports .csv, .xlsx, .xls formats
                   </span>
                 </label>
               </div>
