@@ -162,7 +162,7 @@ export default function ServiceProvidersPage() {
                     <th className="w-12 px-4 py-3">
                       <Checkbox
                         checked={selectedProviders.length === providers.length && providers.length > 0}
-                        onCheckedChange={toggleAll}
+                        onChange={toggleAll}
                       />
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provider Name</th>
@@ -185,7 +185,7 @@ export default function ServiceProvidersPage() {
                       <td className="px-4 py-3">
                         <Checkbox
                           checked={selectedProviders.includes(provider.id)}
-                          onCheckedChange={() => toggleProvider(provider.id)}
+                          onChange={() => toggleProvider(provider.id)}
                         />
                       </td>
                       <td className="px-6 py-3">

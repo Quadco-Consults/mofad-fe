@@ -112,12 +112,12 @@ export default function VehicleRegistryPage() {
             <p className="text-gray-600">Manage company vehicles and their details</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
+            <Button variant="outline" aria-label="Export vehicles list">
+              <Download className="w-4 h-4 mr-2" aria-hidden="true" />
               Export
             </Button>
-            <Button className="bg-mofad-green hover:bg-mofad-green/90 text-white">
-              <Plus className="w-4 h-4 mr-2" />
+            <Button className="bg-mofad-green hover:bg-mofad-green/90 text-white" aria-label="Add new vehicle">
+              <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
               Add Vehicle
             </Button>
           </div>
@@ -192,10 +192,11 @@ export default function VehicleRegistryPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-mofad-green focus:border-mofad-green"
+                  aria-label="Search vehicles"
                 />
               </div>
-              <Button variant="outline">
-                <Filter className="w-4 h-4 mr-2" />
+              <Button variant="outline" aria-label="Open filters">
+                <Filter className="w-4 h-4 mr-2" aria-hidden="true" />
                 Filters
               </Button>
             </div>
@@ -209,13 +210,13 @@ export default function VehicleRegistryPage() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full" role="table" aria-label="Vehicles list">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="w-12 px-4 py-3">
                       <Checkbox
                         checked={selectedVehicles.length === vehicles.length && vehicles.length > 0}
-                        onCheckedChange={toggleAll}
+                        onChange={toggleAll}
                       />
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -255,7 +256,7 @@ export default function VehicleRegistryPage() {
                       <td className="px-4 py-3">
                         <Checkbox
                           checked={selectedVehicles.includes(vehicle.id)}
-                          onCheckedChange={() => toggleVehicle(vehicle.id)}
+                          onChange={() => toggleVehicle(vehicle.id)}
                         />
                       </td>
                       <td className="px-6 py-3">
@@ -282,14 +283,14 @@ export default function VehicleRegistryPage() {
                       </td>
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="w-4 h-4" />
+                          <Button variant="ghost" size="sm" aria-label={`View ${vehicle.registration_number} details`}>
+                            <Eye className="w-4 h-4" aria-hidden="true" />
                           </Button>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="w-4 h-4" />
+                          <Button variant="ghost" size="sm" aria-label={`Edit ${vehicle.registration_number}`}>
+                            <Edit className="w-4 h-4" aria-hidden="true" />
                           </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="w-4 h-4 text-red-600" />
+                          <Button variant="ghost" size="sm" aria-label={`Delete ${vehicle.registration_number}`}>
+                            <Trash2 className="w-4 h-4 text-red-600" aria-hidden="true" />
                           </Button>
                         </div>
                       </td>

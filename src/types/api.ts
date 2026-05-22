@@ -368,6 +368,7 @@ export interface PRF {
   submitted_at?: string | null
   items?: PRFItem[]
   total_items?: number
+  goods_issued?: boolean
   // Additional fields for specific PRF types
   client_type?: string | null
   client_id?: number | null

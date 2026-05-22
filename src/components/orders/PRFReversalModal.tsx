@@ -150,7 +150,7 @@ export default function PRFReversalModal({ prf, isOpen, onClose }: PRFReversalMo
                 <ul className="text-sm text-yellow-800 list-disc list-inside mt-2 space-y-1">
                   <li>Cancel the PRF and change its status to "Cancelled"</li>
                   <li>Process refunds for any payments made</li>
-                  {requiresGoodsReturn(prf.status, prf.goods_issued) && (
+                  {requiresGoodsReturn(prf.status, prf.goods_issued ?? false) && (
                     <li className="font-semibold">Require physical return of goods to warehouse</li>
                   )}
                   {needsManagerApproval && (
@@ -179,7 +179,7 @@ export default function PRFReversalModal({ prf, isOpen, onClose }: PRFReversalMo
               </div>
               <div>
                 <span className="text-gray-600">Goods Issued:</span>
-                <span className="ml-2 font-medium text-gray-900">{prf.goods_issued ? 'Yes' : 'No'}</span>
+                <span className="ml-2 font-medium text-gray-900">{prf.goods_issued ?? false ? 'Yes' : 'No'}</span>
               </div>
             </div>
           </div>
@@ -246,7 +246,7 @@ export default function PRFReversalModal({ prf, isOpen, onClose }: PRFReversalMo
           </div>
 
           {/* Goods Return Notice */}
-          {requiresGoodsReturn(prf.status, prf.goods_issued) && (
+          {requiresGoodsReturn(prf.status, prf.goods_issued ?? false) && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex gap-3">
                 <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />

@@ -19,6 +19,8 @@ export interface CheckboxProps {
   id?: string
   /** Label text */
   label?: string
+  /** Accessible label for screen readers (required if no visible label) */
+  'aria-label'?: string
 }
 
 const sizeClasses = {
@@ -61,6 +63,7 @@ export function Checkbox({
   size = 'md',
   id,
   label,
+  'aria-label': ariaLabel,
 }: CheckboxProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -83,6 +86,7 @@ export function Checkbox({
       role="checkbox"
       aria-checked={indeterminate ? 'mixed' : checked}
       aria-disabled={disabled}
+      aria-label={ariaLabel}
       tabIndex={disabled ? -1 : 0}
       id={id}
       onClick={handleClick}

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useRouter, usePathname } from 'next/navigation'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
+import { SkipToContent } from '@/components/ui/SkipToContent'
 import { Loader2 } from 'lucide-react'
 import { saveLastVisitedPath } from '@/components/RouteTracker'
 
@@ -61,6 +62,9 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="h-screen flex bg-gray-50 overflow-hidden">
+      {/* Skip to main content for keyboard navigation */}
+      <SkipToContent />
+
       {/* Sidebar */}
       <Sidebar collapsed={sidebarCollapsed} />
 
@@ -70,7 +74,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <Header onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
         {/* Main Content - Clean & Simple */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
+        <main id="main-content" className="flex-1 overflow-y-auto bg-gray-50" role="main">
           <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
             {/* Content with subtle fade-in animation */}
             <div className="animate-fade-in">
