@@ -23,7 +23,11 @@ export interface User {
   email: string
   email_verified_at?: string
   phone?: string
-  role?: string
+
+  // Multi-role support (NEW)
+  roles?: string[]  // Array of role names
+  role?: string     // Primary role for backward compatibility
+
   department?: string
   employee_id?: string
   is_active?: boolean
@@ -48,7 +52,7 @@ export interface User {
 
   // Legacy Laravel fields (deprecated)
   permissions?: Permission[]
-  roles?: Role[]
+  legacy_roles?: Role[]  // Renamed to avoid conflict with new roles field
 }
 
 export interface Role {

@@ -607,6 +607,7 @@ class ApiClient {
       phone: string | null
       is_active: boolean
       role?: string
+      roles?: string[]  // Multi-role support
     }>('/auth/users/me/')
 
     return {
@@ -617,7 +618,7 @@ class ApiClient {
       created_at: '',
       updated_at: '',
       permissions: [],
-      roles: response.role ? [{ id: 0, name: response.role, guard_name: 'web' }] : [],
+      roles: response.roles || (response.role ? [response.role] : []),
     }
   }
 

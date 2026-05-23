@@ -18,7 +18,8 @@ interface User {
   last_name: string
   full_name: string
   phone: string | null
-  role: string
+  roles?: string[]  // Multi-role support (array of role names)
+  role?: string     // Primary role for backward compatibility
   department: number | null
   department_details?: {
     id: number
@@ -61,7 +62,7 @@ interface NewUserForm {
   first_name: string
   last_name: string
   phone: string
-  role: string
+  roles: string[]  // Multi-role support
   department: string
   employee_id: string
   send_welcome_email: boolean
@@ -74,7 +75,7 @@ const initialNewUserForm: NewUserForm = {
   first_name: '',
   last_name: '',
   phone: '',
-  role: 'user',
+  roles: [],  // Empty array for multi-role
   department: '',
   employee_id: '',
   send_welcome_email: true,
@@ -312,7 +313,7 @@ function UsersPage() {
       first_name: first_name,
       last_name: last_name,
       phone: user.phone || '',
-      role: user.role || '',
+      roles: user.roles || [],  // Multi-role support
       department: user.department,
       employee_id: user.employee_id || '',
       is_active: user.is_active,
@@ -752,9 +753,28 @@ function UsersPage() {
                         <div className="text-sm text-gray-900">{user.email}</div>
                       </td>
                       <td className="px-6 py-3">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {getRoleLabel(user.role)}
-                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {user.roles && user.roles.length > 0 ? (
+                            user.roles.map((roleName, index) => (
+                              <span
+                                key={index}
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  index === 0
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}
+                              >
+                                {getRoleLabel(roleName)}
+                              </span>
+                            ))
+                          ) : user.role ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              {getRoleLabel(user.role)}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400">No role</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-3">
                         <div className="text-sm text-gray-900">{user.department_details?.name || '-'}</div>
@@ -962,16 +982,26 @@ function UsersPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                      value={newUserForm.role}
-                      onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
-                    >
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Roles (Select multiple)</label>
+                    <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                       {availableRoles.map(role => (
-                        <option key={role.value} value={role.value}>{role.label}</option>
+                        <label key={role.value} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            checked={newUserForm.roles.includes(role.value)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setNewUserForm({ ...newUserForm, roles: [...newUserForm.roles, role.value] })
+                              } else {
+                                setNewUserForm({ ...newUserForm, roles: newUserForm.roles.filter(r => r !== role.value) })
+                              }
+                            }}
+                          />
+                          <span className="text-sm text-gray-700">{role.label}</span>
+                        </label>
                       ))}
-                    </select>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
@@ -1080,16 +1110,27 @@ function UsersPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                      value={editForm.role || ''}
-                      onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                    >
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Roles (Select multiple)</label>
+                    <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                       {availableRoles.map(role => (
-                        <option key={role.value} value={role.value}>{role.label}</option>
+                        <label key={role.value} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            checked={(editForm.roles || []).includes(role.value)}
+                            onChange={(e) => {
+                              const currentRoles = editForm.roles || []
+                              if (e.target.checked) {
+                                setEditForm({ ...editForm, roles: [...currentRoles, role.value] })
+                              } else {
+                                setEditForm({ ...editForm, roles: currentRoles.filter(r => r !== role.value) })
+                              }
+                            }}
+                          />
+                          <span className="text-sm text-gray-700">{role.label}</span>
+                        </label>
                       ))}
-                    </select>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>

@@ -21,7 +21,8 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   useEffect(() => {
     checkAuth()
-  }, [checkAuth])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount
 
   useEffect(() => {
     // Only check auth after Zustand has hydrated from localStorage

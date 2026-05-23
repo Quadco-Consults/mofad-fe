@@ -72,17 +72,16 @@ const navigation: NavItem[] = [
   },
 ]
 
-// Navigation sections based on MOFAD screenshot
+// Navigation sections - Reorganized into 3 main categories
 const navigationSections = [
   {
-    title: 'CORE OPERATIONS',
+    title: 'OPERATIONS',
     items: [
       {
         label: 'Orders',
         href: '/orders',
         icon: ShoppingCart,
         color: 'from-gray-500 to-gray-600',
-        // No role restriction - all authenticated users can see
         children: [
           { label: 'PRF - Purchase Requisition', href: '/orders/prf', icon: FileText },
           { label: 'PRO - Purchase Request', href: '/orders/pro', icon: ShoppingCart },
@@ -93,7 +92,6 @@ const navigationSections = [
         href: '/inventory/warehouse',
         icon: Warehouse,
         color: 'from-gray-500 to-gray-600',
-        // No role restriction - all authenticated users can see
         children: [
           { label: 'Warehouse Overview', href: '/inventory/warehouse', icon: Warehouse },
           { label: 'Stock Transfers', href: '/inventory/transfers', icon: Truck },
@@ -104,14 +102,12 @@ const navigationSections = [
         href: '/products',
         icon: Box,
         color: 'from-gray-500 to-gray-600',
-        // No role restriction - all authenticated users can see
       },
       {
         label: 'Lubebay',
         href: '/channels/lubebays',
         icon: Car,
         color: 'from-gray-500 to-gray-600',
-        // No role restriction - all authenticated users can see
         children: [
           { label: 'Lubebays', href: '/channels/lubebays', icon: Car },
           { label: 'All Lodgements', href: '/channels/lubebays/lodgements', icon: DollarSign },
@@ -123,7 +119,6 @@ const navigationSections = [
         href: '/channels/carwash',
         icon: Droplets,
         color: 'from-green-500 to-green-600',
-        // No role restriction - all authenticated users can see
         children: [
           { label: 'Car Washes', href: '/channels/carwash', icon: Droplets },
           { label: 'Expenses', href: '/channels/carwash/expenses', icon: Receipt },
@@ -134,35 +129,30 @@ const navigationSections = [
         href: '/customers',
         icon: Users,
         color: 'from-gray-500 to-gray-600',
-        // No role restriction - all authenticated users can see
       },
       {
         label: 'Suppliers',
         href: '/suppliers',
         icon: Building,
         color: 'from-gray-500 to-gray-600',
-        // No role restriction - all authenticated users can see
       },
       {
         label: 'Memo',
         href: '/admin/memo',
         icon: FileCheck,
         color: 'from-gray-500 to-gray-600',
-        // No role restriction - all authenticated users can see
       },
       {
         label: 'Lodgements',
         href: '/accounts/lodgements',
         icon: DollarSign,
         color: 'from-gray-500 to-gray-600',
-        // No role restriction - all authenticated users can see
       },
       {
         label: 'Reports',
         href: '/reports',
         icon: TrendingUp,
         color: 'from-green-500 to-green-600',
-        // No role restriction - all authenticated users can see
         children: [
           { label: 'Current Stock Report', href: '/reports/stock-report', icon: Package },
           { label: 'Financial Reports', href: '/reports/financial', icon: TrendingUp },
@@ -170,17 +160,10 @@ const navigationSections = [
           { label: 'Inventory Analytics', href: '/reports/inventory', icon: BarChart3 },
         ],
       },
-      {
-        label: 'Supplier Returns',
-        href: '/supplier-returns',
-        icon: Package,
-        color: 'from-gray-500 to-gray-600',
-        roles: ADMIN_ROLES,
-      },
     ]
   },
   {
-    title: 'FINANCE & ACCOUNTING',
+    title: 'FINANCE & ACCOUNTS',
     items: [
       {
         label: 'Finance (SAGE)',
@@ -210,19 +193,6 @@ const navigationSections = [
         href: '/accounts/lodgements',
         icon: DollarSign,
         color: 'from-gray-500 to-gray-600',
-        // No role restriction - all authenticated users can see
-      },
-    ]
-  },
-  {
-    title: 'OPERATIONS & HR',
-    items: [
-      {
-        label: 'Payroll Management',
-        href: '/hr/payroll',
-        icon: Users,
-        color: 'from-gray-500 to-gray-600',
-        roles: ADMIN_ROLES,
       },
       {
         label: 'Expenses',
@@ -231,11 +201,37 @@ const navigationSections = [
         color: 'from-gray-500 to-gray-600',
         roles: ['admin', 'manager', 'accountant'],
       },
+      {
+        label: 'Supplier Returns',
+        href: '/supplier-returns',
+        icon: Package,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+      },
     ]
   },
   {
-    title: 'ADMINISTRATION',
+    title: 'ADMIN & HR',
     items: [
+      {
+        label: 'User & Employee Management',
+        href: '/settings/users',
+        icon: Users,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+        children: [
+          { label: 'Users', href: '/settings/users', icon: Users },
+          { label: 'Roles and Permissions', href: '/settings/roles', icon: Shield },
+          { label: 'Departments', href: '/settings/departments', icon: Building2 },
+        ],
+      },
+      {
+        label: 'Payroll Management',
+        href: '/hr/payroll',
+        icon: Users,
+        color: 'from-gray-500 to-gray-600',
+        roles: ADMIN_ROLES,
+      },
       {
         label: 'Asset Management',
         href: '/admin/inventory-management',
@@ -274,30 +270,6 @@ const navigationSections = [
           { label: 'Preventive Maintenance', href: '/admin/maintenance/preventive', icon: Wrench },
           { label: 'Equipment History', href: '/admin/maintenance/history', icon: BookOpen },
           { label: 'Service Providers', href: '/admin/maintenance/providers', icon: Users },
-        ],
-      },
-      {
-        label: 'Memo',
-        href: '/admin/memo',
-        icon: FileCheck,
-        color: 'from-gray-500 to-gray-600',
-        // No role restriction - all authenticated users can see
-      },
-    ]
-  },
-  {
-    title: 'SYSTEM SETTINGS',
-    items: [
-      {
-        label: 'User & Employee Management',
-        href: '/settings/users',
-        icon: Users,
-        color: 'from-gray-500 to-gray-600',
-        roles: ADMIN_ROLES,
-        children: [
-          { label: 'Users', href: '/settings/users', icon: Users },
-          { label: 'Roles and Permissions', href: '/settings/roles', icon: Shield },
-          { label: 'Departments', href: '/settings/departments', icon: Building2 },
         ],
       },
       {
@@ -366,10 +338,18 @@ export function Sidebar({ collapsed }: SidebarProps) {
   // Get user role - handle different ways role might be stored
   const userRole = useMemo(() => {
     if (!user) return undefined
-    // Check if role is stored directly on user
+    // Check if roles is an array of strings (new multi-role system)
+    if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
+      const firstRole = user.roles[0]
+      // Return first role if it's a string
+      if (typeof firstRole === 'string') return firstRole
+      // Return role name if it's an object with name property
+      if (firstRole && typeof firstRole === 'object' && 'name' in firstRole) {
+        return (firstRole as any).name
+      }
+    }
+    // Check if role is stored directly on user (backward compatibility)
     if ((user as any).role) return (user as any).role
-    // Check if role is in roles array
-    if (user.roles && user.roles.length > 0) return user.roles[0].name
     return 'user' // Default to regular user
   }, [user])
 
@@ -418,7 +398,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
         }
       })
     })
-  }, [pathname, filteredNavigation, filteredNavigationSections])
+  }, [pathname]) // Only depend on pathname to avoid infinite loop
 
   // Scroll active item into view when pathname changes
   useEffect(() => {
