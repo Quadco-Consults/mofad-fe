@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { Eye, CheckCircle, XCircle, Plus, FileText, Download, RotateCcw, DollarSign, Calendar, User } from 'lucide-react'
+import { Eye, CheckCircle, XCircle, Plus, FileText, Download, RotateCcw, DollarSign, Calendar, User, X } from 'lucide-react'
 
 interface ReversalRecord {
   id: string
@@ -233,7 +233,15 @@ export default function ReversalsPage() {
         {/* Success Modal */}
         {showSuccessModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="relative bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+              <button
+                type="button"
+                onClick={() => setShowSuccessModal(false)}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
               <div className="text-center">
                 <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Approval</h3>
@@ -262,7 +270,15 @@ export default function ReversalsPage() {
         {/* Decline Modal */}
         {showDeclineModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="relative bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+              <button
+                type="button"
+                onClick={() => setShowDeclineModal(false)}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
               <div className="text-center">
                 <XCircle className="mx-auto h-16 w-16 text-red-500 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Decline</h3>

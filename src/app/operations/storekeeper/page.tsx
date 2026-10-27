@@ -27,7 +27,8 @@ import {
   Edit,
   RotateCcw,
   AlertTriangle,
-  Warehouse
+  Warehouse,
+  X
 } from 'lucide-react'
 
 interface StoreKeeperItem {
@@ -757,7 +758,15 @@ const StorekeeperPage = () => {
         {/* Success Modal */}
         {showSuccessModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 relative">
+              <button
+                type="button"
+                onClick={() => setShowSuccessModal(false)}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
               <div className="text-center">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-green-600" />

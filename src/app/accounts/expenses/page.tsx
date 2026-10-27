@@ -301,7 +301,18 @@ export default function ExpensesPage() {
       {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-8 text-center">
+          <div className="bg-white rounded-2xl max-w-md w-full p-8 text-center relative">
+            <button
+              type="button"
+              onClick={() => {
+                setShowSuccessModal(false)
+                setSelectedExpense(null)
+              }}
+              className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
@@ -325,7 +336,18 @@ export default function ExpensesPage() {
       {/* Decline Modal */}
       {showDeclineModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-8 text-center">
+          <div className="bg-white rounded-2xl max-w-md w-full p-8 text-center relative">
+            <button
+              type="button"
+              onClick={() => {
+                setShowDeclineModal(false)
+                setSelectedExpense(null)
+              }}
+              className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <XCircle className="w-8 h-8 text-red-600" />
             </div>

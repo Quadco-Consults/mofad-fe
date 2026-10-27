@@ -28,6 +28,7 @@ import {
   Phone,
   Mail,
   ClipboardList,
+  X,
 } from 'lucide-react'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
@@ -1105,8 +1106,19 @@ export default function MemoDetailPage() {
         {/* Modals */}
         {showRejectModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold mb-4">Reject Memo</h3>
+            <div className="relative bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRejectModal(false)
+                  setRejectionReason('')
+                }}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h3 className="text-lg font-semibold mb-4 pr-8">Reject Memo</h3>
               <textarea
                 className="w-full border border-gray-300 rounded-md p-3 mb-4"
                 rows={4}
@@ -1138,8 +1150,16 @@ export default function MemoDetailPage() {
 
         {showConfirmConvert && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold mb-4">Convert to PRO</h3>
+            <div className="relative bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <button
+                type="button"
+                onClick={() => setShowConfirmConvert(false)}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h3 className="text-lg font-semibold mb-4 pr-8">Convert to PRO</h3>
               <p className="text-gray-600 mb-4">
                 Are you sure you want to convert this memo to a Purchase Receipt Order (PRO)?
               </p>

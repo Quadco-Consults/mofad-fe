@@ -21,6 +21,7 @@ import {
   Send,
   Download,
   Image as ImageIcon,
+  X,
 } from 'lucide-react'
 import type {
   SupplierReturnNote,
@@ -636,8 +637,16 @@ function ApproveModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <h3 className="text-lg font-bold mb-4">Approve Supplier Return</h3>
+      <div className="relative bg-white rounded-lg p-6 max-w-md w-full">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <h3 className="text-lg font-bold mb-4 pr-8">Approve Supplier Return</h3>
         <p className="text-gray-600 mb-4">
           This will approve the return and generate a debit note. Are you sure?
         </p>
@@ -683,8 +692,16 @@ function RejectModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <h3 className="text-lg font-bold mb-4">Reject Supplier Return</h3>
+      <div className="relative bg-white rounded-lg p-6 max-w-md w-full">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <h3 className="text-lg font-bold mb-4 pr-8">Reject Supplier Return</h3>
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Rejection Reason <span className="text-red-500">*</span>
@@ -732,8 +749,16 @@ function PickupModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <h3 className="text-lg font-bold mb-4">Record Supplier Pickup</h3>
+      <div className="relative bg-white rounded-lg p-6 max-w-md w-full">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <h3 className="text-lg font-bold mb-4 pr-8">Record Supplier Pickup</h3>
         <div className="space-y-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -814,8 +839,16 @@ function ReplacementModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <h3 className="text-lg font-bold mb-4">Record Replacement Receipt</h3>
+      <div className="relative bg-white rounded-lg p-6 max-w-md w-full">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <h3 className="text-lg font-bold mb-4 pr-8">Record Replacement Receipt</h3>
         <div className="space-y-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -878,8 +911,16 @@ function RefundModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <h3 className="text-lg font-bold mb-4">Record Refund Receipt</h3>
+      <div className="relative bg-white rounded-lg p-6 max-w-md w-full">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <h3 className="text-lg font-bold mb-4 pr-8">Record Refund Receipt</h3>
         <div className="space-y-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

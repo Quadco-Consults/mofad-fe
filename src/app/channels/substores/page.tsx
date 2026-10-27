@@ -978,7 +978,18 @@ export default function SubstoresPage() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative">
+            <button
+              type="button"
+              onClick={() => {
+                setShowDeleteModal(false)
+                setSelectedSubstore(null)
+              }}
+              className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
             <div className="p-6">
               <h3 className="text-lg font-semibold mb-2">Delete Substore</h3>
               <p className="text-gray-600 mb-4">

@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Download,
   Printer,
+  X,
 } from 'lucide-react'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
@@ -1005,8 +1006,16 @@ export default function PaymentVoucherDetailPage() {
       {/* Reject Modal */}
       {showRejectModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-4">Reject Payment Voucher</h3>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+            <button
+              type="button"
+              onClick={() => setShowRejectModal(false)}
+              className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h3 className="text-lg font-bold mb-4 pr-8">Reject Payment Voucher</h3>
             <textarea
               className="w-full border border-gray-300 rounded-md p-3 mb-4"
               rows={4}
@@ -1033,8 +1042,16 @@ export default function PaymentVoucherDetailPage() {
       {/* Confirm Payment Modal */}
       {showConfirmPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-4">Confirm Payment</h3>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+            <button
+              type="button"
+              onClick={() => setShowConfirmPaymentModal(false)}
+              className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h3 className="text-lg font-bold mb-4 pr-8">Confirm Payment</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Payment Reference *</label>

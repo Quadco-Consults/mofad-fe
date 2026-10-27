@@ -15,12 +15,34 @@ interface Permission {
   id: number
   name: string
   codename: string
+  action: string
+}
+
+interface SubmodulePermission {
+  submodule: string
+  submodule_label: string
+  permissions: Permission[]
 }
 
 interface ModulePermission {
   module: string
-  permissions: Permission[]
+  module_label: string
+  submodules: SubmodulePermission[]
 }
+
+// Every permission belonging to a module, flattened across its submodules.
+const modulePermissionIds = (module: ModulePermission): number[] =>
+  module.submodules.flatMap((submodule) => submodule.permissions.map((p) => p.id))
+
+const ACTION_LABELS: Record<string, string> = {
+  view: 'View',
+  add: 'Add',
+  change: 'Edit',
+  delete: 'Delete',
+}
+
+const actionLabel = (action: string) =>
+  ACTION_LABELS[action] || action.charAt(0).toUpperCase() + action.slice(1)
 
 interface Role {
   id: number
@@ -46,6 +68,100 @@ const initialNewRoleForm: NewRoleForm = {
   description: '',
   permissions: [],
 }
+
+const togglePermission = (permissionId: number, form: NewRoleForm, setForm: (form: NewRoleForm) => void) => {
+  const newPermissions = form.permissions.includes(permissionId)
+    ? form.permissions.filter(id => id !== permissionId)
+    : [...form.permissions, permissionId]
+  setForm({ ...form, permissions: newPermissions })
+}
+
+const togglePermissionIds = (ids: number[], form: NewRoleForm, setForm: (form: NewRoleForm) => void) => {
+  const allSelected = ids.every(id => form.permissions.includes(id))
+  const newPermissions = allSelected
+    ? form.permissions.filter(id => !ids.includes(id))
+    : Array.from(new Set([...form.permissions, ...ids]))
+  setForm({ ...form, permissions: newPermissions })
+}
+
+const toggleModulePermissions = (module: ModulePermission, form: NewRoleForm, setForm: (form: NewRoleForm) => void) =>
+  togglePermissionIds(modulePermissionIds(module), form, setForm)
+
+const toggleSubmodulePermissions = (submodule: SubmodulePermission, form: NewRoleForm, setForm: (form: NewRoleForm) => void) =>
+  togglePermissionIds(submodule.permissions.map(p => p.id), form, setForm)
+
+const PermissionsSelector = ({
+  allPermissions,
+  form,
+  setForm,
+}: {
+  allPermissions: ModulePermission[]
+  form: NewRoleForm
+  setForm: (form: NewRoleForm) => void
+}) => (
+  <div className="space-y-4 max-h-96 overflow-y-auto">
+    {allPermissions.map((module) => {
+      const modulePermIds = modulePermissionIds(module)
+      const allSelected = modulePermIds.every(id => form.permissions.includes(id))
+      const someSelected = modulePermIds.some(id => form.permissions.includes(id)) && !allSelected
+
+      return (
+        <div key={module.module} className="border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(el) => { if (el) el.indeterminate = someSelected }}
+                onChange={() => toggleModulePermissions(module, form, setForm)}
+                className="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-3"
+              />
+              <span className="font-medium text-gray-900">{module.module_label}</span>
+            </div>
+            <span className="text-xs text-gray-500">
+              {modulePermIds.filter(id => form.permissions.includes(id)).length}/{modulePermIds.length} selected
+            </span>
+          </div>
+          <div className="ml-6 space-y-2">
+            {module.submodules.map((submodule) => {
+              const subPermIds = submodule.permissions.map(p => p.id)
+              const subAllSelected = subPermIds.every(id => form.permissions.includes(id))
+              const subSomeSelected = subPermIds.some(id => form.permissions.includes(id)) && !subAllSelected
+
+              return (
+                <div key={submodule.submodule} className="flex items-center justify-between flex-wrap gap-2 py-1.5 border-b border-gray-100 last:border-0">
+                  <label className="flex items-center text-sm min-w-[140px]">
+                    <input
+                      type="checkbox"
+                      checked={subAllSelected}
+                      ref={(el) => { if (el) el.indeterminate = subSomeSelected }}
+                      onChange={() => toggleSubmodulePermissions(submodule, form, setForm)}
+                      className="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-2"
+                    />
+                    <span className="text-gray-800">{submodule.submodule_label}</span>
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {submodule.permissions.map((permission) => (
+                      <label key={permission.id} className="flex items-center text-xs text-gray-600">
+                        <input
+                          type="checkbox"
+                          checked={form.permissions.includes(permission.id)}
+                          onChange={() => togglePermission(permission.id, form, setForm)}
+                          className="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-1"
+                        />
+                        {actionLabel(permission.action)}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )
+    })}
+  </div>
+)
 
 function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([])
@@ -208,9 +324,7 @@ function RolesPage() {
       const permissionIds: number[] = []
       if (detailedRole.permissions) {
         detailedRole.permissions.forEach((module: ModulePermission) => {
-          module.permissions.forEach((perm: Permission) => {
-            permissionIds.push(perm.id)
-          })
+          permissionIds.push(...modulePermissionIds(module))
         })
       }
 
@@ -303,77 +417,6 @@ function RolesPage() {
       setIsSaving(false)
     }
   }
-
-  const togglePermission = (permissionId: number, form: NewRoleForm, setForm: (form: NewRoleForm) => void) => {
-    const newPermissions = form.permissions.includes(permissionId)
-      ? form.permissions.filter(id => id !== permissionId)
-      : [...form.permissions, permissionId]
-    setForm({ ...form, permissions: newPermissions })
-  }
-
-  const toggleModulePermissions = (module: ModulePermission, form: NewRoleForm, setForm: (form: NewRoleForm) => void) => {
-    const modulePermIds = module.permissions.map(p => p.id)
-    const allSelected = modulePermIds.every(id => form.permissions.includes(id))
-
-    let newPermissions: number[]
-    if (allSelected) {
-      // Deselect all module permissions
-      newPermissions = form.permissions.filter(id => !modulePermIds.includes(id))
-    } else {
-      // Select all module permissions
-      newPermissions = Array.from(new Set([...form.permissions, ...modulePermIds]))
-    }
-    setForm({ ...form, permissions: newPermissions })
-  }
-
-  const PermissionsSelector = ({
-    form,
-    setForm,
-  }: {
-    form: NewRoleForm
-    setForm: (form: NewRoleForm) => void
-  }) => (
-    <div className="space-y-4 max-h-96 overflow-y-auto">
-      {allPermissions.map((module) => {
-        const modulePermIds = module.permissions.map(p => p.id)
-        const allSelected = modulePermIds.every(id => form.permissions.includes(id))
-        const someSelected = modulePermIds.some(id => form.permissions.includes(id)) && !allSelected
-
-        return (
-          <div key={module.module} className="border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  ref={(el) => { if (el) el.indeterminate = someSelected }}
-                  onChange={() => toggleModulePermissions(module, form, setForm)}
-                  className="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-3"
-                />
-                <span className="font-medium text-gray-900 capitalize">{module.module.replace('_', ' ')}</span>
-              </div>
-              <span className="text-xs text-gray-500">
-                {modulePermIds.filter(id => form.permissions.includes(id)).length}/{module.permissions.length} selected
-              </span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 ml-6">
-              {module.permissions.map((permission) => (
-                <label key={permission.id} className="flex items-center text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.permissions.includes(permission.id)}
-                    onChange={() => togglePermission(permission.id, form, setForm)}
-                    className="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-2"
-                  />
-                  <span className="text-gray-700">{permission.name}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
 
   return (
     <AppLayout>
@@ -644,8 +687,19 @@ function RolesPage() {
         {/* Add Role Modal */}
         {showAddModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-bold mb-4">Create New Role</h3>
+            <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddModal(false)
+                  setNewRoleForm(initialNewRoleForm)
+                }}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h3 className="text-lg font-bold mb-4 pr-8">Create New Role</h3>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Role Name *</label>
@@ -670,7 +724,7 @@ function RolesPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
                   {allPermissions.length > 0 ? (
-                    <PermissionsSelector form={newRoleForm} setForm={setNewRoleForm} />
+                    <PermissionsSelector allPermissions={allPermissions} form={newRoleForm} setForm={setNewRoleForm} />
                   ) : (
                     <p className="text-gray-500 text-sm">Loading permissions...</p>
                   )}
@@ -701,8 +755,19 @@ function RolesPage() {
         {/* View Role Modal */}
         {showViewModal && selectedRole && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-bold mb-4">Role Details - {selectedRole.name}</h3>
+            <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowViewModal(false)
+                  setSelectedRole(null)
+                }}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h3 className="text-lg font-bold mb-4 pr-8">Role Details - {selectedRole.name}</h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -726,14 +791,21 @@ function RolesPage() {
                     <div className="space-y-3 max-h-64 overflow-y-auto">
                       {selectedRole.permissions.map((module) => (
                         <div key={module.module} className="bg-gray-50 rounded-lg p-3">
-                          <h4 className="font-medium text-gray-900 capitalize mb-2">
-                            {module.module.replace('_', ' ')}
+                          <h4 className="font-medium text-gray-900 mb-2">
+                            {module.module_label}
                           </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {module.permissions.map((perm) => (
-                              <span key={perm.id} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                {perm.name}
-                              </span>
+                          <div className="space-y-1.5">
+                            {module.submodules.map((submodule) => (
+                              <div key={submodule.submodule} className="flex items-center flex-wrap gap-2">
+                                <span className="text-xs text-gray-600 min-w-[120px]">{submodule.submodule_label}</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {submodule.permissions.map((perm) => (
+                                    <span key={perm.id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                      {actionLabel(perm.action)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -770,8 +842,20 @@ function RolesPage() {
         {/* Edit Role Modal */}
         {showEditModal && editForm && selectedRole && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-bold mb-4">Edit Role - {selectedRole.name}</h3>
+            <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditModal(false)
+                  setEditForm(null)
+                  setSelectedRole(null)
+                }}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h3 className="text-lg font-bold mb-4 pr-8">Edit Role - {selectedRole.name}</h3>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Role Name</label>
@@ -794,7 +878,7 @@ function RolesPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
                   {allPermissions.length > 0 ? (
-                    <PermissionsSelector form={editForm} setForm={setEditForm} />
+                    <PermissionsSelector allPermissions={allPermissions} form={editForm} setForm={setEditForm} />
                   ) : (
                     <p className="text-gray-500 text-sm">Loading permissions...</p>
                   )}

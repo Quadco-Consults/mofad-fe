@@ -17,7 +17,8 @@ import {
   FileText,
   Package,
   TrendingUp,
-  Filter as FilterIcon
+  Filter as FilterIcon,
+  X
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -257,8 +258,16 @@ export default function LubebayMonthlyInventoryPage() {
       {/* Initiate Modal */}
       {showInitiateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 relative">
+            <button
+              type="button"
+              onClick={() => setShowInitiateModal(false)}
+              className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 pr-8">
               Initiate Month-End Closing
             </h3>
 

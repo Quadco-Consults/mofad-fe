@@ -8,21 +8,24 @@ import { Sidebar } from './Sidebar'
 import { SkipToContent } from '@/components/ui/SkipToContent'
 import { Loader2 } from 'lucide-react'
 import { saveLastVisitedPath } from '@/components/RouteTracker'
+import { SessionGuard } from '@/components/SessionGuard'
 
 interface AppLayoutProps {
   children: React.ReactNode
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { isAuthenticated, isLoading, checkAuth, _hasHydrated } = useAuthStore()
+  const { isAuthenticated, isLoading, checkAuth, _hasHydrated, sessionExpired } = useAuthStore()
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
+  // Re-validate on every route change, not just on mount: clicking through to
+  // another page has to notice an expired session too.
   useEffect(() => {
     checkAuth()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only run once on mount
+  }, [pathname])
 
   useEffect(() => {
     // Only check auth after Zustand has hydrated from localStorage
@@ -31,9 +34,11 @@ export function AppLayout({ children }: AppLayoutProps) {
       if (pathname) {
         saveLastVisitedPath(pathname)
       }
-      router.push('/auth/login')
+      // Flag a lapsed session so the login page explains itself, rather than
+      // looking like a random sign-out.
+      router.replace(sessionExpired ? '/auth/login?session_expired=true' : '/auth/login')
     }
-  }, [isAuthenticated, isLoading, _hasHydrated, router, pathname])
+  }, [isAuthenticated, isLoading, _hasHydrated, router, pathname, sessionExpired])
 
   if (isLoading || !_hasHydrated) {
     return (
@@ -63,6 +68,9 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="h-screen flex bg-gray-50 overflow-hidden">
+      {/* Redirects to login the moment the session lapses */}
+      <SessionGuard />
+
       {/* Skip to main content for keyboard navigation */}
       <SkipToContent />
 

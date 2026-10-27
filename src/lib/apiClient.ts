@@ -1,6 +1,6 @@
 // Django API client for MOFAD backend integration
 // BUILD: 2026-04-03-17:00 - Force rebuild to fix stock transactions
-import { LoginForm, User } from '../types'
+import { LoginForm, User, AccountStats } from '../types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
 console.log('[API Client v2.0] Base URL:', API_BASE_URL)
@@ -143,6 +143,332 @@ export interface ApprovalConfiguration {
   }>
 }
 
+// =============================================================================
+// HR MODULE TYPES
+// =============================================================================
+
+/**
+ * List endpoints come back as { paginator, results } once `request()` has
+ * unwrapped the { status, message, data } envelope. `count` is kept as a
+ * fallback for endpoints that page differently.
+ */
+export interface PaginatedHrResponse<T> {
+  paginator?: {
+    count: number
+    page: number
+    page_size: number
+    total_pages: number
+    next: string | null
+    next_page_number: number | null
+    previous: string | null
+    previous_page_number: number | null
+  }
+  count?: number
+  results: T[]
+}
+
+export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'intern' | 'casual'
+
+export type EmploymentStatus =
+  | 'active'
+  | 'on_leave'
+  | 'suspended'
+  | 'terminated'
+  | 'resigned'
+
+export type PayrollStatus =
+  | 'draft'
+  | 'pending_approval'
+  | 'approved'
+  | 'paid'
+  | 'cancelled'
+
+export interface Employee {
+  id: number
+  employee_number: string
+  user: number
+  user_name: string | null
+  user_email: string | null
+  user_phone: string | null
+  department: string | null
+  position: string
+  employment_type: EmploymentType
+  employment_type_display: string
+  employment_status: EmploymentStatus
+  employment_status_display: string
+  hire_date: string
+  confirmation_date: string | null
+  termination_date?: string | null
+  manager: number | null
+  manager_name: string | null
+  personal_email?: string
+  emergency_contact_name?: string
+  emergency_contact_phone?: string
+  emergency_contact_relationship?: string
+  address?: string
+  city?: string
+  state?: string
+  bank_name?: string
+  bank_account_number?: string
+  bank_account_name?: string
+  notes?: string
+  current_compensation?: {
+    id: number
+    effective_from: string
+    basic_salary: string
+    gross_monthly_salary: string
+  } | null
+  created_datetime: string
+  created_by?: number | null
+  created_by_name?: string | null
+  updated_datetime?: string
+  updated_by?: number | null
+  updated_by_name?: string | null
+}
+
+export interface EmployeePayload {
+  user: number
+  position: string
+  hire_date: string
+  employment_type?: EmploymentType
+  employment_status?: EmploymentStatus
+  confirmation_date?: string | null
+  termination_date?: string | null
+  manager?: number | null
+  personal_email?: string
+  emergency_contact_name?: string
+  emergency_contact_phone?: string
+  emergency_contact_relationship?: string
+  address?: string
+  city?: string
+  state?: string
+  bank_name?: string
+  bank_account_number?: string
+  bank_account_name?: string
+  notes?: string
+}
+
+export interface EmployeeStats {
+  total_employees: number
+  active: number
+  on_leave: number
+  suspended: number
+  terminated: number
+  resigned: number
+  by_status: Record<string, number>
+  by_type: Record<string, number>
+  /** Active employees with no compensation template - they are skipped by payroll. */
+  without_compensation: number
+}
+
+export interface CompensationTemplate {
+  id: number
+  employee: number
+  employee_number: string
+  employee_name: string | null
+  employee_position: string
+  effective_from: string
+  effective_to: string | null
+  basic_salary: string
+  housing_allowance: string
+  transport_allowance: string
+  medical_allowance: string
+  lunch_allowance: string
+  utility_allowance: string
+  other_allowances: string
+  total_allowances: string
+  gross_monthly_salary: string
+  pension_rate: string
+  nhis_amount: string
+  nhf_rate: string
+  tax_relief: string
+  is_active: boolean
+  notes?: string
+  created_datetime: string
+  created_by?: number | null
+  created_by_name?: string | null
+  updated_datetime?: string
+}
+
+export interface CompensationPayload {
+  employee: number
+  effective_from: string
+  effective_to?: string | null
+  basic_salary: string | number
+  housing_allowance?: string | number
+  transport_allowance?: string | number
+  medical_allowance?: string | number
+  lunch_allowance?: string | number
+  utility_allowance?: string | number
+  other_allowances?: string | number
+  pension_rate?: string | number
+  nhis_amount?: string | number
+  nhf_rate?: string | number
+  tax_relief?: string | number
+  is_active?: boolean
+  notes?: string
+}
+
+export interface PayrollLine {
+  id: number
+  payroll: number
+  employee: number
+  employee_number: string
+  employee_name: string | null
+  employee_position: string
+  department: string | null
+  compensation_template: number
+  basic_salary: string
+  housing_allowance: string
+  transport_allowance: string
+  medical_allowance: string
+  lunch_allowance: string
+  utility_allowance: string
+  other_allowances: string
+  bonus: string
+  overtime: string
+  gross_pay: string
+  paye_tax: string
+  pension: string
+  nhis: string
+  nhf: string
+  loan_repayment: string
+  other_deductions: string
+  total_deductions: string
+  net_pay: string
+  days_worked: number
+  days_absent: number
+  late_days: number
+  bank_name: string | null
+  bank_account_number: string | null
+  has_payslip: boolean
+  notes?: string
+}
+
+export interface PayrollLineAdjustment {
+  bonus?: string | number
+  overtime?: string | number
+  loan_repayment?: string | number
+  other_deductions?: string | number
+  days_worked?: number
+  days_absent?: number
+  late_days?: number
+  notes?: string
+}
+
+export interface Payroll {
+  id: number
+  payroll_number: string
+  month: number
+  year: number
+  period_start: string
+  period_end: string
+  status: PayrollStatus
+  status_display: string
+  total_gross: string
+  total_deductions: string
+  total_net: string
+  employee_count: number
+  approved_by: number | null
+  approved_by_name: string | null
+  approved_at: string | null
+  paid_by?: number | null
+  paid_by_name?: string | null
+  paid_at: string | null
+  is_editable?: boolean
+  notes?: string
+  payroll_lines?: PayrollLine[]
+  /** Present only on the create response - active employees left out of the run. */
+  skipped_employees?: string[]
+  created_datetime: string
+  created_by: number | null
+  created_by_name: string | null
+}
+
+export interface PayrollStats {
+  total_payrolls: number
+  draft: number
+  pending_approval: number
+  approved: number
+  paid: number
+  cancelled: number
+  total_gross: string | number
+  total_deductions: string | number
+  total_net: string | number
+  latest_payroll: Payroll | null
+}
+
+export interface Payslip {
+  id: number
+  payslip_number: string
+  payroll_line: number
+  payroll: number
+  payroll_number: string
+  employee: number
+  employee_number: string
+  employee_name: string | null
+  month: number
+  year: number
+  gross_pay: string
+  total_deductions: string
+  net_pay: string
+  generated_at: string
+  pdf_file: string | null
+}
+
+export interface PayslipBreakdown {
+  payslip_number: string
+  generated_at: string
+  employee: {
+    id: number
+    employee_number: string
+    name: string
+    position: string
+    department: string | null
+    bank_name: string
+    bank_account_number: string
+    bank_account_name: string
+  }
+  period: {
+    payroll_number: string
+    month: number
+    year: number
+    period_start: string
+    period_end: string
+  }
+  attendance: {
+    days_worked: number
+    days_absent: number
+    late_days: number
+  }
+  earnings: { label: string; amount: string }[]
+  deductions: { label: string; amount: string }[]
+  gross_pay: string
+  total_deductions: string
+  net_pay: string
+}
+
+export const EMPLOYMENT_TYPE_OPTIONS: { value: EmploymentType; label: string }[] = [
+  { value: 'full_time', label: 'Full Time' },
+  { value: 'part_time', label: 'Part Time' },
+  { value: 'contract', label: 'Contract' },
+  { value: 'intern', label: 'Intern' },
+  { value: 'casual', label: 'Casual' },
+]
+
+export const EMPLOYMENT_STATUS_OPTIONS: { value: EmploymentStatus; label: string }[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'on_leave', label: 'On Leave' },
+  { value: 'suspended', label: 'Suspended' },
+  { value: 'terminated', label: 'Terminated' },
+  { value: 'resigned', label: 'Resigned' },
+]
+
+export const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
 class ApiClient {
   private baseURL: string
   private authToken: string | null = null
@@ -173,14 +499,24 @@ class ApiClient {
       localStorage.removeItem('auth_user')
       // Also clear Zustand persisted state
       localStorage.removeItem('auth-storage')
+      // Also clear the middleware's auth cookie - without this, a stale
+      // cookie survives (its own 7-day expiry) after localStorage is wiped,
+      // causing middleware to think the user is still authenticated and
+      // bounce them between /auth/login and the protected route forever.
+      document.cookie = 'auth_token=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;'
     }
   }
 
   // Get headers with authentication
-  private getHeaders(): HeadersInit {
+  // `isFormData` omits Content-Type so the browser can set the multipart
+  // boundary itself - forcing application/json breaks file uploads.
+  private getHeaders(isFormData = false): HeadersInit {
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
       'Accept': 'application/json',
+    }
+
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json'
     }
 
     if (this.authToken) {
@@ -254,10 +590,12 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`
 
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
+
     const config: RequestInit = {
       ...options,
       headers: {
-        ...this.getHeaders(),
+        ...this.getHeaders(isFormData),
         ...options.headers,
       },
     }
@@ -291,6 +629,33 @@ class ApiClient {
       // If forbidden (403), check if user is authenticated
       if (response.status === 403) {
         const errorData = await response.json().catch(() => ({}))
+
+        // A dead token can surface as 403 rather than 401 whenever the endpoint
+        // resolves its auth challenge from a non-JWT authenticator. Treat it as
+        // an expired session, not a permission failure.
+        const isDeadToken =
+          errorData.code === 'token_not_valid' ||
+          (Array.isArray(errorData.data) &&
+            errorData.data.some((e: { code?: string }) => e?.code === 'token_not_valid'))
+
+        if (isDeadToken && retryOnUnauthorized && this.authToken) {
+          const refreshed = await this.tryRefreshToken()
+          if (refreshed) {
+            return this.request<T>(endpoint, options, false)
+          }
+
+          this.clearAuthToken()
+
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth/login?session_expired=true'
+            return new Promise(() => {}) as Promise<T>
+          }
+
+          throw {
+            message: 'Session expired. Please log in again.',
+            status: 401
+          } as ApiError
+        }
 
         if (!this.authToken) {
           // No token - redirect to login
@@ -552,7 +917,6 @@ class ApiClient {
   }
 
   async changePassword(oldPassword: string, newPassword: string): Promise<{ message: string }> {
-    // Note: This endpoint may need to be implemented in the backend
     return this.request<{ message: string }>('/auth/password/change/', {
       method: 'POST',
       body: JSON.stringify({
@@ -597,29 +961,96 @@ class ApiClient {
   }
 
   // User methods
-  // Use the /me endpoint to get current authenticated user
-  async getUser(): Promise<User> {
-    const response = await this.request<{
-      id: number
-      email: string
-      first_name: string
-      last_name: string
-      phone: string | null
-      is_active: boolean
-      role?: string
-      roles?: string[]  // Multi-role support
-    }>('/auth/users/me/')
-
+  // Use the /me endpoint to get current authenticated user.
+  // Maps the WHOLE payload - the profile screen needs avatar, signature,
+  // phone, department, bio and the flattened UserProfile address fields.
+  private mapUser(response: any): User {
     return {
       id: response.id,
-      name: `${response.first_name} ${response.last_name}`.trim(),
+      name: response.full_name || `${response.first_name || ''} ${response.last_name || ''}`.trim(),
+      first_name: response.first_name || '',
+      last_name: response.last_name || '',
+      full_name: response.full_name || '',
       email: response.email,
       email_verified_at: undefined,
-      created_at: '',
+      phone: response.phone || '',
+      department: response.department || '',
+      employee_id: response.employee_id || undefined,
+      is_active: response.is_active,
+      is_staff: response.is_staff,
+      is_superuser: response.is_superuser,
+      created_at: response.date_joined || '',
       updated_at: '',
+      date_joined: response.date_joined || undefined,
+      last_login_datetime: response.last_login_datetime || undefined,
+      avatar: response.avatar || undefined,
+      signature: response.signature || undefined,
+      bio: response.bio || '',
+      address: response.address ?? '',
+      city: response.city ?? '',
+      state: response.state ?? '',
+      country: response.country ?? '',
+      postal_code: response.postal_code ?? '',
+      position: response.position ?? '',
+      entity_access: response.entity_access,
       permissions: [],
+      permission_codenames: response.permissions || [],
       roles: response.roles || (response.role ? [response.role] : []),
+      role: response.role,
     }
+  }
+
+  async getUser(): Promise<User> {
+    const response = await this.request<any>('/auth/users/me/')
+    return this.mapUser(response)
+  }
+
+  // Update the signed-in user's own profile (PATCH /users/update-me/).
+  // Role/is_active/employee_id/department are read-only on this endpoint.
+  async updateMyProfile(data: Partial<{
+    first_name: string
+    last_name: string
+    email: string
+    phone: string
+    bio: string
+    address: string
+    city: string
+    state: string
+    country: string
+    postal_code: string
+    position: string
+  }>): Promise<User> {
+    const response = await this.request<any>('/auth/users/update-me/', {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+    return this.mapUser(response)
+  }
+
+  // Upload an avatar or signature image for the signed-in user.
+  async uploadMyProfileImage(field: 'avatar' | 'signature', file: File): Promise<User> {
+    const formData = new FormData()
+    formData.append(field, file)
+
+    const response = await this.request<any>('/auth/users/update-me/', {
+      method: 'PATCH',
+      body: formData
+    })
+    return this.mapUser(response)
+  }
+
+  // Clear the avatar or signature for the signed-in user.
+  async removeMyProfileImage(field: 'avatar' | 'signature'): Promise<User> {
+    const response = await this.request<any>('/auth/users/update-me/', {
+      method: 'PATCH',
+      body: JSON.stringify({ [field]: null })
+    })
+    return this.mapUser(response)
+  }
+
+  // Real account activity figures, derived from the audit trail.
+  async getMyAccountStats(): Promise<AccountStats> {
+    return this.request<AccountStats>('/auth/users/me/stats/')
   }
 
   // Helper method to extract user ID from JWT token
@@ -1056,6 +1487,7 @@ class ApiClient {
     last_name: string
     phone?: string
     role?: string
+    roles?: string[]
     department?: string
     employee_id?: string
     send_welcome_email?: boolean
@@ -1071,6 +1503,9 @@ class ApiClient {
     last_name?: string
     phone?: string
     role?: string
+    // Role names, e.g. ['Admin', 'storekeeper']. Maps to group membership on
+    // the backend; an unknown name is rejected with a 400 rather than ignored.
+    roles?: string[]
     department?: string
     employee_id?: string
     is_active?: boolean
@@ -5609,6 +6044,236 @@ class ApiClient {
     await this.request(`/lubebay-monthly-inventory-snapshots/${id}/`, {
       method: 'DELETE'
     })
+  }
+
+  // ========================================
+  // HR MODULE API METHODS
+  // ========================================
+
+  // --- Employees ---
+
+  async getEmployees(params?: {
+    search?: string
+    employment_status?: string
+    employment_type?: string
+    manager?: number | string
+    user__department?: string
+    ordering?: string
+    page?: number
+    size?: number
+  }): Promise<PaginatedHrResponse<Employee>> {
+    return this.get('/employees/', params)
+  }
+
+  async getEmployeeById(id: number | string): Promise<Employee> {
+    return this.request(`/employees/${id}/`)
+  }
+
+  async getActiveEmployees(params?: { search?: string; size?: number }): Promise<PaginatedHrResponse<Employee>> {
+    return this.get('/employees/active/', params)
+  }
+
+  async getEmployeeStats(): Promise<EmployeeStats> {
+    return this.request('/employees/stats/')
+  }
+
+  async createEmployee(data: EmployeePayload): Promise<Employee> {
+    return this.request('/employees/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async updateEmployee(id: number | string, data: Partial<EmployeePayload>): Promise<Employee> {
+    return this.request(`/employees/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async deleteEmployee(id: number | string): Promise<void> {
+    await this.request(`/employees/${id}/`, { method: 'DELETE' })
+  }
+
+  async terminateEmployee(id: number | string, data: {
+    termination_date: string
+    employment_status?: 'terminated' | 'resigned'
+    notes?: string
+  }): Promise<Employee> {
+    return this.request(`/employees/${id}/terminate/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async getEmployeeCompensation(id: number | string): Promise<CompensationTemplate[]> {
+    return this.request(`/employees/${id}/compensation/`)
+  }
+
+  async getEmployeePayrollHistory(id: number | string): Promise<PayrollLine[]> {
+    return this.request(`/employees/${id}/payroll-history/`)
+  }
+
+  // --- Compensation templates ---
+
+  async getCompensationTemplates(params?: {
+    search?: string
+    employee?: number | string
+    is_active?: boolean
+    ordering?: string
+    page?: number
+    size?: number
+  }): Promise<PaginatedHrResponse<CompensationTemplate>> {
+    return this.get('/compensation-templates/', params)
+  }
+
+  async getCompensationTemplateById(id: number | string): Promise<CompensationTemplate> {
+    return this.request(`/compensation-templates/${id}/`)
+  }
+
+  async createCompensationTemplate(data: CompensationPayload): Promise<CompensationTemplate> {
+    return this.request('/compensation-templates/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async updateCompensationTemplate(
+    id: number | string,
+    data: Partial<CompensationPayload>
+  ): Promise<CompensationTemplate> {
+    return this.request(`/compensation-templates/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async deleteCompensationTemplate(id: number | string): Promise<void> {
+    await this.request(`/compensation-templates/${id}/`, { method: 'DELETE' })
+  }
+
+  async deactivateCompensationTemplate(id: number | string): Promise<CompensationTemplate> {
+    return this.request(`/compensation-templates/${id}/deactivate/`, { method: 'POST' })
+  }
+
+  // --- Payroll ---
+
+  async getPayrolls(params?: {
+    search?: string
+    status?: string
+    month?: number
+    year?: number
+    ordering?: string
+    page?: number
+    size?: number
+  }): Promise<PaginatedHrResponse<Payroll>> {
+    return this.get('/payrolls/', params)
+  }
+
+  async getPayrollById(id: number | string): Promise<Payroll> {
+    return this.request(`/payrolls/${id}/`)
+  }
+
+  async getPayrollStats(): Promise<PayrollStats> {
+    return this.request('/payrolls/stats/')
+  }
+
+  /**
+   * Raise a draft batch. The response carries `skipped_employees` - active
+   * employees left out because they have no compensation template on file.
+   */
+  async createPayroll(data: {
+    month: number
+    year: number
+    period_start?: string
+    period_end?: string
+    notes?: string
+  }): Promise<Payroll> {
+    return this.request('/payrolls/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async updatePayroll(id: number | string, data: { notes?: string }): Promise<Payroll> {
+    return this.request(`/payrolls/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async deletePayroll(id: number | string): Promise<void> {
+    await this.request(`/payrolls/${id}/`, { method: 'DELETE' })
+  }
+
+  async submitPayroll(id: number | string): Promise<Payroll> {
+    return this.request(`/payrolls/${id}/submit/`, { method: 'POST' })
+  }
+
+  async approvePayroll(id: number | string): Promise<Payroll> {
+    return this.request(`/payrolls/${id}/approve/`, { method: 'POST' })
+  }
+
+  async rejectPayroll(id: number | string, reason: string): Promise<Payroll> {
+    return this.request(`/payrolls/${id}/reject/`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    })
+  }
+
+  async markPayrollPaid(id: number | string): Promise<Payroll> {
+    return this.request(`/payrolls/${id}/mark-paid/`, { method: 'POST' })
+  }
+
+  async generatePayslips(id: number | string): Promise<{ generated: number; payslips: Payslip[] }> {
+    return this.request(`/payrolls/${id}/generate-payslips/`, { method: 'POST' })
+  }
+
+  // --- Payroll lines ---
+
+  async getPayrollLines(params?: {
+    search?: string
+    payroll?: number | string
+    employee?: number | string
+    ordering?: string
+    page?: number
+    size?: number
+  }): Promise<PaginatedHrResponse<PayrollLine>> {
+    return this.get('/payroll-lines/', params)
+  }
+
+  /**
+   * Adjust a line. Only bonus/overtime/loan/other deductions and attendance
+   * are writable, and only while the parent batch is still unapproved.
+   */
+  async updatePayrollLine(id: number | string, data: PayrollLineAdjustment): Promise<PayrollLine> {
+    return this.request(`/payroll-lines/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  // --- Payslips ---
+
+  async getPayslips(params?: {
+    search?: string
+    payroll_line__payroll?: number | string
+    payroll_line__employee?: number | string
+    payroll_line__payroll__month?: number
+    payroll_line__payroll__year?: number
+    ordering?: string
+    page?: number
+    size?: number
+  }): Promise<PaginatedHrResponse<Payslip>> {
+    return this.get('/payslips/', params)
+  }
+
+  async getPayslipById(id: number | string): Promise<Payslip> {
+    return this.request(`/payslips/${id}/`)
+  }
+
+  async getPayslipBreakdown(id: number | string): Promise<PayslipBreakdown> {
+    return this.request(`/payslips/${id}/breakdown/`)
   }
 }
 

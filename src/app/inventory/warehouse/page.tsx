@@ -566,7 +566,15 @@ export default function WarehouseListPage() {
         {/* Delete Confirmation Dialog */}
         {deletingWarehouse && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 relative">
+              <button
+                type="button"
+                onClick={() => setDeletingWarehouse(null)}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
               <div className="p-6">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">

@@ -16,7 +16,8 @@ import {
   Plus,
   MapPin,
   DollarSign,
-  Tag
+  Tag,
+  X
 } from 'lucide-react'
 
 interface ReturnedItem {
@@ -409,8 +410,19 @@ const ReturnsPage = () => {
         {/* Approve Modal */}
         {showApproveModal && selectedItem && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Approve Return Request</h3>
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowApproveModal(false)
+                  setSelectedItem(null)
+                }}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pr-8">Approve Return Request</h3>
               <p className="text-gray-600 mb-6">
                 Are you sure you want to approve the return request for <strong>{selectedItem.productName}</strong>?
                 This will allow the customer to return the items and process the refund.
@@ -459,8 +471,19 @@ const ReturnsPage = () => {
         {/* Decline Modal */}
         {showDeclineModal && selectedItem && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Decline Return Request</h3>
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeclineModal(false)
+                  setSelectedItem(null)
+                }}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pr-8">Decline Return Request</h3>
               <p className="text-gray-600 mb-6">
                 Are you sure you want to decline the return request for <strong>{selectedItem.productName}</strong>?
                 Please provide a reason for declining this return.
@@ -494,8 +517,19 @@ const ReturnsPage = () => {
         {/* Process Modal */}
         {showProcessModal && selectedItem && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Process Return</h3>
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowProcessModal(false)
+                  setSelectedItem(null)
+                }}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pr-8">Process Return</h3>
               <p className="text-gray-600 mb-6">
                 Mark this return as completed? This will process the refund and update inventory if the items are restockable.
               </p>

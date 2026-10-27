@@ -38,6 +38,17 @@ export interface User {
   avatar?: string
   signature?: string
   bio?: string
+  last_login_datetime?: string
+  is_superuser?: boolean
+
+  // Extended profile (UserProfile), flattened onto the user payload by
+  // UserSerializer so /users/me/ returns everything the profile screen needs.
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  country?: string | null
+  postal_code?: string | null
+  position?: string | null
 
   // Entity access (from UserSerializer)
   entity_access?: EntityAccessSummary
@@ -50,9 +61,26 @@ export interface User {
   accessible_substores?: AccessibleEntity[]
   accessible_lubebays?: AccessibleEntity[]
 
+  // "app_label.codename" strings, e.g. "inventory.view_warehouse" - drives
+  // permission-based UI gating (sidebar, action buttons). Superusers/admins
+  // get every permission that exists; other users get what their assigned
+  // role(s) grant.
+  permission_codenames?: string[]
+
   // Legacy Laravel fields (deprecated)
   permissions?: Permission[]
   legacy_roles?: Role[]  // Renamed to avoid conflict with new roles field
+}
+
+export interface AccountStats {
+  total_logins: number
+  last_login: string | null
+  date_joined: string
+  password_changed_at: string | null
+  role: string | null
+  role_display: string | null
+  department: string | null
+  permission_count: number
 }
 
 export interface Role {

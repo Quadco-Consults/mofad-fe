@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Plus, Edit, Trash2, Building2, Users, Loader2, RefreshCw, Calendar, UserCheck } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Building2, Users, Loader2, RefreshCw, Calendar, UserCheck, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { BulkActionBar } from '@/components/ui/BulkActionBar'
@@ -556,9 +556,21 @@ function DepartmentsPage() {
         {/* Create Department Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreateModal(false)
+                  setNewDepartmentForm(initialNewDepartmentForm)
+                  setError(null)
+                }}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
               <div className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Add New Department</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 pr-8">Add New Department</h2>
                 <form onSubmit={handleCreateDepartment} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -635,9 +647,22 @@ function DepartmentsPage() {
         {/* Edit Department Modal */}
         {showEditModal && selectedDepartment && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditModal(false)
+                  setSelectedDepartment(null)
+                  setEditDepartmentForm({})
+                  setError(null)
+                }}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
               <div className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Edit Department</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 pr-8">Edit Department</h2>
                 <form onSubmit={handleEditDepartment} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -701,7 +726,15 @@ function DepartmentsPage() {
         {/* View Department Modal */}
         {showViewModal && selectedDepartment && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+              <button
+                type="button"
+                onClick={() => setShowViewModal(false)}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-semibold text-gray-900">Department Details</h2>

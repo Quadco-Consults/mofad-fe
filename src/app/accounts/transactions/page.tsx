@@ -955,8 +955,19 @@ function AccountTransactionsPage() {
         {/* Delete Confirmation Modal */}
         {showDeleteModal && selectedPayment && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h3 className="text-lg font-bold mb-4">Delete Payment</h3>
+            <div className="bg-white rounded-lg p-6 w-full max-w-md relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setSelectedPayment(null)
+                }}
+                className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors z-10"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h3 className="text-lg font-bold mb-4 pr-8">Delete Payment</h3>
               <p className="text-gray-600 mb-4">
                 Are you sure you want to delete payment{' '}
                 <span className="font-medium">{selectedPayment.payment_number}</span>? This action

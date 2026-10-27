@@ -4,7 +4,10 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { useToast } from '@/components/ui/Toast'
 import { useAuthStore } from '@/store/authStore'
+import api from '@/lib/api-client'
+import { AccountStats } from '@/types'
 import {
   User,
   Mail,
@@ -27,7 +30,8 @@ import {
   Upload,
   Image as ImageIcon,
   Trash2,
-  RotateCw
+  RotateCw,
+  Loader2
 } from 'lucide-react'
 
 // Force dynamic rendering to avoid static generation issues
@@ -45,6 +49,84 @@ interface ProfileFormData {
   bio: string
 }
 
+const EMPTY_PROFILE: ProfileFormData = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  address: '',
+  city: '',
+  state: '',
+  country: '',
+  bio: '',
+}
+
+// "inventory.view_warehouse" -> { module: 'Inventory', label: 'View warehouse' }
+const MODULE_LABELS: Record<string, string> = {
+  authentication: 'Users & Access',
+  authorization: 'Roles & Permissions',
+  accounts: 'Accounts',
+  carwash: 'Car Wash',
+  core: 'System',
+  customers: 'Customers',
+  inventory: 'Inventory',
+  lubebays: 'Lubebays',
+  notifications: 'Notifications',
+  orders: 'Orders',
+  products: 'Products',
+  reports: 'Reports',
+  substores: 'Substores',
+  suppliers: 'Suppliers',
+}
+
+const humanizeModule = (appLabel: string) =>
+  MODULE_LABELS[appLabel] || appLabel.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
+
+const groupPermissions = (codenames: string[]) => {
+  const groups = new Map<string, number>()
+  codenames.forEach((codename) => {
+    const [appLabel] = codename.split('.')
+    if (!appLabel) return
+    const label = humanizeModule(appLabel)
+    groups.set(label, (groups.get(label) || 0) + 1)
+  })
+  return Array.from(groups.entries())
+    .map(([module, count]) => ({ module, count }))
+    .sort((a, b) => b.count - a.count || a.module.localeCompare(b.module))
+}
+
+const formatMonthYear = (value?: string | null) => {
+  if (!value) return 'Unknown'
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return 'Unknown'
+  return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+}
+
+const formatRelative = (value?: string | null) => {
+  if (!value) return 'Never'
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return 'Never'
+
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 60) return 'Just now'
+
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
+  const minutes = seconds / 60
+  const hours = minutes / 60
+  const days = hours / 24
+  const months = days / 30
+  const years = days / 365
+
+  if (minutes < 60) return rtf.format(-Math.floor(minutes), 'minute')
+  if (hours < 24) return rtf.format(-Math.floor(hours), 'hour')
+  if (days < 30) return rtf.format(-Math.floor(days), 'day')
+  if (months < 12) return rtf.format(-Math.floor(months), 'month')
+  return rtf.format(-Math.floor(years), 'year')
+}
+
+const titleCase = (value?: string | null) =>
+  value ? value.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : ''
+
 interface PasswordFormData {
   currentPassword: string
   newPassword: string
@@ -53,8 +135,13 @@ interface PasswordFormData {
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore()
+  const { addToast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [isSavingPassword, setIsSavingPassword] = useState(false)
+  const [accountStats, setAccountStats] = useState<AccountStats | null>(null)
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
@@ -73,36 +160,8 @@ export default function ProfilePage() {
   const [isUploadingSignature, setIsUploadingSignature] = useState(false)
   const signatureInputRef = useRef<HTMLInputElement>(null)
 
-  // Load existing avatar and signature on mount
-  useEffect(() => {
-    if (user?.avatar) {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
-      // If avatar is a relative path, prepend the base URL
-      const avatarUrl = user.avatar.startsWith('http') ? user.avatar : `${API_BASE_URL.replace('/api/v1', '')}${user.avatar}`
-      setProfileImage(avatarUrl)
-    }
-    if (user?.signature) {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
-      // If signature is a relative path, prepend the base URL
-      const signatureUrl = user.signature.startsWith('http') ? user.signature : `${API_BASE_URL.replace('/api/v1', '')}${user.signature}`
-      setSignatureImage(signatureUrl)
-    }
-  }, [user])
-
-  // Profile form
-  const profileForm = useForm<ProfileFormData>({
-    defaultValues: {
-      firstName: user?.name?.split(' ')[0] || 'John',
-      lastName: user?.name?.split(' ')[1] || 'Doe',
-      email: user?.email || 'john@mofadenergysolutions.com',
-      phone: '+234 803 555 0123',
-      address: '123 Business District, Victoria Island',
-      city: 'Lagos',
-      state: 'Lagos',
-      country: 'Nigeria',
-      bio: 'Experienced operations manager with expertise in petroleum distribution and supply chain management.'
-    }
-  })
+  // Profile form - starts blank and is populated from the API below.
+  const profileForm = useForm<ProfileFormData>({ defaultValues: EMPTY_PROFILE })
 
   // Password form
   const passwordForm = useForm<PasswordFormData>({
@@ -113,17 +172,117 @@ export default function ProfilePage() {
     }
   })
 
-  const handleProfileSave = (data: ProfileFormData) => {
-    console.log('Saving profile:', data)
-    // TODO: Integrate with API
-    setIsEditing(false)
+  // The serializer returns absolute URLs, but fall back to resolving a
+  // relative MEDIA path against the API host just in case.
+  const resolveMediaUrl = (path?: string | null) => {
+    if (!path) return null
+    if (path.startsWith('http') || path.startsWith('data:')) return path
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
+    return `${apiBase.replace('/api/v1', '')}${path}`
   }
 
-  const handlePasswordChange = (data: PasswordFormData) => {
-    console.log('Changing password')
-    // TODO: Integrate with API
-    setIsChangingPassword(false)
-    passwordForm.reset()
+  // Push a freshly-fetched user onto the form, the image previews and the
+  // auth store so the sidebar/header pick up the same values.
+  const applyUser = (fresh: any) => {
+    profileForm.reset({
+      firstName: fresh.first_name || '',
+      lastName: fresh.last_name || '',
+      email: fresh.email || '',
+      phone: fresh.phone || '',
+      address: fresh.address || '',
+      city: fresh.city || '',
+      state: fresh.state || '',
+      country: fresh.country || '',
+      bio: fresh.bio || '',
+    })
+    setProfileImage(resolveMediaUrl(fresh.avatar))
+    setSignatureImage(resolveMediaUrl(fresh.signature))
+    updateUser(fresh)
+  }
+
+  // Load the real profile + account statistics on mount
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const [fresh, stats] = await Promise.all([
+          api.getUser(),
+          api.getMyAccountStats().catch(() => null),
+        ])
+        if (cancelled) return
+        applyUser(fresh)
+        setAccountStats(stats)
+      } catch (error: any) {
+        if (cancelled) return
+        addToast({
+          type: 'error',
+          title: 'Could not load profile',
+          message: error?.message || 'Please refresh the page and try again.',
+        })
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleProfileSave = async (data: ProfileFormData) => {
+    setIsSavingProfile(true)
+    try {
+      const fresh = await api.updateMyProfile({
+        first_name: data.firstName.trim(),
+        last_name: data.lastName.trim(),
+        email: data.email.trim(),
+        phone: data.phone.trim(),
+        address: data.address.trim(),
+        city: data.city.trim(),
+        state: data.state.trim(),
+        country: data.country.trim(),
+        bio: data.bio.trim(),
+      })
+      applyUser(fresh)
+      setIsEditing(false)
+      addToast({ type: 'success', title: 'Profile updated', message: 'Your changes have been saved.' })
+    } catch (error: any) {
+      // The backend formatter already flattens field errors into `message`
+      // (e.g. "email: user with this email address already exists.").
+      addToast({
+        type: 'error',
+        title: 'Could not save profile',
+        message: error?.message || 'Please try again.',
+      })
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }
+
+  const handlePasswordChange = async (data: PasswordFormData) => {
+    if (data.newPassword !== data.confirmPassword) {
+      passwordForm.setError('confirmPassword', { message: 'Passwords do not match' })
+      return
+    }
+
+    setIsSavingPassword(true)
+    try {
+      await api.changePassword(data.currentPassword, data.newPassword)
+      setIsChangingPassword(false)
+      passwordForm.reset()
+      // Reflect the new "last changed" timestamp straight away.
+      setAccountStats(await api.getMyAccountStats().catch(() => accountStats))
+      addToast({ type: 'success', title: 'Password changed', message: 'Your password has been updated.' })
+    } catch (error: any) {
+      addToast({
+        type: 'error',
+        title: 'Could not change password',
+        message: error?.message || 'Check your current password and try again.',
+      })
+    } finally {
+      setIsSavingPassword(false)
+    }
   }
 
   const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
@@ -136,19 +295,20 @@ export default function ProfilePage() {
   // Profile image handlers
   const handleImageUpload = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image file')
+      addToast({ type: 'error', title: 'Invalid file', message: 'Please select a valid image file.' })
       return
     }
 
     if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      alert('File size must be less than 5MB')
+      addToast({ type: 'error', title: 'File too large', message: 'Profile pictures must be under 5MB.' })
       return
     }
 
+    const previousImage = profileImage
     setIsUploadingImage(true)
 
     try {
-      // Create preview URL
+      // Optimistic local preview while the upload is in flight
       const reader = new FileReader()
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -157,39 +317,18 @@ export default function ProfilePage() {
       }
       reader.readAsDataURL(file)
 
-      // Upload to server
-      const formData = new FormData()
-      formData.append('avatar', file)
+      const fresh = await api.uploadMyProfileImage('avatar', file)
+      applyUser(fresh)
 
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
-      const token = localStorage.getItem('auth_token')
-
-      const response = await fetch(`${API_BASE_URL}/users/update-me/`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to upload profile picture')
-      }
-
-      const data = await response.json()
-      console.log('Profile picture uploaded successfully:', data)
-
-      // Update auth store with new avatar URL
-      if (data.data?.avatar) {
-        updateUser({ avatar: data.data.avatar })
-      }
-
-      alert('Profile picture updated successfully!')
+      addToast({ type: 'success', title: 'Profile picture updated' })
       setShowImageUploadModal(false)
-    } catch (error) {
-      console.error('Upload failed:', error)
-      alert('Failed to upload profile picture. Please try again.')
-      setProfileImage(null) // Reset preview on error
+    } catch (error: any) {
+      setProfileImage(previousImage) // Restore the previous image on error
+      addToast({
+        type: 'error',
+        title: 'Upload failed',
+        message: error?.message || 'Could not upload your profile picture.',
+      })
     } finally {
       setIsUploadingImage(false)
     }
@@ -198,19 +337,19 @@ export default function ProfilePage() {
   // Signature upload handler
   const handleSignatureUpload = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image file')
+      addToast({ type: 'error', title: 'Invalid file', message: 'Please select a valid image file.' })
       return
     }
 
     if (file.size > 2 * 1024 * 1024) { // 2MB limit for signatures
-      alert('File size must be less than 2MB')
+      addToast({ type: 'error', title: 'File too large', message: 'Signatures must be under 2MB.' })
       return
     }
 
+    const previousSignature = signatureImage
     setIsUploadingSignature(true)
 
     try {
-      // Create preview URL
       const reader = new FileReader()
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -219,38 +358,21 @@ export default function ProfilePage() {
       }
       reader.readAsDataURL(file)
 
-      // Upload to server
-      const formData = new FormData()
-      formData.append('signature', file)
+      const fresh = await api.uploadMyProfileImage('signature', file)
+      applyUser(fresh)
 
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
-      const token = localStorage.getItem('auth_token')
-
-      const response = await fetch(`${API_BASE_URL}/users/update-me/`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData
+      addToast({
+        type: 'success',
+        title: 'Signature updated',
+        message: 'It will now appear on documents you sign.',
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to upload signature')
-      }
-
-      const data = await response.json()
-      console.log('Signature uploaded successfully:', data)
-
-      // Update auth store with new signature URL
-      if (data.data?.signature) {
-        updateUser({ signature: data.data.signature })
-      }
-
-      alert('Digital signature updated successfully! It will now appear on your signed documents.')
-    } catch (error) {
-      console.error('Signature upload failed:', error)
-      alert('Failed to upload signature. Please try again.')
-      setSignatureImage(null) // Reset preview on error
+    } catch (error: any) {
+      setSignatureImage(previousSignature)
+      addToast({
+        type: 'error',
+        title: 'Upload failed',
+        message: error?.message || 'Could not upload your signature.',
+      })
     } finally {
       setIsUploadingSignature(false)
     }
@@ -283,10 +405,30 @@ export default function ProfilePage() {
     setDragOver(false)
   }
 
-  const removeProfileImage = () => {
+  // Clearing an image has to reach the server too - wiping local state only
+  // made the picture reappear on the next page load.
+  const removeProfileImage = async () => {
+    const previousImage = profileImage
+    setIsUploadingImage(true)
     setProfileImage(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
+    }
+
+    try {
+      const fresh = await api.removeMyProfileImage('avatar')
+      applyUser(fresh)
+      addToast({ type: 'success', title: 'Profile picture removed' })
+      setShowImageUploadModal(false)
+    } catch (error: any) {
+      setProfileImage(previousImage)
+      addToast({
+        type: 'error',
+        title: 'Could not remove picture',
+        message: error?.message || 'Please try again.',
+      })
+    } finally {
+      setIsUploadingImage(false)
     }
   }
 
@@ -302,10 +444,27 @@ export default function ProfilePage() {
     }
   }
 
-  const removeSignature = () => {
+  const removeSignature = async () => {
+    const previousSignature = signatureImage
+    setIsUploadingSignature(true)
     setSignatureImage(null)
     if (signatureInputRef.current) {
       signatureInputRef.current.value = ''
+    }
+
+    try {
+      const fresh = await api.removeMyProfileImage('signature')
+      applyUser(fresh)
+      addToast({ type: 'success', title: 'Signature removed' })
+    } catch (error: any) {
+      setSignatureImage(previousSignature)
+      addToast({
+        type: 'error',
+        title: 'Could not remove signature',
+        message: error?.message || 'Please try again.',
+      })
+    } finally {
+      setIsUploadingSignature(false)
     }
   }
 
@@ -313,15 +472,17 @@ export default function ProfilePage() {
     signatureInputRef.current?.click()
   }
 
-  // Mock user data
-  const userStats = {
-    joinDate: 'January 2023',
-    lastLogin: '2 hours ago',
-    totalSessions: 1247,
-    role: 'Operations Manager',
-    department: 'Supply Chain',
-    permissions: ['Orders Management', 'Inventory Control', 'Customer Relations', 'Reports Access']
-  }
+  // Everything below comes from /auth/users/me/ and /auth/users/me/stats/
+  const displayName = [profileForm.watch('firstName'), profileForm.watch('lastName')]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+
+  const roleLabel = accountStats?.role_display || titleCase(user?.role) || 'No role assigned'
+  const departmentLabel = accountStats?.department || user?.department || 'No department'
+  const permissionGroups = groupPermissions(user?.permission_codenames || [])
+  const permissionCount = accountStats?.permission_count ?? (user?.permission_codenames?.length || 0)
+  const isVerified = Boolean(user?.is_active)
 
   return (
     <AppLayout>
@@ -384,22 +545,24 @@ export default function ProfilePage() {
             <div className="flex-1 space-y-2">
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl lg:text-4xl font-bold">
-                  {profileForm.getValues('firstName')} {profileForm.getValues('lastName')}
+                  {isLoading ? 'Loading...' : (displayName || user?.email || 'Your profile')}
                 </h1>
-                <div className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
-                  <UserCheck className="w-4 h-4" />
-                  <span className="text-sm font-medium">Verified</span>
-                </div>
+                {isVerified && (
+                  <div className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+                    <UserCheck className="w-4 h-4" />
+                    <span className="text-sm font-medium">Active</span>
+                  </div>
+                )}
               </div>
-              <p className="text-white/90 text-lg">{userStats.role} • {userStats.department}</p>
+              <p className="text-white/90 text-lg">{roleLabel} • {departmentLabel}</p>
               <div className="flex items-center gap-6 text-white/80 text-sm">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  <span>Joined {userStats.joinDate}</span>
+                  <span>Joined {formatMonthYear(accountStats?.date_joined || user?.date_joined)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4" />
-                  <span>Last active {userStats.lastLogin}</span>
+                  <span>Last active {formatRelative(accountStats?.last_login || user?.last_login_datetime)}</span>
                 </div>
               </div>
             </div>
@@ -409,7 +572,8 @@ export default function ProfilePage() {
               {!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-2 bg-white text-blue-600 px-6 py-3 rounded-xl font-medium hover:bg-white/90 transition-colors duration-200"
+                  disabled={isLoading}
+                  className="flex items-center gap-2 bg-white text-blue-600 px-6 py-3 rounded-xl font-medium hover:bg-white/90 transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <Edit3 className="w-5 h-5" />
                   Edit Profile
@@ -419,19 +583,25 @@ export default function ProfilePage() {
                   <button
                     onClick={() => {
                       setIsEditing(false)
+                      // reset() restores the last values loaded from the API,
+                      // since applyUser() re-seeds the form defaults.
                       profileForm.reset()
                     }}
-                    className="flex items-center gap-2 bg-white/20 text-white px-4 py-3 rounded-xl font-medium hover:bg-white/30 transition-colors duration-200"
+                    disabled={isSavingProfile}
+                    className="flex items-center gap-2 bg-white/20 text-white px-4 py-3 rounded-xl font-medium hover:bg-white/30 transition-colors duration-200 disabled:opacity-60"
                   >
                     <X className="w-5 h-5" />
                     Cancel
                   </button>
                   <button
                     onClick={profileForm.handleSubmit(handleProfileSave)}
-                    className="flex items-center gap-2 bg-white text-blue-600 px-6 py-3 rounded-xl font-medium hover:bg-white/90 transition-colors duration-200"
+                    disabled={isSavingProfile}
+                    className="flex items-center gap-2 bg-white text-blue-600 px-6 py-3 rounded-xl font-medium hover:bg-white/90 transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <Save className="w-5 h-5" />
-                    Save
+                    {isSavingProfile
+                      ? <Loader2 className="w-5 h-5 animate-spin" />
+                      : <Save className="w-5 h-5" />}
+                    {isSavingProfile ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               )}
@@ -572,7 +742,11 @@ export default function ProfilePage() {
                       </div>
                       <div>
                         <h3 className="font-medium text-gray-900">Password</h3>
-                        <p className="text-sm text-gray-500">Last changed 3 months ago</p>
+                        <p className="text-sm text-gray-500">
+                          {accountStats?.password_changed_at
+                            ? `Last changed ${formatRelative(accountStats.password_changed_at)}`
+                            : 'Never changed'}
+                        </p>
                       </div>
                     </div>
                     <button
@@ -636,22 +810,30 @@ export default function ProfilePage() {
                           {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                       </div>
+                      {passwordForm.formState.errors.confirmPassword && (
+                        <p className="text-sm text-red-600">
+                          {passwordForm.formState.errors.confirmPassword.message}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-3 pt-4">
                       <button
                         type="submit"
-                        className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors duration-200"
+                        disabled={isSavingPassword}
+                        className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        Update Password
+                        {isSavingPassword && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {isSavingPassword ? 'Updating...' : 'Update Password'}
                       </button>
                       <button
                         type="button"
+                        disabled={isSavingPassword}
                         onClick={() => {
                           setIsChangingPassword(false)
                           passwordForm.reset()
                         }}
-                        className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors duration-200"
+                        className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors duration-200 disabled:opacity-60"
                       >
                         Cancel
                       </button>
@@ -794,9 +976,11 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between p-3 bg-purple-50 rounded-xl">
                   <div className="flex items-center gap-3">
                     <Clock className="w-5 h-5 text-purple-600" />
-                    <span className="font-medium text-gray-700">Total Sessions</span>
+                    <span className="font-medium text-gray-700">Total Logins</span>
                   </div>
-                  <span className="text-lg font-bold text-purple-600">{userStats.totalSessions}</span>
+                  <span className="text-lg font-bold text-purple-600">
+                    {accountStats ? accountStats.total_logins.toLocaleString() : '—'}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
@@ -804,7 +988,9 @@ export default function ProfilePage() {
                     <Calendar className="w-5 h-5 text-blue-600" />
                     <span className="font-medium text-gray-700">Member Since</span>
                   </div>
-                  <span className="text-sm font-medium text-blue-600">{userStats.joinDate}</span>
+                  <span className="text-sm font-medium text-blue-600">
+                    {formatMonthYear(accountStats?.date_joined || user?.date_joined)}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
@@ -812,7 +998,17 @@ export default function ProfilePage() {
                     <Activity className="w-5 h-5 text-green-600" />
                     <span className="font-medium text-gray-700">Last Login</span>
                   </div>
-                  <span className="text-sm font-medium text-green-600">{userStats.lastLogin}</span>
+                  <span className="text-sm font-medium text-green-600">
+                    {formatRelative(accountStats?.last_login || user?.last_login_datetime)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-5 h-5 text-amber-600" />
+                    <span className="font-medium text-gray-700">Permissions</span>
+                  </div>
+                  <span className="text-lg font-bold text-amber-600">{permissionCount}</span>
                 </div>
               </CardContent>
             </Card>
@@ -832,21 +1028,34 @@ export default function ProfilePage() {
                       <Award className="w-5 h-5 text-amber-600" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-amber-900">{userStats.role}</h3>
-                      <p className="text-sm text-amber-700">{userStats.department}</p>
+                      <h3 className="font-bold text-amber-900">{roleLabel}</h3>
+                      <p className="text-sm text-amber-700">{departmentLabel}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="font-medium text-gray-700">Permissions</h4>
-                  <div className="space-y-2">
-                    {userStats.permissions.map((permission, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                        <UserCheck className="w-4 h-4 text-green-600" />
-                        <span className="text-sm text-gray-700">{permission}</span>
-                      </div>
-                    ))}
+                  <h4 className="font-medium text-gray-700">
+                    Module Access {permissionCount > 0 && (
+                      <span className="text-sm font-normal text-gray-500">({permissionCount} permissions)</span>
+                    )}
+                  </h4>
+                  <div className="space-y-2 max-h-72 overflow-y-auto">
+                    {permissionGroups.length > 0 ? (
+                      permissionGroups.map((group) => (
+                        <div key={group.module} className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <UserCheck className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            <span className="text-sm text-gray-700 truncate">{group.module}</span>
+                          </div>
+                          <span className="text-xs font-medium text-gray-500 flex-shrink-0">{group.count}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 p-2">
+                        {isLoading ? 'Loading permissions...' : 'No permissions assigned yet.'}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>

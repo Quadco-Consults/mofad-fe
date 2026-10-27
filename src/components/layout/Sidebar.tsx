@@ -42,7 +42,10 @@ import {
   Calendar,
   Building,
   BarChart3,
-  Droplets
+  Droplets,
+  Briefcase,
+  UserPlus,
+  Plus
 } from 'lucide-react'
 
 // Define user roles for access control
@@ -59,7 +62,15 @@ interface NavItem {
   badge?: string
   isNew?: boolean
   color?: string
-  roles?: UserRole[] // If not specified, all authenticated users can see it
+  // "app_label.codename" strings (e.g. "inventory.view_warehouse"). If set,
+  // the item is visible when the user holds ANY of these - takes priority
+  // over `roles` and is the preferred way to gate an item backed by a real
+  // model. Superusers/admins automatically hold every permission, so no
+  // separate bypass is needed here.
+  permissions?: string[]
+  // Legacy/fallback gating for items with no single backing model (e.g.
+  // planned modules like Finance, Fleet). Ignored when `permissions` is set.
+  roles?: UserRole[] // If neither is specified, all authenticated users can see it
 }
 
 const navigation: NavItem[] = [
@@ -72,8 +83,13 @@ const navigation: NavItem[] = [
   },
 ]
 
-// Navigation sections - Reorganized into 3 main categories
-const navigationSections = [
+interface NavSection {
+  title: string
+  items: NavItem[]
+}
+
+// Navigation sections - grouped into top-level categories
+const navigationSections: NavSection[] = [
   {
     title: 'OPERATIONS',
     items: [
@@ -82,9 +98,10 @@ const navigationSections = [
         href: '/orders',
         icon: ShoppingCart,
         color: 'from-gray-500 to-gray-600',
+        permissions: ['orders.view_prf', 'orders.view_pro'],
         children: [
-          { label: 'PRF - Purchase Requisition', href: '/orders/prf', icon: FileText },
-          { label: 'PRO - Purchase Request', href: '/orders/pro', icon: ShoppingCart },
+          { label: 'PRF - Purchase Requisition', href: '/orders/prf', icon: FileText, permissions: ['orders.view_prf'] },
+          { label: 'PRO - Purchase Request', href: '/orders/pro', icon: ShoppingCart, permissions: ['orders.view_pro'] },
         ],
       },
       {
@@ -92,9 +109,10 @@ const navigationSections = [
         href: '/inventory/warehouse',
         icon: Warehouse,
         color: 'from-gray-500 to-gray-600',
+        permissions: ['inventory.view_warehouse', 'inventory.view_stocktransfer'],
         children: [
-          { label: 'Warehouse Overview', href: '/inventory/warehouse', icon: Warehouse },
-          { label: 'Stock Transfers', href: '/inventory/transfers', icon: Truck },
+          { label: 'Warehouse Overview', href: '/inventory/warehouse', icon: Warehouse, permissions: ['inventory.view_warehouse'] },
+          { label: 'Stock Transfers', href: '/inventory/transfers', icon: Truck, permissions: ['inventory.view_stocktransfer'] },
         ],
       },
       {
@@ -102,16 +120,18 @@ const navigationSections = [
         href: '/products',
         icon: Box,
         color: 'from-gray-500 to-gray-600',
+        permissions: ['products.view_product'],
       },
       {
         label: 'Lubebay',
         href: '/channels/lubebays',
         icon: Car,
         color: 'from-gray-500 to-gray-600',
+        permissions: ['lubebays.view_lubebay', 'accounts.view_lodgement', 'lubebays.view_lubebayexpense'],
         children: [
-          { label: 'Lubebays', href: '/channels/lubebays', icon: Car },
-          { label: 'All Lodgements', href: '/channels/lubebays/lodgements', icon: DollarSign },
-          { label: 'All Expenses', href: '/channels/lubebays/expenses', icon: Receipt },
+          { label: 'Lubebays', href: '/channels/lubebays', icon: Car, permissions: ['lubebays.view_lubebay'] },
+          { label: 'All Lodgements', href: '/channels/lubebays/lodgements', icon: DollarSign, permissions: ['accounts.view_lodgement'] },
+          { label: 'All Expenses', href: '/channels/lubebays/expenses', icon: Receipt, permissions: ['lubebays.view_lubebayexpense'] },
         ],
       },
       {
@@ -119,9 +139,10 @@ const navigationSections = [
         href: '/channels/carwash',
         icon: Droplets,
         color: 'from-green-500 to-green-600',
+        permissions: ['carwash.view_carwash', 'carwash.view_carwashexpense'],
         children: [
-          { label: 'Car Washes', href: '/channels/carwash', icon: Droplets },
-          { label: 'Expenses', href: '/channels/carwash/expenses', icon: Receipt },
+          { label: 'Car Washes', href: '/channels/carwash', icon: Droplets, permissions: ['carwash.view_carwash'] },
+          { label: 'Expenses', href: '/channels/carwash/expenses', icon: Receipt, permissions: ['carwash.view_carwashexpense'] },
         ],
       },
       {
@@ -129,26 +150,32 @@ const navigationSections = [
         href: '/customers',
         icon: Users,
         color: 'from-gray-500 to-gray-600',
+        permissions: ['customers.view_customer'],
       },
       {
         label: 'Suppliers',
         href: '/suppliers',
         icon: Building,
         color: 'from-gray-500 to-gray-600',
+        permissions: ['suppliers.view_supplier'],
       },
       {
         label: 'Memo',
         href: '/admin/memo',
         icon: FileCheck,
         color: 'from-gray-500 to-gray-600',
+        permissions: ['orders.view_memo'],
       },
       {
         label: 'Lodgements',
         href: '/accounts/lodgements',
         icon: DollarSign,
         color: 'from-gray-500 to-gray-600',
+        permissions: ['accounts.view_lodgement'],
       },
       {
+        // No backing Django model - purely aggregated/computed views - so
+        // this stays visible to all authenticated users, same as today.
         label: 'Reports',
         href: '/reports',
         icon: TrendingUp,
@@ -186,20 +213,21 @@ const navigationSections = [
         href: '/accounts',
         icon: BookOpen,
         color: 'from-gray-500 to-gray-600',
-        roles: ['admin', 'manager', 'accountant'],
+        permissions: ['accounts.view_account'],
       },
       {
         label: 'Lodgements',
         href: '/accounts/lodgements',
         icon: DollarSign,
         color: 'from-gray-500 to-gray-600',
+        permissions: ['accounts.view_lodgement'],
       },
       {
         label: 'Expenses',
         href: '/accounts/expenses',
         icon: Receipt,
         color: 'from-gray-500 to-gray-600',
-        roles: ['admin', 'manager', 'accountant'],
+        permissions: ['accounts.view_expense'],
       },
       {
         label: 'Supplier Returns',
@@ -211,27 +239,50 @@ const navigationSections = [
     ]
   },
   {
-    title: 'ADMIN & HR',
+    title: 'HUMAN RESOURCES',
     items: [
       {
-        label: 'User & Employee Management',
-        href: '/settings/users',
+        label: 'HR Dashboard',
+        href: '/hr',
+        icon: Briefcase,
+        color: 'from-gray-500 to-gray-600',
+        permissions: ['hr.view_employee', 'hr.view_payroll'],
+      },
+      {
+        label: 'Employees',
+        href: '/hr/employees',
         icon: Users,
         color: 'from-gray-500 to-gray-600',
-        roles: ADMIN_ROLES,
+        permissions: ['hr.view_employee'],
         children: [
-          { label: 'Users', href: '/settings/users', icon: Users },
-          { label: 'Roles and Permissions', href: '/settings/roles', icon: Shield },
-          { label: 'Departments', href: '/settings/departments', icon: Building2 },
+          { label: 'All Employees', href: '/hr/employees', icon: Users, permissions: ['hr.view_employee'] },
+          { label: 'Add Employee', href: '/hr/employees/create', icon: UserPlus, permissions: ['hr.add_employee'] },
         ],
       },
       {
-        label: 'Payroll Management',
-        href: '/hr/payroll',
-        icon: Users,
+        label: 'Compensation',
+        href: '/hr/compensation',
+        icon: DollarSign,
         color: 'from-gray-500 to-gray-600',
-        roles: ADMIN_ROLES,
+        permissions: ['hr.view_compensationtemplate'],
       },
+      {
+        label: 'Payroll',
+        href: '/hr/payroll',
+        icon: Calculator,
+        color: 'from-gray-500 to-gray-600',
+        permissions: ['hr.view_payroll', 'hr.view_payslip'],
+        children: [
+          { label: 'All Payrolls', href: '/hr/payroll', icon: ClipboardList, permissions: ['hr.view_payroll'] },
+          { label: 'Run Payroll', href: '/hr/payroll/create', icon: Plus, permissions: ['hr.add_payroll'] },
+          { label: 'Payslips', href: '/hr/payslips', icon: FileText, permissions: ['hr.view_payslip'] },
+        ],
+      },
+    ]
+  },
+  {
+    title: 'ADMIN',
+    items: [
       {
         label: 'Asset Management',
         href: '/admin/inventory-management',
@@ -272,19 +323,45 @@ const navigationSections = [
           { label: 'Service Providers', href: '/admin/maintenance/providers', icon: Users },
         ],
       },
+    ]
+  },
+  {
+    title: 'SETTINGS',
+    items: [
+      {
+        label: 'User & Employee Management',
+        href: '/settings/users',
+        icon: Users,
+        color: 'from-gray-500 to-gray-600',
+        permissions: ['authentication.view_user', 'authorization.view_role'],
+        children: [
+          { label: 'Users', href: '/settings/users', icon: Users, permissions: ['authentication.view_user'] },
+          { label: 'Roles and Permissions', href: '/settings/roles', icon: Shield, permissions: ['authorization.view_role'] },
+          // No backing Django model for Department - keep the existing role gate.
+          { label: 'Departments', href: '/settings/departments', icon: Building2, roles: ADMIN_ROLES },
+        ],
+      },
       {
         label: 'System Configuration',
         href: '/settings/system',
         icon: Settings,
         color: 'from-gray-500 to-gray-600',
-        roles: ADMIN_ROLES,
+        permissions: [
+          'core.view_systemsettings',
+          'inventory.view_warehouse',
+          'core.view_state',
+          'core.view_location',
+          'inventory.view_lubebayservice',
+          'core.view_expensetype',
+          'core.view_auditlog',
+        ],
         children: [
-          { label: 'Warehouses', href: '/settings/warehouses', icon: Warehouse },
-          { label: 'States', href: '/settings/states', icon: Building2 },
-          { label: 'Locations', href: '/settings/locations', icon: MapPin },
-          { label: 'Lubebay Catalog', href: '/settings/lubebay-catalog', icon: Wrench },
-          { label: 'Expense Types', href: '/settings/expense-types', icon: Receipt },
-          { label: 'Audit Logs', href: '/settings/audit-logs', icon: ClipboardCheck },
+          { label: 'Warehouses', href: '/settings/warehouses', icon: Warehouse, permissions: ['inventory.view_warehouse'] },
+          { label: 'States', href: '/settings/states', icon: Building2, permissions: ['core.view_state'] },
+          { label: 'Locations', href: '/settings/locations', icon: MapPin, permissions: ['core.view_location'] },
+          { label: 'Lubebay Catalog', href: '/settings/lubebay-catalog', icon: Wrench, permissions: ['inventory.view_lubebayservice'] },
+          { label: 'Expense Types', href: '/settings/expense-types', icon: Receipt, permissions: ['core.view_expensetype'] },
+          { label: 'Audit Logs', href: '/settings/audit-logs', icon: ClipboardCheck, permissions: ['core.view_auditlog'] },
         ],
       },
     ]
@@ -295,37 +372,48 @@ interface SidebarProps {
   collapsed: boolean
 }
 
-// Helper function to check if user has access to a nav item
-const hasAccess = (item: NavItem, userRole: string | undefined): boolean => {
-  // If no roles specified, all authenticated users can access
+// Helper function to check if user has access to a nav item.
+// `permissions` (real "app_label.codename" strings) takes priority when set
+// - visible if the user holds ANY of them. Falls back to the legacy `roles`
+// gate for items with no single backing model. Items with neither are
+// visible to all authenticated users.
+const hasAccess = (item: NavItem, userRole: string | undefined, userPermissions: string[]): boolean => {
+  if (item.permissions && item.permissions.length > 0) {
+    return item.permissions.some(p => userPermissions.includes(p))
+  }
   if (!item.roles || item.roles.length === 0) {
     return true
   }
-  // Check if user's role is in the allowed roles
   return item.roles.includes(userRole as UserRole)
 }
 
-// Helper function to filter navigation based on user role
-const filterNavigation = (items: NavItem[], userRole: string | undefined): NavItem[] => {
-  return items
-    .filter(item => hasAccess(item, userRole))
-    .map(item => ({
-      ...item,
-      children: item.children ? filterNavigation(item.children, userRole) : undefined
-    }))
+// Filters a nav item list, recursing into children. A parent with a
+// children list is dropped unless it's independently accessible or at
+// least one child survives filtering - an expandable item with nothing
+// inside it isn't useful.
+const filterNavigation = (items: NavItem[], userRole: string | undefined, userPermissions: string[]): NavItem[] => {
+  return items.reduce<NavItem[]>((acc, item) => {
+    const filteredChildren = item.children
+      ? filterNavigation(item.children, userRole, userPermissions)
+      : undefined
+    const ownAccess = hasAccess(item, userRole, userPermissions)
+    const visible = item.children ? (ownAccess || (filteredChildren?.length ?? 0) > 0) : ownAccess
+
+    if (visible) {
+      acc.push({ ...item, children: filteredChildren })
+    }
+    return acc
+  }, [])
 }
 
-// Helper function to filter navigation sections based on user role
-const filterNavigationSections = (sections: any[], userRole: string | undefined) => {
-  return sections.map(section => ({
-    ...section,
-    items: section.items
-      .filter((item: NavItem) => hasAccess(item, userRole))
-      .map((item: NavItem) => ({
-        ...item,
-        children: item.children ? filterNavigation(item.children, userRole) : undefined
-      }))
-  })).filter(section => section.items.length > 0)
+// Helper function to filter navigation sections, dropping any section left with no items
+const filterNavigationSections = (sections: typeof navigationSections, userRole: string | undefined, userPermissions: string[]) => {
+  return sections
+    .map(section => ({
+      ...section,
+      items: filterNavigation(section.items, userRole, userPermissions),
+    }))
+    .filter(section => section.items.length > 0)
 }
 
 export function Sidebar({ collapsed }: SidebarProps) {
@@ -353,15 +441,17 @@ export function Sidebar({ collapsed }: SidebarProps) {
     return 'user' // Default to regular user
   }, [user])
 
-  // Filter navigation based on user role
-  const filteredNavigation = useMemo(() => {
-    return filterNavigation(navigation, userRole)
-  }, [userRole])
+  const userPermissions = useMemo(() => user?.permission_codenames || [], [user])
 
-  // Filter navigation sections based on user role
+  // Filter navigation based on user role/permissions
+  const filteredNavigation = useMemo(() => {
+    return filterNavigation(navigation, userRole, userPermissions)
+  }, [userRole, userPermissions])
+
+  // Filter navigation sections based on user role/permissions
   const filteredNavigationSections = useMemo(() => {
-    return filterNavigationSections(navigationSections, userRole)
-  }, [userRole])
+    return filterNavigationSections(navigationSections, userRole, userPermissions)
+  }, [userRole, userPermissions])
 
   const toggleExpanded = (href: string) => {
     setExpandedItems(prev =>

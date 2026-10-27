@@ -30,9 +30,16 @@ export function middleware(request: NextRequest) {
   const isPublicRoute = isRootPath || PUBLIC_ROUTES.some(route => route !== '/' && pathname.startsWith(route))
   const isAuthRoute = AUTH_ROUTES.some(route => pathname.startsWith(route))
 
-  // For now, check localStorage token (this will be replaced with cookie-based auth)
-  // Note: In a proper implementation, you should validate the token with your backend
+  // The auth cookie is written at login with the refresh token's expiry, so
+  // the browser drops it the moment the session becomes unrecoverable. That
+  // makes a simple presence check an accurate session check here, and it runs
+  // on every navigation - hard refresh, link click, or direct URL - so an
+  // expired user never reaches a protected page.
   const token = request.cookies.get('auth_token')
+
+  // Outlives the session, so its presence without an auth cookie means the
+  // session lapsed rather than the user never having signed in.
+  const hadSession = request.cookies.get('had_session')
 
   // Allow public routes
   if (isPublicRoute && !isAuthRoute) {
@@ -48,6 +55,9 @@ export function middleware(request: NextRequest) {
   if (!isPublicRoute && !token) {
     const loginUrl = new URL('/auth/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
+    if (hadSession) {
+      loginUrl.searchParams.set('session_expired', 'true')
+    }
     return NextResponse.redirect(loginUrl)
   }
 
